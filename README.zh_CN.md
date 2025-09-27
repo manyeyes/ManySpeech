@@ -1,6 +1,6 @@
 ﻿（简体中文 | [English](README.md) ）
 
-
+ <img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" />
 
 # ManySpeech 语音处理套件：跨平台 C# 语音解决方案 🎤
 
