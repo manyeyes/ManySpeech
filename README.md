@@ -1,6 +1,6 @@
 ﻿（[简体中文](README.zh_CN.md) |  English）
 
- <div style="text-align:center;"><img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" /><div>
+ <div style="text-align:center;"><img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" /></div>
 
 # ManySpeech Voice Processing Suite: A Cross-Platform C# Voice Solution 🎤
 
