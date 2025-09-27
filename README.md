@@ -1,5 +1,7 @@
 ﻿（[简体中文](README.zh_CN.md) |  English）
 
+ <img width="100" height="100" align="center" alt="dotnet_bot" src="https://github.com/user-attachments/assets/ebca403b-a062-4c16-8fe6-10998000523d" />
+
 # ManySpeech Voice Processing Suite: A Cross-Platform C# Voice Solution 🎤
 
 ## Project Overview 📋
