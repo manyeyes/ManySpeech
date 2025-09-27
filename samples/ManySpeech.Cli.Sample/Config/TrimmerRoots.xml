@@ -1,0 +1,38 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<linker>
+		<!-- 保留 ONNX Runtime 核心程序集 -->
+		<assembly fullname="Microsoft.ML.OnnxRuntime" preserve="all" />
+
+		<!-- 保留 ONNX Runtime 依赖的原生方法和类型 -->
+		<assembly fullname="Microsoft.ML.OnnxRuntime">
+				<type fullname="Microsoft.ML.OnnxRuntime.NativeMethods" preserve="all" />
+				<type fullname="Microsoft.ML.OnnxRuntime.CpuInfo" preserve="all" />
+				<type fullname="Microsoft.ML.OnnxRuntime.SessionOptions" preserve="all" />
+				<type fullname="Microsoft.ML.OnnxRuntime.InferenceSession" preserve="all" />
+				<type fullname="Microsoft.ML.OnnxRuntime.OrtLoggingLevel" preserve="all" />
+				<type fullname="Microsoft.ML.OnnxRuntime.GraphOptimizationLevel" preserve="all" />
+		</assembly>		
+
+		<!-- 保留 NAudio 所有类型（避免遗漏任何 MediaFoundation 相关类） -->
+		<assembly fullname="NAudio" preserve="all" />
+		
+		<!-- 保留 NAudio 中 Media Foundation 相关的命名空间 -->
+		<assembly fullname="NAudio">
+				<namespace fullname="NAudio.MediaFoundation" preserve="all" />
+				<namespace fullname="NAudio.Wave" preserve="all" />
+				<!-- 音频基础类型 -->
+		</assembly>
+		
+		<!-- 保留 .NET 互操作核心类型（关键！） -->
+		<assembly fullname="System.Runtime.InteropServices" preserve="all" />
+		<assembly fullname="System.Runtime.InteropServices.RuntimeInformation" preserve="all" />
+
+		<!-- 保留 Windows 媒体基础相关的 COM 互操作类型 -->
+		<assembly fullname="WindowsBase" preserve="all" />
+		
+		<!-- 包含部分媒体相关接口 -->
+		<assembly fullname="System.Windows.Extensions" preserve="all" />
+
+		<!-- 保留程序中直接使用的音频处理类型 -->
+		<!--<assembly fullname="ManySpeech.Cli.Sample" preserve="all" />-->		
+</linker>

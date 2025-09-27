@@ -1,0 +1,29 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+		<PropertyGroup>
+				<OutputType>Exe</OutputType>
+				<TargetFramework>net9.0</TargetFramework>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<LangVersion>10</LangVersion>
+				<Nullable>enable</Nullable>
+				<PublishAot>false</PublishAot>
+				<ApplicationManifest>app.manifest</ApplicationManifest>
+				<Version>1.0.5</Version>
+		</PropertyGroup>
+
+		<ItemGroup>
+		  <Compile Remove="Utils\**" />
+		  <EmbeddedResource Remove="Utils\**" />
+		  <None Remove="Utils\**" />
+		</ItemGroup>
+
+		<ItemGroup>
+		  <ProjectReference Include="..\..\src\ManySpeech.AliCTTransformerPunc\ManySpeech.AliCTTransformerPunc.csproj" />
+		  <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
+		</ItemGroup>
+
+		<ItemGroup>
+				<TrimmerRoots Include="Config\TrimmerRoots.xml" />
+		</ItemGroup>
+
+</Project>

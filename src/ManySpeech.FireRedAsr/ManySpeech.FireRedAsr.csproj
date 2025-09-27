@@ -1,0 +1,58 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+		<PropertyGroup>
+				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;net6.0;net8.0;net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
+				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
+				<!-- 平台特定配置 -->
+				<TargetFrameworks Condition="'$(OS)' == 'Windows_NT'">$(TargetFrameworks);netcoreapp3.1</TargetFrameworks>
+				<!-- 平台最低版本要求 -->
+				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
+				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">21.0</SupportedOSPlatformVersion>
+				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">14.2</SupportedOSPlatformVersion>
+				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">15.0</SupportedOSPlatformVersion>
+				<!-- 统一配置 .NET 6+ 共有的属性 -->
+				<DefineConstants>$(DefineConstants);MODERN_DOTNET</DefineConstants>
+				<LangVersion>10</LangVersion>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<Nullable>enable</Nullable>
+				<!-- info -->
+				<PackageId>ManySpeech.FireRedAsr</PackageId>
+				<Version>1.0.4</Version>
+				<Authors>manyeyes contributors</Authors>
+				<Company>manyeyes contributors</Company>
+				<Copyright>Copyright © manyeyes contributors</Copyright>
+				<Summary>c# library for decoding FireRedASR's AED-L Model，used in speech recognition (ASR)</Summary>
+				<Description>c# library for decoding FireRedASR's AED-L Model，used in speech recognition (ASR).FireRedASR is a family of open-source industrial-grade automatic speech recognition (ASR) models supporting Mandarin, Chinese dialects and English, achieving a new state-of-the-art (SOTA) on public Mandarin ASR benchmarks, while also offering outstanding singing lyrics recognition capability.</Description>
+				<Tags>speech recognition asr fireredasr AED-L ai local privacy</Tags>
+				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl>
+				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>
+				<IncludeSymbols>true</IncludeSymbols>
+				<SymbolPackageFormat>snupkg</SymbolPackageFormat>
+				<PackageReadmeFile>App_Readme/README.md</PackageReadmeFile>
+				<PackageLicenseFile>App_Readme/LICENSE</PackageLicenseFile>
+				<PackageRequireLicenseAcceptance>False</PackageRequireLicenseAcceptance>
+				<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+				<PublishRepositoryUrl>true</PublishRepositoryUrl>
+				<EmbedUntrackedSources>true</EmbedUntrackedSources>
+				<DebugType>embedded</DebugType>
+				<SignAssembly>true</SignAssembly>
+				<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+		</PropertyGroup>
+
+		<ItemGroup>
+				<None Include="../../docs/readme/FireRedAsr/README.md" Pack="true" PackagePath="App_Readme/" Visible="false" />
+				<None Include="../../docs/readme/FireRedAsr/README.zh_CN.md" Pack="true" PackagePath="App_Readme/" Visible="false" />
+				<None Include="../../LICENSE" Pack="true" PackagePath="App_Readme/" Visible="false" />
+		</ItemGroup>
+
+		<ItemGroup>
+				<PackageReference Include="ManySpeech.SpeechFeatures" Version="1.1.7" />
+				<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.*" />
+				<!--<PackageReference Include="YamlDotNet" Version="16.3.0" />
+				<PackageReference Include="Vecc.YamlDotNet.Analyzers.StaticGenerator" Version="16.3.0" />-->
+				<!-- System.Text.Json：仅为不原生支持的框架添加引用 -->
+				<PackageReference Include="System.Text.Json" Version="9.0.8" Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' OR '$(TargetFramework)' == 'net461' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'" />
+				<PackageReference Include="SharpZipLib" Version="1.4.2" Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' OR '$(TargetFramework)' == 'net461' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'" />
+		</ItemGroup>
+
+</Project>

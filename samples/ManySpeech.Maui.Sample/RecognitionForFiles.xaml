@@ -1,0 +1,102 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ManySpeech.Maui.Sample.RecognitionForFiles">
+    <ContentPage.Resources>
+        <Style TargetType="Button" x:Key="SmallButtonStyle">
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="FontSize" Value="Default" />
+            <Setter Property="MinimumHeightRequest" Value="20" />
+            <!-- 限制最小高度 -->
+            <Setter Property="MinimumWidthRequest" Value="60" />
+            <!-- 限制最小宽度 -->
+        </Style>
+    </ContentPage.Resources>
+    <ScrollView>
+        <VerticalStackLayout
+            Spacing="25"
+            Padding="15,15"
+            VerticalOptions="Start">
+            <StackLayout>
+                <Grid ColumnSpacing="5" RowSpacing="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="80" />
+                        <ColumnDefinition Width="80" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Label Text="models not checked" Grid.Row="0" Grid.Column="0"
+                           x:Name="ModelStatusLabel"
+                           VerticalTextAlignment="Center" HorizontalTextAlignment="Start"/>
+                    <Button Grid.Row="0" Grid.Column="1"
+                x:Name="BtnDownLoadCheck" Style="{StaticResource SmallButtonStyle}"
+                Text="Check"
+                SemanticProperties.Hint="Counts the number of times you click"
+                Clicked="OnDownLoadCheckClicked" />
+                    <Button Grid.Row="0" Grid.Column="2"
+                x:Name="BtnDownLoadModels" Style="{StaticResource SmallButtonStyle}"
+                Text="Download"
+                SemanticProperties.Hint="Counts the number of times you click"
+                Clicked="OnDownLoadModelsClicked" />
+                    <Button Grid.Row="0" Grid.Column="3"
+                x:Name="BtnDeleteModels" Style="{StaticResource SmallButtonStyle}"
+                Text="Delete"
+                SemanticProperties.Hint="Counts the number of times you click"
+                Clicked="OnDeleteModelsClicked" />
+                    <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="4"
+                x:Name="DownloadResultsLabel" Style="{StaticResource SmallButtonStyle}"
+                Text="" IsVisible="False"
+                BackgroundColor="White"
+                TextColor="Red"/>
+                    <Label Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="4"
+                x:Name="DownloadProgressLabel" Style="{StaticResource SmallButtonStyle}"
+                Text="" IsVisible="False"
+                BackgroundColor="White"
+                           HorizontalOptions="FillAndExpand"
+                           HorizontalTextAlignment="Start"
+                TextColor="Green"/>
+                    <ProgressBar  IsVisible="False" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+                    x:Name="DownloadProgressBar" HorizontalOptions="FillAndExpand" />
+                </Grid>
+                <Grid ColumnSpacing="5" RowSpacing="5">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="4*" />
+                        <ColumnDefinition Width="8*" />
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="40" />
+                    </Grid.RowDefinitions>
+                    <Button Grid.Row="0" Grid.Column="0"
+                x:Name="BtnRecognitionExample" Style="{StaticResource SmallButtonStyle}"
+                Text="Example"
+                SemanticProperties.Hint="Counts the number of times you click"
+                Clicked="OnBtnRecognitionExampleClicked"
+                HorizontalOptions="FillAndExpand" />
+                    <Button Grid.Row="0" Grid.Column="1"
+                x:Name="BtnRecognitionFiles" Style="{StaticResource SmallButtonStyle}"
+                Text="Recognition Files"
+                SemanticProperties.Hint="Counts the number of times you click"
+                Clicked="OnBtnRecognitionFilesClicked"
+                HorizontalOptions="FillAndExpand" />
+                </Grid>
+            </StackLayout>
+            <Label FlowDirection="MatchParent"
+                Text="Display recognition results"
+                SemanticProperties.HeadingLevel="Level2"
+                SemanticProperties.Description="Welcome to dot net Multi platform App U I"
+                FontSize="15"
+                Background="#F6F8F6"
+                Padding="10,10,10,10"
+                x:Name="AsrResults"
+                HorizontalOptions="FillAndExpand"
+                BackgroundColor="White"
+                TextColor="Black" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

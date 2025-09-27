@@ -1,0 +1,16 @@
+﻿<Directives xmlns="http://schemas.microsoft.com/netfx/2013/01/metadata">
+		<Application>
+				<!-- 保留必要的类型（所有Type都放在Assembly内部） -->
+				<Assembly Name="AudioInOut">
+						<Type Name="AudioInOut.WindowsWaveInRecorder" Dynamic="Required All"/>
+						<Type Name="AudioInOut.WaveInterop" Dynamic="Required All"/>
+
+						<!-- 委托类型（嵌套在WaveInterop中，属于AudioInOut程序集） -->
+						<Type Name="AudioInOut.WaveInterop+WaveInProc" Dynamic="Required All"/>
+
+						<!-- 结构体类型（属于AudioInOut程序集） -->
+						<Type Name="AudioInOut.WaveFormat" MarshalStructure="Required All"/>
+						<Type Name="AudioInOut.WaveHeader" MarshalStructure="Required All"/>
+				</Assembly>
+		</Application>
+</Directives>
