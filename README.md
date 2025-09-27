@@ -1,12 +1,12 @@
 ﻿（[简体中文](README.zh_CN.md) |  English）
 
- <img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" />
+ <div style="text-align:center;"><img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" /><div>
 
 # ManySpeech Voice Processing Suite: A Cross-Platform C# Voice Solution 🎤
 
 ## Project Overview 📋
 
-ManySpeech (https://github.com/manyeyes/ManySpeech) is a voice processing suite developed by the manyeyes community, which is based on C#. With excellent open-source models as its core, it relies on Microsoft.ML.OnnxRuntime to implement ONNX model decoding. It aims to solve three key issues:
+ManySpeech ( https://github.com/manyeyes/ManySpeech ) is a voice processing suite developed by the manyeyes community, which is based on C#. With excellent open-source models as its core, it relies on Microsoft.ML.OnnxRuntime to implement ONNX model decoding. It aims to solve three key issues:
 - 🚩 Compatibility issues in cross-platform deployment
 - 🚩 Model adaptation challenges in different scenarios (real-time/offline, multi-language)
 - 🚩 The integration threshold of complex toolchains

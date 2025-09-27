@@ -1,12 +1,12 @@
 ﻿（简体中文 | [English](README.md) ）
 
- <img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" />
+ <div style="text-align:center;"><img width="128" height="128" align="center" alt="dotnet_bot_128x128" src="https://github.com/user-attachments/assets/d8119208-17a5-4bff-b222-003093ad7d18" /><div>
 
 # ManySpeech 语音处理套件：跨平台 C# 语音解决方案 🎤
 
 ## 项目概述 📋
 
-ManySpeech（https://github.com/manyeyes/ManySpeech）是由 manyeyes 社区开发的一款基于 C# 的语音处理套件。该项目以优秀的开源模型为核心，依托 Microsoft.ML.OnnxRuntime 实现 ONNX 模型解码，旨在解决三大关键问题：
+ManySpeech（ https://github.com/manyeyes/ManySpeech ）是由 manyeyes 社区开发的一款基于 C# 的语音处理套件。该项目以优秀的开源模型为核心，依托 Microsoft.ML.OnnxRuntime 实现 ONNX 模型解码，旨在解决三大关键问题：
 - 🚩 跨平台部署的兼容性问题
 - 🚩 不同场景（实时/离线、多语言）下的模型适配难题
 - 🚩 复杂工具链的集成门槛
