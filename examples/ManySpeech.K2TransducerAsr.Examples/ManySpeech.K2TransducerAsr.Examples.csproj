@@ -7,15 +7,8 @@
 				<LangVersion>10</LangVersion>
 				<Nullable>enable</Nullable>
 				<PublishAot>true</PublishAot>
-				<ApplicationManifest>app.manifest</ApplicationManifest>
-				<Version>1.0.6</Version>
+				<!--<ApplicationManifest>app.manifest</ApplicationManifest>-->
 		</PropertyGroup>
-
-		<ItemGroup>
-		  <Compile Remove="Utils\**" />
-		  <EmbeddedResource Remove="Utils\**" />
-		  <None Remove="Utils\**" />
-		</ItemGroup>
 
 		<ItemGroup>
 		  <ProjectReference Include="..\..\src\ManySpeech.K2TransducerAsr\ManySpeech.K2TransducerAsr.csproj" />

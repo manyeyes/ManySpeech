@@ -8,18 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="moonshine-base-en-onnx\**" />
-    <Compile Remove="moonshine-tiny-en-onnx\**" />
-    <Compile Remove="Utils\**" />
-    <EmbeddedResource Remove="moonshine-base-en-onnx\**" />
-    <EmbeddedResource Remove="moonshine-tiny-en-onnx\**" />
-    <EmbeddedResource Remove="Utils\**" />
-    <None Remove="moonshine-base-en-onnx\**" />
-    <None Remove="moonshine-tiny-en-onnx\**" />
-    <None Remove="Utils\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\ManySpeech.MoonshineAsr\ManySpeech.MoonshineAsr.csproj" />
     <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
   </ItemGroup>

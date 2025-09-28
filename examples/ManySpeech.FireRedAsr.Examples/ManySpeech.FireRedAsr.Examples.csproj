@@ -1,82 +1,23 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-  </PropertyGroup>
+		<PropertyGroup>
+				<OutputType>Exe</OutputType>
+				<TargetFramework>net9.0</TargetFramework>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<LangVersion>10</LangVersion>
+				<Nullable>enable</Nullable>
+				<PublishAot>false</PublishAot>
+				<!--<ApplicationManifest>app.manifest</ApplicationManifest>-->
+		</PropertyGroup>
 
-  <ItemGroup>
-    <Compile Remove="Utils\**" />
-    <EmbeddedResource Remove="Utils\**" />
-    <None Remove="Utils\**" />
-  </ItemGroup>
+		<ItemGroup>
+				<!-- 引用 TrimmerRoots.xml -->
+				<TrimmerRoots Include="Config\TrimmerRoots.xml" />
+		</ItemGroup>
 
-  <ItemGroup>
-    <Compile Remove="FireRedAsrExamples.cs" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\ManySpeech.FireRedAsr\ManySpeech.FireRedAsr.csproj" />
-    <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\am.mvn">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\decoder.int8.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\encoder.int8.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\1.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\10.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\11.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\12.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\2.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\3.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\4.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\5.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\0.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\6.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\7.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\8.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\9.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\test_wavs\DEV_T0000000000.opus">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="fireredasr-aed-large-zh-en-onnx-offline-20250124\tokens.txt">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>    
-  </ItemGroup>
+		<ItemGroup>
+				<ProjectReference Include="..\..\src\ManySpeech.FireRedAsr\ManySpeech.FireRedAsr.csproj" />
+				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
+		</ItemGroup>
 
 </Project>
