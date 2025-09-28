@@ -1,10 +1,12 @@
 ﻿using PreProcessUtils;
 using ManySpeech.WenetAsr;
+using ManySpeech.WenetAsr.Examples.Base;
+using ManySpeech.WenetAsr.Examples.Entities;
 using ManySpeech.WenetAsr.Model;
 
 namespace ManySpeech.WenetAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OnlineWenetAsrRecognizer : BaseAsr
     {
         private static OnlineRecognizer? _onlineRecognizer;
         public static OnlineRecognizer? initOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -119,14 +121,11 @@ namespace ManySpeech.WenetAsr.Examples
                 return;
             }
             TimeSpan total_duration = TimeSpan.Zero;
-            TimeSpan start_time = TimeSpan.Zero;
-            TimeSpan end_time = TimeSpan.Zero;
-            start_time = new TimeSpan(DateTime.Now.Ticks);
-
-            List<List<float[]>> samplesList = new List<List<float[]>>();
+            DateTime processStartTime = DateTime.Now;
             int batchSize = 2;
             int startIndex = 0;
             int n = 0;
+            List<List<float[]>> samplesList = new List<List<float[]>>();
             List<float[]>? samples = new List<float[]>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
@@ -181,7 +180,7 @@ namespace ManySpeech.WenetAsr.Examples
                 return;
             }
             streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "multi" : streamDecodeMethod;//one ,multi
-            if (streamDecodeMethod == "one")
+            if (streamDecodeMethod == "one" || streamDecodeMethod == "batch")
             {
                 //one stream decode
                 for (int j = 0; j < samplesList.Count; j++)
@@ -190,95 +189,36 @@ namespace ManySpeech.WenetAsr.Examples
                     foreach (float[] samplesItem in samplesList[j])
                     {
                         stream.AddSamples(samplesItem);
-                        OnlineRecognizerResultEntity result = onlineRecognizer.GetResult(stream);
-                        Console.WriteLine(result.Text);
+                        OnlineRecognizerResultEntity nativeResult = onlineRecognizer.GetResult(stream);
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, j, processingTime);
+                        RaiseRecognitionResult(resultEntity);
                     }
                 }
                 // one stream decode
             }
-            //if (streamDecodeMethod == "multi")
+            //if (streamDecodeMethod == "batch")
             //{
-            //    //multi stream decode
-            //    List<WenetAsr.OnlineStream> onlineStreams = new List<WenetAsr.OnlineStream>();
-            //    List<bool> isEndpoints = new List<bool>();
-            //    List<bool> isEnds = new List<bool>();
-            //    for (int num = 0; num < samplesList.Count; num++)
-            //    {
-            //        WenetAsr.OnlineStream stream = onlineRecognizer.CreateOnlineStream();
-            //        onlineStreams.Add(stream);
-            //        isEndpoints.Add(false);
-            //        isEnds.Add(false);
-            //    }
-            //    int i = 0;
-            //    List<WenetAsr.OnlineStream> streams = new List<WenetAsr.OnlineStream>();
-
-            //    while (true)
-            //    {
-            //        streams = new List<WenetAsr.OnlineStream>();
-
-            //        for (int j = 0; j < samplesList.Count; j++)
-            //        {
-            //            if (samplesList[j].Count > i && samplesList.Count > j)
-            //            {
-            //                onlineStreams[j].AddSamples(samplesList[j][i]);
-            //                streams.Add(onlineStreams[j]);
-            //                isEndpoints[j] = false;
-            //            }
-            //            else
-            //            {
-            //                streams.Add(onlineStreams[j]);
-            //                samplesList.Remove(samplesList[j]);
-            //                isEndpoints[j] = true;
-            //            }
-            //        }
-            //        for (int j = 0; j < samplesList.Count; j++)
-            //        {
-            //            if (isEndpoints[j])
-            //            {
-            //                if (onlineStreams[j].IsFinished(isEndpoints[j]))
-            //                {
-            //                    isEnds[j] = true;
-            //                }
-            //                else
-            //                {
-            //                    streams.Add(onlineStreams[j]);
-            //                }
-            //            }
-            //        }
-            //        List<WenetAsr.Model.OnlineRecognizerResultEntity> results_batch = onlineRecognizer.GetResults(streams);
-            //        foreach (WenetAsr.Model.OnlineRecognizerResultEntity result in results_batch)
-            //        {
-            //            Console.WriteLine(result.text);
-            //        }
-            //        Console.WriteLine("");
-            //        i++;
-            //        bool isAllFinish = true;
-            //        for (int j = 0; j < samplesList.Count; j++)
-            //        {
-            //            if (!isEnds[j])
-            //            {
-            //                isAllFinish = false;
-            //                break;
-            //            }
-            //        }
-            //        if (isAllFinish)
-            //        {
-            //            break;
-            //        }
-            //    }
+            //    //2. batch method
+            //    Console.WriteLine("Unsupported batch method by the model");
             //}
             if (_onlineRecognizer != null)
             {
                 _onlineRecognizer.Dispose();
                 _onlineRecognizer = null;
             }
-            end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("Hello, World!");
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(OnlineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }

@@ -6,8 +6,8 @@ namespace ManySpeech.MoonshineAsr.Examples
         [STAThread]
         private static void Main()
         {
-            //test_MoonshineAsrOfflineRecognizer();
-            //test_MoonshineAsrOnlineRecognizer();
+            test_MoonshineAsrOfflineRecognizer();
+            test_MoonshineAsrOnlineRecognizer();
             test_MoonshineAsrOnlineVadRecognizer();
         }
     }

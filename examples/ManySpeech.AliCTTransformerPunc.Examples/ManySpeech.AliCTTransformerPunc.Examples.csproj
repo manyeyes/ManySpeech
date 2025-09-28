@@ -12,12 +12,6 @@
 		</PropertyGroup>
 
 		<ItemGroup>
-		  <Compile Remove="Utils\**" />
-		  <EmbeddedResource Remove="Utils\**" />
-		  <None Remove="Utils\**" />
-		</ItemGroup>
-
-		<ItemGroup>
 		  <ProjectReference Include="..\..\src\ManySpeech.AliCTTransformerPunc\ManySpeech.AliCTTransformerPunc.csproj" />
 		  <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 		</ItemGroup>

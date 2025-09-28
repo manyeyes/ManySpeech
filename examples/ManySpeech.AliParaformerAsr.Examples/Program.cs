@@ -5,6 +5,7 @@
  * Model Download:
  * Please read README.md
  */
+using PreProcessUtils;
 using System.Text;
 
 namespace ManySpeech.AliParaformerAsr.Examples
@@ -12,7 +13,7 @@ namespace ManySpeech.AliParaformerAsr.Examples
     internal static partial class Program
     {
         public static string applicationBase = AppDomain.CurrentDomain.BaseDirectory;
-        private static PreProcessUtils.GitHelper _modelPreparer = new PreProcessUtils.GitHelper();
+        private static GitHelper _modelPreparer = new GitHelper();
         // language
         private static string _lang = "en";
         // environment variable prefix (to avoid naming conflicts)
@@ -32,7 +33,6 @@ namespace ManySpeech.AliParaformerAsr.Examples
         };
         private static Dictionary<string, string> _defaultOfflineModelName = new Dictionary<string, string>{
             { "aliparaformerasr", "paraformer-seaco-large-zh-timestamp-int8-onnx-offline" } };
-        private static int i = 0;
 
         [STAThread]
         static void Main(string[] args)
@@ -57,7 +57,6 @@ namespace ManySpeech.AliParaformerAsr.Examples
                         args = Environment.GetCommandLineArgs();
                         if (args.Length == 1)
                         {
-                            i++;
                             Console.WriteLine("\nEnter parameters (press Enter to skip):");
                         }
                         args = ParseArguments(GetConsoleReadLine().Trim());
@@ -291,7 +290,9 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     {
                         modelName = defaultOnlineModelName;
                     }
-                    AliParaformerAsrRecognizer.OnlineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
+                    SetOnlineRecognizerCallbackForResult(recognizerType: recognizerType);
+                    SetOnlineRecognizerCallbackForCompleted();
+                    OnlineAliParaformerAsrRecognizer.OnlineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
                 }
                 else if (recognizerType == "offline")
                 {
@@ -299,11 +300,13 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     {
                         modelName = defaultOfflineModelName;
                     }
-                    AliParaformerAsrRecognizer.OfflineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
+                    SetOfflineRecognizerCallbackForResult(recognizerType: recognizerType);
+                    SetOfflineRecognizerCallbackForCompleted();
+                    OfflineAliParaformerAsrRecognizer.OfflineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
                 }
                 else
                 {
-                    throw new ArgumentException("the recognizer type must be online or offline");
+                    throw new ArgumentException("The recognizer type must be online or offline");
                 }
             }
             catch (Exception ex)
@@ -320,6 +323,106 @@ namespace ManySpeech.AliParaformerAsr.Examples
             }
         }
 
+        #region callback
+        private static async void SetOfflineRecognizerCallbackForResult(string? recognizerType, string outputFormat = "text")
+        {
+            int i = 0;
+            OfflineAliParaformerAsrRecognizer.ResetRecognitionResultHandlers();
+            OfflineAliParaformerAsrRecognizer.OnRecognitionResult += async result =>
+            {
+                string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">"));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                    switch (outputFormat)
+                    {
+                        case "text":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            Console.WriteLine(text);
+                            break;
+                        case "json":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            StringBuilder r = new StringBuilder();
+                            r.AppendLine("{");
+                            r.AppendLine($"\"text\": \"{text}\",");
+                            if (result.Tokens.Length > 0)
+                            {
+                                r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
+                            }
+                            if (result.Timestamps.Length > 0)
+                            {
+                                r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
+                            }
+                            r.AppendLine("}");
+                            Console.WriteLine($"{r.ToString()}");
+                            break;
+                    }
+                }
+                i++;
+            };
+        }
+        private static async void SetOnlineRecognizerCallbackForResult(string? recognizerType, string outputFormat = "text")
+        {
+            int i = 0;
+            OnlineAliParaformerAsrRecognizer.ResetRecognitionResultHandlers();
+            OnlineAliParaformerAsrRecognizer.OnRecognitionResult += async result =>
+            {
+                string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">"));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                    switch (outputFormat)
+                    {
+                        case "text":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            Console.WriteLine(text);
+                            break;
+                        case "json":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            StringBuilder r = new StringBuilder();
+                            r.AppendLine("{");
+                            r.AppendLine($"\"text\": \"{text}\",");
+                            if (result.Tokens.Length > 0)
+                            {
+                                r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
+                            }
+                            if (result.Timestamps.Length > 0)
+                            {
+                                r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
+                            }
+                            r.AppendLine("}");
+                            Console.WriteLine($"{r.ToString()}");
+                            break;
+                    }
+                }
+                i++;
+            };
+        }
+        public static void SetOnlineRecognizerCallbackForCompleted()
+        {
+            OnlineAliParaformerAsrRecognizer.ResetRecognitionCompletedHandlers();
+            OnlineAliParaformerAsrRecognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
+            {
+                double elapsedMilliseconds = totalTime.TotalMilliseconds;
+                Console.WriteLine("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString());
+                Console.WriteLine("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString());
+                Console.WriteLine("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString());
+            };
+        }
+        public static void SetOfflineRecognizerCallbackForCompleted()
+        {
+            OfflineAliParaformerAsrRecognizer.ResetRecognitionCompletedHandlers();
+            OfflineAliParaformerAsrRecognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
+            {
+                double elapsedMilliseconds = totalTime.TotalMilliseconds;
+                Console.WriteLine("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString());
+                Console.WriteLine("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString());
+                Console.WriteLine("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString());
+            };
+        }
+        #endregion
+
+        #region print
         private static void PrintConfigInfo(string modelBasePath, string recognizerType, string methodType,
                                          string modelName, string modelAccuracy, int threads, string[] files)
         {
@@ -393,5 +496,6 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 Console.WriteLine($"\n*Additional notes: Press Enter twice, and you can follow the prompts to proceed: 1. Select language; 2. Select recognizer type.");
             }
         }
+        #endregion
     }
 }

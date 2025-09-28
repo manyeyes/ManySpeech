@@ -5,21 +5,24 @@
  * Model Download:
  * Please read README.md
  */
+using ManySpeech.WenetAsr.Examples;
+using PreProcessUtils;
 using System.Text;
 
-namespace ManySpeech.WenetAsr.Examples
+namespace ManySpeech.k2TransducerAsr.Examples
 {
     internal static partial class Program
     {
         public static string applicationBase = AppDomain.CurrentDomain.BaseDirectory;
+        private static GitHelper _modelPreparer = new GitHelper();
         // language
         private static string _lang = "en";
-        // environment variable prefix (to avoid naming conflicts)  
+        // environment variable prefix (to avoid naming conflicts)
         private const string EnvPrefix = "MANYSPEECH_";
         // supported environment variables
         private const string EnvModelBasePath = EnvPrefix + "BASE";    // path/to/directory
         private const string EnvRecognizerType = EnvPrefix + "TYPE";    // online/offline
-        private const string EnvBatchType = EnvPrefix + "BATCH";       // one/multi
+        private const string EnvBatchType = EnvPrefix + "BATCH";       // one/batch
         private const string EnvModelName = EnvPrefix + "MODEL";       // model name
         private const string EnvModelAccuracy = EnvPrefix + "ACCURACY";       // model accuracy int8/fp32
         private const string EnvThreads = EnvPrefix + "THREADS";       // thread num
@@ -31,12 +34,20 @@ namespace ManySpeech.WenetAsr.Examples
         };
         private static Dictionary<string, string> _defaultOfflineModelName = new Dictionary<string, string>{
             { "wenetasr", "wenet-u2pp-conformer-gigaspeech-onnx-offline-20210728" } };
-        private static int i = 0;
 
         [STAThread]
         static void Main(string[] args)
         {
             Console.OutputEncoding = Encoding.UTF8;
+
+            Console.WriteLine($"Choose the language for Usage: 1. English; 2. Chinese;");
+            int selectLanguage = 0;
+            if (int.TryParse(GetConsoleReadLine().Trim(), out selectLanguage))
+            {
+                _lang = selectLanguage == 2 ? "zh" : "en";
+            }
+            PrintUsage();
+
             while (true)
             {
                 try
@@ -47,21 +58,9 @@ namespace ManySpeech.WenetAsr.Examples
                         args = Environment.GetCommandLineArgs();
                         if (args.Length == 1)
                         {
-                            if (i == 0)
-                                PrintUsage();
-                            i++;
-                            System.Console.WriteLine("\nPlease enter the parameters:");
+                            Console.WriteLine("\nEnter parameters (press Enter to skip):");
                         }
-                        System.Text.StringBuilder sb = new System.Text.StringBuilder();
-                        while (true)
-                        {
-                            string input = Console.ReadLine();
-                            sb.AppendLine(input);
-                            if (Console.ReadKey().Key == ConsoleKey.Enter)
-                                break;
-                        }
-                        args = sb.ToString().TrimEnd('\r', '\n').Replace("\r\n", " ").Split(" ");
-                        args = args.Where(x => !string.IsNullOrEmpty(x)).ToArray();
+                        args = ParseArguments(GetConsoleReadLine().Trim());
                     }
 
                     string[] allArgs = args;
@@ -73,37 +72,9 @@ namespace ManySpeech.WenetAsr.Examples
 
                     if (commandLineArgs.Length == 0)
                     {
-                        Console.WriteLine($"Select language: 1. English; 2. Chinese;");
-                        int selectLanguage = 0;
-                        while (true)
-                        {
-                            string input = Console.ReadLine();
-                            int.TryParse(input, out selectLanguage);
-                            if (Console.ReadKey().Key == ConsoleKey.Enter)
-                                break;
-                        }
-                        if (selectLanguage > 0)
-                        {
-                            switch (selectLanguage)
-                            {
-                                case 1:
-                                    _lang = "en";
-                                    break;
-                                case 2:
-                                    _lang = "zh";
-                                    break;
-                            }
-                        }
                         Console.WriteLine($"Select example: 1.offline; 2.online;");
                         int selectExample = 0;
-                        while (true)
-                        {
-                            string input = Console.ReadLine();
-                            int.TryParse(input, out selectExample);
-                            if (Console.ReadKey().Key == ConsoleKey.Enter)
-                                break;
-                        }
-                        if (selectExample > 0)
+                        if (int.TryParse(GetConsoleReadLine().Trim(), out selectExample))
                         {
                             switch (selectExample)
                             {
@@ -122,7 +93,7 @@ namespace ManySpeech.WenetAsr.Examples
                 {
                     { "modelBasePath", Environment.GetEnvironmentVariable(EnvModelBasePath)??""},
                     { "recognizerType", Environment.GetEnvironmentVariable(EnvRecognizerType)},
-                    { "batchType", Environment.GetEnvironmentVariable(EnvBatchType) ?? "one" },
+                    { "methodType", Environment.GetEnvironmentVariable(EnvBatchType) ?? "one" },
                     { "modelName", Environment.GetEnvironmentVariable(EnvModelName) ?? "default-model" },
                     { "modelAccuracy", Environment.GetEnvironmentVariable(EnvModelAccuracy) ?? "int8" },
                     { "threads", Environment.GetEnvironmentVariable(EnvThreads) ?? "2" }
@@ -146,6 +117,79 @@ namespace ManySpeech.WenetAsr.Examples
                 args = Array.Empty<string>();
             }
         }
+        private static string GetConsoleReadLine()
+        {
+            return Console.ReadLine()?.Trim('\r', '\n') ?? string.Empty;
+        }
+
+        public static string[] ParseArguments(string input)
+        {
+            List<string> args = new List<string>();
+            string currentArg = "";
+            bool inQuotes = false;
+            char quoteChar = '\0';
+
+            // 替换换行符并处理输入
+            input = input.Replace("\r\n", " ");
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                char c = input[i];
+
+                // 处理引号
+                if (c == '"' || c == '\'')
+                {
+                    // 如果是相同的引号，则认为是结束
+                    if (inQuotes && c == quoteChar)
+                    {
+                        inQuotes = false;
+                        quoteChar = '\0';
+                    }
+                    // 如果是新的引号，则开始
+                    else if (!inQuotes)
+                    {
+                        inQuotes = true;
+                        quoteChar = c;
+                    }
+                    // 如果是不同的引号且在引号内，则视为普通字符
+                    else
+                    {
+                        currentArg += c;
+                    }
+                }
+                // 处理空格
+                else if (char.IsWhiteSpace(c))
+                {
+                    // 如果在引号内，空格是参数的一部分
+                    if (inQuotes)
+                    {
+                        currentArg += c;
+                    }
+                    // 如果不在引号内，空格是参数分隔符
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(currentArg))
+                        {
+                            args.Add(currentArg);
+                            currentArg = "";
+                        }
+                    }
+                }
+                // 普通字符
+                else
+                {
+                    currentArg += c;
+                }
+            }
+
+            // 添加最后一个参数
+            if (!string.IsNullOrEmpty(currentArg))
+            {
+                args.Add(currentArg);
+            }
+
+            return args.ToArray();
+        }
 
         /// <summary>
         /// analyze command-line parameters and merge default values of environment variables
@@ -157,7 +201,7 @@ namespace ManySpeech.WenetAsr.Examples
                 // Initialize default values (from environment variables)
                 { "modelBasePath", envConfig["modelBasePath"] },
                 { "recognizerType", envConfig["recognizerType"] },
-                { "batchType", envConfig["batchType"] ?? "one" },
+                { "methodType", envConfig["methodType"] ?? "one" },
                 { "modelName", envConfig["modelName"] },
                 { "modelAccuracy", envConfig["modelAccuracy"] },
                 { "threads", int.Parse(envConfig["threads"]!) },
@@ -177,9 +221,9 @@ namespace ManySpeech.WenetAsr.Examples
                         if (i + 1 < args.Length)
                             config["recognizerType"] = args[++i];
                         break;
-                    case "-batch":
+                    case "-method":
                         if (i + 1 < args.Length)
-                            config["batchType"] = args[++i];
+                            config["methodType"] = args[++i];
                         break;
                     case "-model":
                         if (i + 1 < args.Length)
@@ -217,42 +261,27 @@ namespace ManySpeech.WenetAsr.Examples
         /// <summary>
         /// execute the corresponding recognizer method
         /// </summary>
-        private static void ExecuteRecognizer(Dictionary<string, object> config)
+        private static async void ExecuteRecognizer(Dictionary<string, object> config)
         {
             string modelBasePath = config["modelBasePath"].ToString()!.ToLower();
             string recognizerType = config["recognizerType"].ToString()!.ToLower();
-            string batchType = config["batchType"].ToString()!.ToLower();
+            string methodType = config["methodType"].ToString()!.ToLower();
             string modelName = config["modelName"].ToString()!;
             string modelAccuracy = config["modelAccuracy"].ToString()!;
             int threads = (int)config["threads"];
             string[] files = (string[])config["files"];
+            if (string.IsNullOrEmpty(modelBasePath))
+            {
+                modelBasePath = applicationBase;
+            }
 
-            string defaultOnlineModelName = _defaultOnlineModelName.GetValueOrDefault("WenetAsr");
-            string defaultOfflineModelName = _defaultOfflineModelName.GetValueOrDefault("WenetAsr");
-            if (_lang.ToLower() == "zh")
-            {
-                Console.WriteLine($"===== 识别器配置 =====");
-                Console.WriteLine($"模型目录: {modelBasePath ?? ""}");
-                Console.WriteLine($"类型: {recognizerType}");
-                Console.WriteLine($"批量模式: {batchType}（默认: one）");
-                Console.WriteLine(string.Format("模型: {0}", modelName == "default-model" ? (recognizerType == "online" ? defaultOnlineModelName : defaultOfflineModelName) : modelName));
-                Console.WriteLine($"精度: {modelAccuracy}");
-                Console.WriteLine($"线程数: {threads}");
-                Console.WriteLine($"输入文件: {(files.Length > 0 ? string.Join(", ", files) : "无")}");
-                Console.WriteLine("======================");
-            }
-            else
-            {
-                Console.WriteLine("===== RecognizerConfiguration =====");
-                Console.WriteLine($"Model Directory: {modelBasePath ?? ""}");
-                Console.WriteLine($"Type:{recognizerType}");
-                Console.WriteLine($"Batch Mode: {batchType} (default: one)");
-                Console.WriteLine(string.Format("Model: {0}", modelName == "default-model" ? (recognizerType == "online" ? defaultOnlineModelName : defaultOfflineModelName) : modelName));
-                Console.WriteLine($"Precision:{modelAccuracy}");
-                Console.WriteLine($"Number of Threads: {threads}");
-                Console.WriteLine($"Input Files: {(files.Length > 0 ? string.Join(", ", files) : "None")}");
-                Console.WriteLine("==================================");
-            }
+            string defaultOnlineModelName = _defaultOnlineModelName.GetValueOrDefault("wenetasr");
+            string defaultOfflineModelName = _defaultOfflineModelName.GetValueOrDefault("wenetasr");
+            modelName = modelName == "default-model" ? (recognizerType == "online" ? defaultOnlineModelName : defaultOfflineModelName) : modelName;
+            if (!string.IsNullOrEmpty(modelName))
+                await Task.Run(() => _modelPreparer.ProcessCloneModel(modelBasePath, modelName));
+            PrintConfigInfo(modelBasePath, recognizerType, methodType, modelName, modelAccuracy,
+                           threads, files);
             try
             {
                 // 调用对应的识别方法
@@ -262,7 +291,9 @@ namespace ManySpeech.WenetAsr.Examples
                     {
                         modelName = defaultOnlineModelName;
                     }
-                    OnlineRecognizer(batchType, modelName, modelAccuracy, threads, files, modelBasePath);
+                    SetOnlineRecognizerCallbackForResult(recognizerType: recognizerType);
+                    SetOnlineRecognizerCallbackForCompleted();
+                    OnlineWenetAsrRecognizer.OnlineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
                 }
                 else if (recognizerType == "offline")
                 {
@@ -270,11 +301,13 @@ namespace ManySpeech.WenetAsr.Examples
                     {
                         modelName = defaultOfflineModelName;
                     }
-                    OfflineRecognizer(batchType, modelName, modelAccuracy, threads, files, modelBasePath);
+                    SetOfflineRecognizerCallbackForResult(recognizerType: recognizerType);
+                    SetOfflineRecognizerCallbackForCompleted();
+                    OfflineWenetAsrRecognizer.OfflineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
                 }
                 else
                 {
-                    throw new ArgumentException("the recognizer type must be online or offline");
+                    throw new ArgumentException("The recognizer type must be online or offline");
                 }
             }
             catch (Exception ex)
@@ -291,6 +324,135 @@ namespace ManySpeech.WenetAsr.Examples
             }
         }
 
+        #region callback
+        private static async void SetOfflineRecognizerCallbackForResult(string? recognizerType, string outputFormat = "text")
+        {
+            int i = 0;
+            OfflineWenetAsrRecognizer.ResetRecognitionResultHandlers();
+            OfflineWenetAsrRecognizer.OnRecognitionResult += async result =>
+            {
+                string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">"));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                    switch (outputFormat)
+                    {
+                        case "text":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            Console.WriteLine(text);
+                            break;
+                        case "json":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            StringBuilder r = new StringBuilder();
+                            r.AppendLine("{");
+                            r.AppendLine($"\"text\": \"{text}\",");
+                            if (result.Tokens.Length > 0)
+                            {
+                                r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
+                            }
+                            if (result.Timestamps.Length > 0)
+                            {
+                                r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
+                            }
+                            r.AppendLine("}");
+                            Console.WriteLine($"{r.ToString()}");
+                            break;
+                    }
+                }
+                i++;
+            };
+        }
+        private static async void SetOnlineRecognizerCallbackForResult(string? recognizerType, string outputFormat = "text")
+        {
+            int i = 0;
+            OnlineWenetAsrRecognizer.ResetRecognitionResultHandlers();
+            OnlineWenetAsrRecognizer.OnRecognitionResult += async result =>
+            {
+                string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">"));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                    switch (outputFormat)
+                    {
+                        case "text":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            Console.WriteLine(text);
+                            break;
+                        case "json":
+                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
+                            StringBuilder r = new StringBuilder();
+                            r.AppendLine("{");
+                            r.AppendLine($"\"text\": \"{text}\",");
+                            if (result.Tokens.Length > 0)
+                            {
+                                r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
+                            }
+                            if (result.Timestamps.Length > 0)
+                            {
+                                r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
+                            }
+                            r.AppendLine("}");
+                            Console.WriteLine($"{r.ToString()}");
+                            break;
+                    }
+                }
+                i++;
+            };
+        }
+        public static void SetOnlineRecognizerCallbackForCompleted()
+        {
+            OnlineWenetAsrRecognizer.ResetRecognitionCompletedHandlers();
+            OnlineWenetAsrRecognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
+            {
+                double elapsedMilliseconds = totalTime.TotalMilliseconds;
+                Console.WriteLine("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString());
+                Console.WriteLine("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString());
+                Console.WriteLine("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString());
+            };
+        }
+        public static void SetOfflineRecognizerCallbackForCompleted()
+        {
+            OfflineWenetAsrRecognizer.ResetRecognitionCompletedHandlers();
+            OfflineWenetAsrRecognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
+            {
+                double elapsedMilliseconds = totalTime.TotalMilliseconds;
+                Console.WriteLine("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString());
+                Console.WriteLine("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString());
+                Console.WriteLine("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString());
+            };
+        }
+        #endregion
+
+        #region print
+        private static void PrintConfigInfo(string modelBasePath, string recognizerType, string methodType,
+                                         string modelName, string modelAccuracy, int threads, string[] files)
+        {
+            if (_lang.ToLower() == "zh")
+            {
+                Console.WriteLine($"===== 识别器配置 =====");
+                Console.WriteLine($"模型目录: {modelBasePath ?? ""}");
+                Console.WriteLine($"类型: {recognizerType}");
+                Console.WriteLine($"批量模式: {methodType}（默认: one）");
+                Console.WriteLine(string.Format("模型: {0}", modelName));
+                Console.WriteLine($"精度: {modelAccuracy}");
+                Console.WriteLine($"线程数: {threads}");
+                Console.WriteLine($"输入文件: {(files.Length > 0 ? string.Join(", ", files) : "无")}");
+                Console.WriteLine("======================");
+            }
+            else
+            {
+                Console.WriteLine("===== RecognizerConfiguration =====");
+                Console.WriteLine($"Model Directory: {modelBasePath ?? ""}");
+                Console.WriteLine($"Type:{recognizerType}");
+                Console.WriteLine($"Batch Mode: {methodType} (default: one)");
+                Console.WriteLine(string.Format("Model: {0}", modelName));
+                Console.WriteLine($"Precision:{modelAccuracy}");
+                Console.WriteLine($"Number of Threads: {threads}");
+                Console.WriteLine($"Input Files: {(files.Length > 0 ? string.Join(", ", files) : "None")}");
+                Console.WriteLine("==================================");
+            }
+        }
+
         /// <summary>
         /// 打印命令行使用说明
         /// </summary>
@@ -298,42 +460,43 @@ namespace ManySpeech.WenetAsr.Examples
         {
             if (_lang.ToLower() == "zh")
             {
-                Console.WriteLine("\n使用说明: WenetAsr.Examples.exe [参数]");
+                Console.WriteLine("\n使用说明: k2TransducerAsr.Examples.exe [参数]");
                 Console.WriteLine("必选参数（或通过环境变量设置）:");
                 Console.WriteLine($"  -type <online/offline>   识别器类型（环境变量: {EnvRecognizerType}）");
                 Console.WriteLine("可选参数:");
-                Console.WriteLine($"  -batch <one/multi>       批量处理模式（默认: one，环境变量: {EnvBatchType}）");
+                Console.WriteLine($"  -method <one/batch>       批量处理模式（默认: one，环境变量: {EnvBatchType}）");
                 Console.WriteLine($"  -base <可指定模型存放目录，或为空>   模型存放目录（环境变量: {EnvModelBasePath}）");
                 Console.WriteLine($"  -model <名称>            模型名称（默认: default-model，环境变量: {EnvModelName}）");
                 Console.WriteLine($"  -accuracy <fp32/int8>    模型名称（默认: int8，环境变量: {EnvModelAccuracy}）");
                 Console.WriteLine($"  -threads <数量>          线程数（默认: 2，环境变量: {EnvThreads}）");
                 Console.WriteLine("  -files <文件1> <文件2>    输入媒体文件列表(如不指定，默认:自动检查并识别模型目录下test_wavs中的文件)");
                 Console.WriteLine("\n示例1:");
-                Console.WriteLine("  WenetAsr.Examples.exe -type online -batch one -base /path/to/directory -model my-model -accuracy int8 -threads 2 -files /path/to/0.wav /path/to/1.wav");
-                Console.WriteLine("\n示例2（使用默认batch=one）:");
-                Console.WriteLine($"  set {EnvRecognizerType}=online && set {EnvModelBasePath}=/path/to/directory && WenetAsr.Examples.exe");
+                Console.WriteLine("  k2TransducerAsr.Examples.exe -type online -method one -base /path/to/directory -model my-model -accuracy int8 -threads 2 -files /path/to/0.wav /path/to/1.wav");
+                Console.WriteLine("\n示例2（使用默认method=one）:");
+                Console.WriteLine($"  set {EnvRecognizerType}=online && set {EnvModelBasePath}=/path/to/directory && k2TransducerAsr.Examples.exe");
                 Console.WriteLine($"\n*应用程序目录：{applicationBase}, 如果不指定-base, 请将下载的模型存放于此目录。");
                 Console.WriteLine($"\n*附加说明：按2次回车，可根据提示操作：1.选择语言；2.选择识别器类型。");
             }
             else
             {
-                Console.WriteLine("\nUsage Instructions: WenetAsr.Examples.exe [parameters]");
+                Console.WriteLine("\nUsage Instructions: k2TransducerAsr.Examples.exe [parameters]");
                 Console.WriteLine("Required parameters (or set via environment variables):");
                 Console.WriteLine($"  -type <online/offline>   Recognizer type (environment variable: {EnvRecognizerType})");
                 Console.WriteLine("Optional parameters:");
-                Console.WriteLine($"  -batch <one/multi>       Batch processing mode (default: one, environment variable: {EnvBatchType})");
+                Console.WriteLine($"  -method <one/batch>       Batch processing mode (default: one, environment variable: {EnvBatchType})");
                 Console.WriteLine($"  -base <specifiable model directory, or empty>   Model storage directory (environment variable: {EnvModelBasePath})");
                 Console.WriteLine($"  -model <name>            Model name (default: default-model, environment variable: {EnvModelName})");
                 Console.WriteLine($"  -accuracy <fp32/int8>    Precision (default: int8, environment variable: {EnvModelAccuracy})");
                 Console.WriteLine($"  -threads <count>         Number of threads (default: 2, environment variable: {EnvThreads})");
                 Console.WriteLine("  -files <file1> <file2>    List of input media files (if not specified, default: automatically check and recognize files in test_wavs under the model directory)");
                 Console.WriteLine("\nExample 1:");
-                Console.WriteLine("  WenetAsr.Examples.exe -type online -batch one -base /path/to/directory -model my-model -accuracy int8 -threads 2 -files /path/to/0.wav /path/to/1.wav");
-                Console.WriteLine("\nExample 2 (use default batch=one):");
-                Console.WriteLine($"  set {EnvRecognizerType}=online && set {EnvModelBasePath}=/path/to/directory && WenetAsr.Examples.exe");
+                Console.WriteLine("  k2TransducerAsr.Examples.exe -type online -method one -base /path/to/directory -model my-model -accuracy int8 -threads 2 -files /path/to/0.wav /path/to/1.wav");
+                Console.WriteLine("\nExample 2 (use default method=one):");
+                Console.WriteLine($"  set {EnvRecognizerType}=online && set {EnvModelBasePath}=/path/to/directory && k2TransducerAsr.Examples.exe");
                 Console.WriteLine($"\n*Application directory: {applicationBase}. If -base is not specified, please place the downloaded model in this directory.");
                 Console.WriteLine($"\n*Additional notes: Press Enter twice, and you can follow the prompts to proceed: 1. Select language; 2. Select recognizer type.");
             }
         }
+        #endregion
     }
 }

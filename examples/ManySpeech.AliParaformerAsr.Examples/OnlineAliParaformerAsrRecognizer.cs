@@ -1,10 +1,14 @@
-﻿using PreProcessUtils;
+﻿using ManySpeech.AliParaformerAsr;
+using ManySpeech.AliParaformerAsr.Model;
+using ManySpeech.AliParaformerAsr.Examples.Base;
+using ManySpeech.AliParaformerAsr.Examples.Entities;
+using PreProcessUtils;
 
 namespace ManySpeech.AliParaformerAsr.Examples
 {
-    internal partial class AliParaformerAsrRecognizer : BaseAsr
+    internal partial class OnlineAliParaformerAsrRecognizer : BaseAsr
     {
-        private static AliParaformerAsr.OnlineRecognizer? _onlineRecognizer;
+        private static OnlineRecognizer? _onlineRecognizer;
         public static OnlineRecognizer? initOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
             if (_onlineRecognizer == null)
@@ -117,14 +121,11 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 return;
             }
             TimeSpan total_duration = TimeSpan.Zero;
-            TimeSpan start_time = TimeSpan.Zero;
-            TimeSpan end_time = TimeSpan.Zero;
-            start_time = new TimeSpan(DateTime.Now.Ticks);
-
-            List<List<float[]>> samplesList = new List<List<float[]>>();
+            DateTime processStartTime = DateTime.Now;
             int batchSize = 2;
             int startIndex = 0;
             int n = 0;
+            List<List<float[]>> samplesList = new List<List<float[]>>();
             List<float[]>? samples = new List<float[]>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
@@ -187,8 +188,10 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     foreach (float[] samplesItem in samplesList[j])
                     {
                         stream.AddSamples(samplesItem);
-                        AliParaformerAsr.Model.OnlineRecognizerResultEntity result = onlineRecognizer.GetResult(stream);
-                        Console.WriteLine(result.Text);
+                        OnlineRecognizerResultEntity nativeResult = onlineRecognizer.GetResult(stream);
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, j, processingTime);
+                        RaiseRecognitionResult(resultEntity);
                     }
                 }
                 // one stream decode
@@ -269,13 +272,25 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 _onlineRecognizer.Dispose();
                 _onlineRecognizer = null;
             }
-            end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("Hello, World!");
+            //end_time = new TimeSpan(DateTime.Now.Ticks);
+            //double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
+            //double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
+            //Console.WriteLine("elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
+            //Console.WriteLine("total_duration:{0}", total_duration.TotalMilliseconds.ToString());
+            //Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
+            //Console.WriteLine("Hello, World!");
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(OnlineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }
