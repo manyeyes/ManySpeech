@@ -8,12 +8,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Utils\**" />
-    <EmbeddedResource Remove="Utils\**" />
-    <None Remove="Utils\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\src\ManySpeech.AliParaformerAsr\ManySpeech.AliParaformerAsr.csproj" />
     <ProjectReference Include="..\..\src\ManySpeech.SileroVad\ManySpeech.SileroVad.csproj" />
     <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />

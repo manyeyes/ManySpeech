@@ -1,9 +1,11 @@
-﻿using ManySpeech.K2TransducerAsr.Model;
+﻿using ManySpeech.K2TransducerAsr.Examples.Base;
+using ManySpeech.K2TransducerAsr.Examples.Entities;
+using ManySpeech.K2TransducerAsr.Model;
 using PreProcessUtils;
 
 namespace ManySpeech.K2TransducerAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OnlineK2TransducerAsrRecognizer : BaseAsr
     {
         private static OnlineRecognizer? _onlineRecognizer;
         private static OnlineRecognizer? InitOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -117,17 +119,38 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 return;
             }
             TimeSpan total_duration = TimeSpan.Zero;
-            TimeSpan start_time = TimeSpan.Zero;
-            TimeSpan end_time = TimeSpan.Zero;
-            start_time = new TimeSpan(DateTime.Now.Ticks);
+            DateTime processStartTime = DateTime.Now;
+            int batchSize = 2;
+            int startIndex = 0;
+            int n = 0;
             List<List<float[]>> samplesList = new List<List<float[]>>();
             List<float[]> samples = new List<float[]>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
-                mediaFilePaths = Directory.GetFiles(Path.Combine(modelBasePath, modelName, "test_wavs"));
+                string fullPath = Path.Combine(modelBasePath, modelName);
+                if (!Directory.Exists(fullPath))
+                {
+                    mediaFilePaths = Array.Empty<string>(); // 路径不正确时返回空数组
+                }
+                else
+                {
+                    mediaFilePaths = Directory.GetFiles(
+                        path: fullPath,
+                        searchPattern: "*.wav",
+                        searchOption: SearchOption.AllDirectories
+                    );
+                }
             }
             foreach (string mediaFilePath in mediaFilePaths)
             {
+                if (n < startIndex)
+                {
+                    continue;
+                }
+                if (batchSize <= n - startIndex)
+                {
+                    break;
+                }
                 if (string.IsNullOrEmpty(mediaFilePath) || !File.Exists(mediaFilePath))
                 {
                     continue;
@@ -136,13 +159,17 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 {
                     TimeSpan duration = TimeSpan.Zero;
                     samples = AudioHelper.GetFileChunkSamples(mediaFilePath, ref duration, chunkSize: 800);
-                    for (int j = 0; j < 30; j++)
+                    if (samples.Count > 0)
                     {
-                        samples.Add(new float[400]);
+                        for (int j = 0; j < 30; j++)
+                        {
+                            samples.Add(new float[400]);
+                        }
+                        samplesList.Add(samples);
+                        total_duration += duration;
                     }
-                    samplesList.Add(samples);
-                    total_duration += duration;
                 }
+                n++;
             }
             if (samplesList.Count == 0)
             {
@@ -150,7 +177,7 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "multi" : streamDecodeMethod;//one ,multi
+            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
             if (streamDecodeMethod == "one")
             {
                 //one stream decode
@@ -161,8 +188,10 @@ namespace ManySpeech.K2TransducerAsr.Examples
                     foreach (float[] samplesItem in samplesList[j])
                     {
                         stream.AddSamples(samplesItem);
-                        K2TransducerAsr.Model.OnlineRecognizerResultEntity result_on = onlineRecognizer.GetResult(stream);
-                        Console.WriteLine(result_on.Text);
+                        OnlineRecognizerResultEntity nativeResult = onlineRecognizer.GetResult(stream);
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, j, processingTime);
+                        RaiseRecognitionResult(resultEntity);
                     }
                 }
                 // one stream decode
@@ -217,11 +246,14 @@ namespace ManySpeech.K2TransducerAsr.Examples
                             }
                         }
                     }
-                    List<OnlineRecognizerResultEntity> results_batch = onlineRecognizer.GetResults(streams);
-                    foreach (OnlineRecognizerResultEntity result in results_batch)
+                    List<OnlineRecognizerResultEntity> nativeResults = onlineRecognizer.GetResults(streams);
+                    int index = 0;
+                    foreach (OnlineRecognizerResultEntity nativeResult in nativeResults)
                     {
-                        Console.WriteLine(result.Text);
-                        //Console.WriteLine("");
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, index, processingTime);
+                        RaiseRecognitionResult(resultEntity);
+                        index++;
                     }
                     Console.WriteLine("");
                     i++;
@@ -246,14 +278,18 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 _onlineRecognizer.Dispose();
                 _onlineRecognizer = null;
             }
-            end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("recognition_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration_milliseconds:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("end!");
-
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(OnlineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }

@@ -1,10 +1,13 @@
-﻿using ManySpeech.FireRedAsr.Model;
+﻿using ManySpeech.FireRedAsr.Examples.Base;
+using ManySpeech.FireRedAsr.Examples.Entities;
+using ManySpeech.FireRedAsr.Model;
+using NAudio.Utils;
 using PreProcessUtils;
 using System.Text;
 
 namespace ManySpeech.FireRedAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OfflineFireRedAsrRecognizer : BaseAsr
     {
         private static OfflineRecognizer? _offlineRecognizer;
         public static OfflineRecognizer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -105,7 +108,7 @@ namespace ManySpeech.FireRedAsr.Examples
             }
             return _offlineRecognizer;
         }
-        public static void OfflineRecognizer(string streamDecodeMethod = "one", string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
+        public static void OfflineRecognizer(string streamDecodeMethod = "one", string modelName = "fireredasr-aed-large-zh-en-onnx-offline-20250124", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {
@@ -119,10 +122,23 @@ namespace ManySpeech.FireRedAsr.Examples
             }
             TimeSpan total_duration = new TimeSpan(0L);
             List<float[]>? samples = new List<float[]>();
-            List<string> paths= new List<string>();
+            List<string> paths = new List<string>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
-                mediaFilePaths = Directory.GetFiles(Path.Combine(modelBasePath, modelName, "test_wavs"));
+                //mediaFilePaths = Directory.GetFiles(Path.Combine(modelBasePath, modelName, "test_wavs"));
+                string fullPath = Path.Combine(modelBasePath, modelName);
+                if (!Directory.Exists(fullPath))
+                {
+                    mediaFilePaths = Array.Empty<string>(); // 路径不正确时返回空数组
+                }
+                else
+                {
+                    mediaFilePaths = Directory.GetFiles(
+                        path: fullPath,
+                        searchPattern: "*.wav",
+                        searchOption: SearchOption.AllDirectories
+                    );
+                }
             }
             foreach (string mediaFilePath in mediaFilePaths)
             {
@@ -148,8 +164,8 @@ namespace ManySpeech.FireRedAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "multi" : streamDecodeMethod;//one ,multi
+            DateTime processStartTime = DateTime.Now;
+            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
             if (streamDecodeMethod == "one")
             {
                 // Non batch method
@@ -160,17 +176,13 @@ namespace ManySpeech.FireRedAsr.Examples
                     foreach (var sample in samples)
                     {
                         OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                        // Modify the logic here to dynamically modify hot words
+                        //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" });  
                         stream.AddSamples(sample);
-                        OfflineRecognizerResultEntity result = offlineRecognizer.GetResult(stream);
-                        Console.WriteLine($"{paths[n]}");
-                        StringBuilder r = new StringBuilder();
-                        r.Append("{");
-                        r.Append($"\"text\": \"{result.Text}\",");
-                        r.Append($"\"tokens\":[{string.Join(",",result.Tokens.Select(x=>$"\"{x}\"").ToArray())}],");
-                        r.Append($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        r.Append("}");
-                        Console.WriteLine($"{r.ToString()}");
-                        Console.WriteLine("");
+                        ManySpeech.FireRedAsr.Model.OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, n, processingTime);
+                        RaiseRecognitionResult(resultEntity);
                         n++;
                     }
                 }
@@ -181,32 +193,25 @@ namespace ManySpeech.FireRedAsr.Examples
                 }
                 // Non batch method
             }
-            if (streamDecodeMethod == "multi")
+            if (streamDecodeMethod == "batch")
             {
                 //2. batch method
                 Console.WriteLine("Recognition results:\r\n");
                 try
                 {
                     int n = 0;
-                    List<FireRedAsr.OfflineStream> streams = new List<FireRedAsr.OfflineStream>();
+                    List<OfflineStream> streams = new List<OfflineStream>();
                     foreach (var sample in samples)
                     {
-                        FireRedAsr.OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                        OfflineStream stream = offlineRecognizer.CreateOfflineStream();
                         stream.AddSamples(sample);
                         streams.Add(stream);
                     }
-                    List<OfflineRecognizerResultEntity> results = offlineRecognizer.GetResults(streams);
-                    foreach (OfflineRecognizerResultEntity result in results)
+                    List<OfflineRecognizerResultEntity> nativeResults = offlineRecognizer.GetResults(streams);
+                    foreach (OfflineRecognizerResultEntity result in nativeResults)
                     {
-                        Console.WriteLine($"{paths[n]}");
-                        StringBuilder r = new StringBuilder();
-                        r.Append("{");
-                        r.Append($"\"text\": \"{result.Text}\",");
-                        r.Append($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        r.Append($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        r.Append("}");
-                        Console.WriteLine($"{r.ToString()}");
-                        Console.WriteLine("");
+                        var resultEntity = ConvertToResultEntity(nativeResults[n], n, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
+                        RaiseRecognitionResult(resultEntity);
                         n++;
                     }
                 }
@@ -221,13 +226,18 @@ namespace ManySpeech.FireRedAsr.Examples
                 _offlineRecognizer.Dispose();
                 _offlineRecognizer = null;
             }
-            TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("recognition_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration_milliseconds:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("end!");
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(FireRedAsr.Model.OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }

@@ -7,21 +7,16 @@
 			<LangVersion>10</LangVersion>
 			<Nullable>enable</Nullable>
 			<PublishAot>false</PublishAot>
-			<ApplicationManifest>Config/app.manifest</ApplicationManifest>
-			<Version>1.0.1</Version>
+			<!--<ApplicationManifest>Config/app.manifest</ApplicationManifest>-->
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="Utils\**" />
-    <EmbeddedResource Remove="Utils\**" />
-    <None Remove="Utils\**" />
+    <Compile Remove="OfflineRecognizer.cs" />
+    <Compile Remove="OnlineRecognizer.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\ManySpeech.WenetAsr\ManySpeech.WenetAsr.csproj" />
     <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
   </ItemGroup>
-
-  
-
 </Project>

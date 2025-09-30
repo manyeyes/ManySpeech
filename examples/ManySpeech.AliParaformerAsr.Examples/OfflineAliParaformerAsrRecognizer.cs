@@ -1,10 +1,13 @@
-﻿using ManySpeech.AliParaformerAsr.Model;
+﻿using ManySpeech.AliParaformerAsr.Examples.Base;
+using ManySpeech.AliParaformerAsr.Examples.Entities;
+using ManySpeech.AliParaformerAsr.Model;
+using NAudio.Utils;
 using PreProcessUtils;
 using System.Text;
 
 namespace ManySpeech.AliParaformerAsr.Examples
 {
-    internal partial class AliParaformerAsrRecognizer : BaseAsr
+    internal partial class OfflineAliParaformerAsrRecognizer : BaseAsr
     {
         private static OfflineRecognizer? _offlineRecognizer;
         public static OfflineRecognizer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -128,7 +131,6 @@ namespace ManySpeech.AliParaformerAsr.Examples
             List<string> paths = new List<string>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
-                //mediaFilePaths = Directory.GetFiles(Path.Combine(modelBasePath, modelName, "test_wavs"));
                 string fullPath = Path.Combine(modelBasePath, modelName);
                 if (!Directory.Exists(fullPath))
                 {
@@ -167,7 +169,7 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
+            DateTime processStartTime = DateTime.Now;
             streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
             if (streamDecodeMethod == "one")
             {
@@ -180,18 +182,12 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     {
                         OfflineStream stream = offlineRecognizer.CreateOfflineStream();
                         // Modify the logic here to dynamically modify hot words
-                        //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" });
+                        //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" });  
                         stream.AddSamples(sample);
-                        ManySpeech.AliParaformerAsr.Model.OfflineRecognizerResultEntity result = offlineRecognizer.GetResult(stream);
-                        Console.WriteLine($"{paths[n]}");
-                        StringBuilder r = new StringBuilder();
-                        r.Append("{");
-                        r.Append($"\"text\": \"{result.Text}\",");
-                        r.Append($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        r.Append($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        r.Append("}");
-                        Console.WriteLine($"{r.ToString()}");
-                        Console.WriteLine("");
+                        OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, n, processingTime);
+                        RaiseRecognitionResult(resultEntity);
                         n++;
                     }
                 }
@@ -216,18 +212,11 @@ namespace ManySpeech.AliParaformerAsr.Examples
                         stream.AddSamples(sample);
                         streams.Add(stream);
                     }
-                    List<OfflineRecognizerResultEntity> results = offlineRecognizer.GetResults(streams);
-                    foreach (OfflineRecognizerResultEntity result in results)
+                    List<OfflineRecognizerResultEntity> nativeResults = offlineRecognizer.GetResults(streams);
+                    foreach (OfflineRecognizerResultEntity nativeResult in nativeResults)
                     {
-                        Console.WriteLine($"{paths[n]}");
-                        StringBuilder r = new StringBuilder();
-                        r.Append("{");
-                        r.Append($"\"text\": \"{result.Text}\",");
-                        r.Append($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        r.Append($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        r.Append("}");
-                        Console.WriteLine($"{r.ToString()}");
-                        Console.WriteLine("");
+                        var resultEntity = ConvertToResultEntity(nativeResult, n, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
+                        RaiseRecognitionResult(resultEntity);
                         n++;
                     }
                 }
@@ -242,13 +231,18 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 _offlineRecognizer.Dispose();
                 _offlineRecognizer = null;
             }
-            TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("recognition_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration_milliseconds:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("end!");
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(AliParaformerAsr.Model.OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }

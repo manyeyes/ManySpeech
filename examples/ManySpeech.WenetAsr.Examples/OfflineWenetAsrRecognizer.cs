@@ -1,11 +1,11 @@
-﻿using PreProcessUtils;
-using ManySpeech.WenetAsr;
+﻿using ManySpeech.WenetAsr.Examples.Base;
+using ManySpeech.WenetAsr.Examples.Entities;
 using ManySpeech.WenetAsr.Model;
-using System.Text;
+using PreProcessUtils;
 
 namespace ManySpeech.WenetAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OfflineWenetAsrRecognizer : BaseAsr
     {
         private static OfflineRecognizer? _offlineRecognizer;
         public static OfflineRecognizer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -162,9 +162,9 @@ namespace ManySpeech.WenetAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
+            DateTime processStartTime = DateTime.Now;
             streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "multi" : streamDecodeMethod;//one ,multi
-            if (streamDecodeMethod == "one")
+            if (streamDecodeMethod == "one" || streamDecodeMethod == "batch")
             {
                 // Non batch method
                 Console.WriteLine("Recognition results:\r\n");
@@ -174,19 +174,11 @@ namespace ManySpeech.WenetAsr.Examples
                     foreach (var sample in samples)
                     {
                         OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                        // Modify the logic here to dynamically modify hot words
-                        //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" });
                         stream.AddSamples(sample);
-                        OfflineRecognizerResultEntity result = offlineRecognizer.GetResult(stream);
-                        Console.WriteLine($"{paths[n]}");
-                        StringBuilder r = new StringBuilder();
-                        r.Append("{");
-                        r.Append($"\"text\": \"{result.Text}\",");
-                        r.Append($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        r.Append($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        r.Append("}");
-                        Console.WriteLine($"{r.ToString()}");
-                        Console.WriteLine("");
+                        OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                        var resultEntity = ConvertToResultEntity(nativeResult, n, processingTime);
+                        RaiseRecognitionResult(resultEntity);
                         n++;
                     }
                 }
@@ -197,53 +189,28 @@ namespace ManySpeech.WenetAsr.Examples
                 }
                 // Non batch method
             }
-            if (streamDecodeMethod == "multi")
-            {
-                //2. batch method
-                Console.WriteLine("Recognition results:\r\n");
-                try
-                {
-                    int n = 0;
-                    List<WenetAsr.OfflineStream> streams = new List<WenetAsr.OfflineStream>();
-                    foreach (var sample in samples)
-                    {
-                        WenetAsr.OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                        stream.AddSamples(sample);
-                        streams.Add(stream);
-                    }
-                    List<WenetAsr.Model.OfflineRecognizerResultEntity> results = offlineRecognizer.GetResults(streams);
-                    foreach (WenetAsr.Model.OfflineRecognizerResultEntity result in results)
-                    {
-                        Console.WriteLine($"{paths[n]}");
-                        StringBuilder r = new StringBuilder();
-                        r.Append("{");
-                        r.Append($"\"text\": \"{result.Text}\",");
-                        r.Append($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        r.Append($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        r.Append("}");
-                        Console.WriteLine($"{r.ToString()}");
-                        Console.WriteLine("");
-                        n++;
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.InnerException?.InnerException.Message);
-                }
-            }
+            //if (streamDecodeMethod == "batch")
+            //{
+            //    //2. batch method
+            //    Console.WriteLine("Unsupported batch method by the model");
+            //}
             if (_offlineRecognizer != null)
             {
                 _offlineRecognizer.Dispose();
                 _offlineRecognizer = null;
             }
-            TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("recognition_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration_milliseconds:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("end!");
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }

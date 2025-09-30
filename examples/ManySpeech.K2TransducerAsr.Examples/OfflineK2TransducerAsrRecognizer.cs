@@ -1,9 +1,11 @@
-﻿using ManySpeech.K2TransducerAsr.Model;
+﻿using ManySpeech.K2TransducerAsr.Examples.Base;
+using ManySpeech.K2TransducerAsr.Examples.Entities;
+using ManySpeech.K2TransducerAsr.Model;
 using PreProcessUtils;
 
 namespace ManySpeech.K2TransducerAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OfflineK2TransducerAsrRecognizer : BaseAsr
     {
         private static OfflineRecognizer? _offlineRecognizer;
         private static OfflineRecognizer? InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -110,7 +112,7 @@ namespace ManySpeech.K2TransducerAsr.Examples
             {
                 modelBasePath = applicationBase;
             }
-            K2TransducerAsr.OfflineRecognizer? offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            OfflineRecognizer? offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (offlineRecognizer == null)
             {
                 Console.WriteLine("Init models failure!");
@@ -144,25 +146,29 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "multi" : streamDecodeMethod;//one ,multi
+            DateTime processStartTime = DateTime.Now;
+            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,multi
             if (streamDecodeMethod == "one")
             {
                 // Non batch method
                 Console.WriteLine("one stream decode results:\r\n");
+                int n = 0;
                 foreach (var sample in samples)
                 {
                     OfflineStream stream = offlineRecognizer.CreateOfflineStream();
                     stream.AddSamples(sample);
-                    K2TransducerAsr.Model.OfflineRecognizerResultEntity result = offlineRecognizer.GetResult(stream);
-                    Console.WriteLine(result.Text);
-                    Console.WriteLine("");
+                    OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                    var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                    var resultEntity = ConvertToResultEntity(nativeResult, n, processingTime);
+                    RaiseRecognitionResult(resultEntity);
+                    n++;
                 }
                 // Non batch method
             }
-            if (streamDecodeMethod == "multi")
+            if (streamDecodeMethod == "batch")
             {
                 //2. batch method
+                int n = 0;
                 Console.WriteLine("multi stream decode results:\r\n");
                 foreach (var sample in samples)
                 {
@@ -171,11 +177,12 @@ namespace ManySpeech.K2TransducerAsr.Examples
                     streams.Add(stream);
                 }
                 Console.WriteLine("Recognition results:\r\n");
-                List<OfflineRecognizerResultEntity> results = offlineRecognizer.GetResults(streams);
-                foreach (OfflineRecognizerResultEntity result in results)
+                List<OfflineRecognizerResultEntity> nativeResults = offlineRecognizer.GetResults(streams);
+                foreach (OfflineRecognizerResultEntity result in nativeResults)
                 {
-                    Console.WriteLine(result.Text);
-                    Console.WriteLine("");
+                    var resultEntity = ConvertToResultEntity(nativeResults[n], n, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
+                    RaiseRecognitionResult(resultEntity);
+                    n++;
                 }
                 // batch method
             }
@@ -184,13 +191,18 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 _offlineRecognizer.Dispose();
                 _offlineRecognizer = null;                
             }
-            TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
-            double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            Console.WriteLine("recognition_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            Console.WriteLine("total_duration_milliseconds:{0}", total_duration.TotalMilliseconds.ToString());
-            Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            Console.WriteLine("end!");
+            RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
+        }
+        protected static AsrResultEntity ConvertToResultEntity(OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        {
+            return new AsrResultEntity
+            {
+                Text = nativeResult.Text,
+                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Index = index,
+                ProcessingTimeMs = processingTimeMs
+            };
         }
     }
 }
