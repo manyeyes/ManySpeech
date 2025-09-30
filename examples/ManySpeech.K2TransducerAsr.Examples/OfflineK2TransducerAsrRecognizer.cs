@@ -147,7 +147,7 @@ namespace ManySpeech.K2TransducerAsr.Examples
             }
             Console.WriteLine("Automatic speech recognition in progress!");
             DateTime processStartTime = DateTime.Now;
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,multi
+            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
             if (streamDecodeMethod == "one")
             {
                 // Non batch method
