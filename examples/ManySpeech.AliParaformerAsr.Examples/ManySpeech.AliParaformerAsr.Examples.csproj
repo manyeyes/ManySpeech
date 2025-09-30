@@ -16,8 +16,8 @@
 		</ItemGroup>
 
 		<ItemGroup>
-		  <ProjectReference Include="..\..\src\ManySpeech.AliParaformerAsr\ManySpeech.AliParaformerAsr.csproj" />
-		  <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
+				<ProjectReference Include="..\..\src\ManySpeech.AliParaformerAsr\ManySpeech.AliParaformerAsr.csproj" />
+				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 		</ItemGroup>
 
 </Project>

@@ -1,31 +1,29 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net9.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
-    <Nullable>enable</Nullable>
-			<IsPackable>false</IsPackable>
-  </PropertyGroup>
+		<PropertyGroup>
+				<OutputType>Exe</OutputType>
+				<TargetFramework>net9.0</TargetFramework>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<Nullable>enable</Nullable>
+				<IsPackable>false</IsPackable>
+		</PropertyGroup>
+		<ItemGroup>
+				<ProjectReference Include="..\..\src\ManySpeech.AliFsmnVad\ManySpeech.AliFsmnVad.csproj" />
+				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
+		</ItemGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\src\ManySpeech.AliFsmnVad\ManySpeech.AliFsmnVad.csproj" />
-    <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="speech_fsmn_vad_zh-cn-16k-common-onnx\example\0.wav">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="speech_fsmn_vad_zh-cn-16k-common-onnx\model.onnx">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="speech_fsmn_vad_zh-cn-16k-common-onnx\vad.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="speech_fsmn_vad_zh-cn-8k-common-onnx\vad.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
+		<ItemGroup>
+				<None Update="speech_fsmn_vad_zh-cn-16k-common-onnx\example\0.wav">
+						<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+				</None>
+				<None Update="speech_fsmn_vad_zh-cn-16k-common-onnx\model.onnx">
+						<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+				</None>
+				<None Update="speech_fsmn_vad_zh-cn-16k-common-onnx\vad.json">
+						<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+				</None>
+				<None Update="speech_fsmn_vad_zh-cn-8k-common-onnx\vad.json">
+						<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+				</None>
+		</ItemGroup>
 </Project>

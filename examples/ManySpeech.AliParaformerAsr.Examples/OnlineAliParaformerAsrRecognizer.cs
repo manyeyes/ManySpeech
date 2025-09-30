@@ -108,7 +108,7 @@ namespace ManySpeech.AliParaformerAsr.Examples
             return _onlineRecognizer;
         }
 
-        public static void OnlineRecognizer(string streamDecodeMethod = "one", string modelName = "speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online-onnx", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
+        public static void OnlineRecognizer(string streamDecodeMethod = "one", string modelName = "paraformer-large-zh-en-int8-onnx-online", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {
@@ -272,13 +272,6 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 _onlineRecognizer.Dispose();
                 _onlineRecognizer = null;
             }
-            //end_time = new TimeSpan(DateTime.Now.Ticks);
-            //double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            //double rtf = elapsed_milliseconds / total_duration.TotalMilliseconds;
-            //Console.WriteLine("elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
-            //Console.WriteLine("total_duration:{0}", total_duration.TotalMilliseconds.ToString());
-            //Console.WriteLine("rtf:{1}", "0".ToString(), rtf.ToString());
-            //Console.WriteLine("Hello, World!");
             RaiseRecognitionCompleted(DateTime.Now - processStartTime, total_duration, samples.Count);
         }
         protected static AsrResultEntity ConvertToResultEntity(OnlineRecognizerResultEntity nativeResult, int index, double processingTimeMs)

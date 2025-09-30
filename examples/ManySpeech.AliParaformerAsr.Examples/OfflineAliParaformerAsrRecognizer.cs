@@ -131,7 +131,6 @@ namespace ManySpeech.AliParaformerAsr.Examples
             List<string> paths = new List<string>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
-                //mediaFilePaths = Directory.GetFiles(Path.Combine(modelBasePath, modelName, "test_wavs"));
                 string fullPath = Path.Combine(modelBasePath, modelName);
                 if (!Directory.Exists(fullPath))
                 {

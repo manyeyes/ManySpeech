@@ -177,7 +177,7 @@ namespace ManySpeech.K2TransducerAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "multi" : streamDecodeMethod;//one ,multi
+            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
             if (streamDecodeMethod == "one")
             {
                 //one stream decode
