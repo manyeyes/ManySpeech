@@ -106,7 +106,7 @@ namespace ManySpeech.Cli.Sample
             return _onlineRecognizer;
         }
 
-        public static void OnlineRecognizer(string streamDecodeMethod = "one", string modelName = "speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-online-onnx", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
+        public static void OnlineRecognizer(string streamDecodeMethod = "one", string modelName = "paraformer-large-zh-en-int8-onnx-online", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {
