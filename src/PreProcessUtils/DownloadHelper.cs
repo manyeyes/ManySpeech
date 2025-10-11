@@ -304,39 +304,47 @@ namespace PreProcessUtils
         {
             bool isAllValid = true;
             var modelFolder = Path.Combine(modelBase, modelName);
-
-            // Create folders if they don't exist
-            Directory.CreateDirectory(modelBase);
-            Directory.CreateDirectory(modelFolder);
-
-            foreach (var modelFile in modelFiles)
+            if (!Directory.Exists(modelFolder))
             {
-                string fileFullname = Path.Combine(modelFolder, modelFile.Key);
-                if (File.Exists(fileFullname))
+                isAllValid = false;
+            }
+            else
+            {
+                // Create folders if they don't exist
+                //    Directory.CreateDirectory(modelBase);
+                //Directory.CreateDirectory(modelFolder);
+
+                foreach (var modelFile in modelFiles)
                 {
-                    FileInfo fileInfo = new FileInfo(fileFullname);
-                    // Check if file is empty
-                    if (fileInfo.Length == 0)
-                    {
-                        isAllValid = false && isAllValid;
-                    }
-                    else
-                    {
-                        if (!string.IsNullOrEmpty(modelFile.Value))
-                        {
-                            // Check if file MD5 matches expected value
-                            string actualMd5 = GetMD5Hash(fileFullname);
-                            if (!actualMd5.Equals(modelFile.Value, StringComparison.OrdinalIgnoreCase))
-                            {
-                                isAllValid = false && isAllValid;
-                            }
-                        }
-                    }
-                }
-                else
-                {
-                    // File does not exist
-                    isAllValid = false && isAllValid;
+                    bool isValid=DownloadCheck(fileName: modelFile.Key, modelBase: modelBase, modelName: modelName, md5Str: modelFile.Value);
+                    isAllValid = isAllValid && isValid;
+                    //string fileFullname = Path.Combine(modelFolder, modelFile.Key);
+                    //if (File.Exists(fileFullname))
+                    //{
+                    //    FileInfo fileInfo = new FileInfo(fileFullname);
+                    //    // Check if file is empty
+                    //    if (fileInfo.Length == 0)
+                    //    {
+                    //        isAllValid = false && isAllValid;
+                    //    }
+                    //    else
+                    //    {
+                    //        if (!string.IsNullOrEmpty(modelFile.Value))
+                    //        {
+                    //            // Check if file MD5 matches expected value
+                    //            string actualMd5 = GetMD5Hash(fileFullname);
+                    //            if (!actualMd5.Equals(modelFile.Value, StringComparison.OrdinalIgnoreCase))
+                    //            {
+                    //                isAllValid = false && isAllValid;
+                    //            }
+                    //        }
+                    //    }
+                    //}
+                    //else
+                    //{
+                    //    // File does not exist
+                    //    isAllValid = false && isAllValid;
+                    //}
                 }
             }
             return isAllValid;
@@ -349,49 +357,62 @@ namespace PreProcessUtils
         /// <param name="rootFolderName">Root folder of the file</param>
         /// <param name="modelName">Model name (for folder path)</param>
         /// <param name="md5Str">Expected MD5 hash of the file</param>
-        public void DownloadCheck(string fileName, string modelBase, string modelName, string md5Str)
+        public bool DownloadCheck(string fileName, string modelBase, string modelName, string md5Str)
         {
+            bool isValid = true;
             var downloadFolder = modelBase;
             var modelFolder = Path.Combine(downloadFolder, modelName);
-
-            // Create folders if they don't exist
-            Directory.CreateDirectory(downloadFolder);
-            Directory.CreateDirectory(modelFolder);
-
-            string fileFullname = Path.Combine(modelFolder, fileName);
-
-            if (File.Exists(fileFullname))
+            if (!Directory.Exists(modelFolder))
             {
-                FileInfo fileInfo = new FileInfo(fileFullname);
-                // Delete empty file and trigger "noexisted" callback
-                if (fileInfo.Length == 0)
-                {
-                    File.Delete(fileFullname);
-                    _callback?.Invoke(0, DownloadState.noexisted, fileName);
-                }
-                else
-                {
-                    if (!string.IsNullOrEmpty(md5Str))
-                    {
-                        // Check MD5 hash; delete and trigger callback if mismatch
-                        string actualMd5 = GetMD5Hash(fileFullname);
-                        if (!actualMd5.Equals(md5Str, StringComparison.OrdinalIgnoreCase))
-                        {
-                            File.Delete(fileFullname);
-                            _callback?.Invoke(0, DownloadState.noexisted, fileName);
-                        }
-                    }
-                    else
-                    {
-                        _callback?.Invoke(0, DownloadState.existed, fileName);
-                    }
-                }
+                _callback?.Invoke(0, DownloadState.noexisted, fileName);
+                isValid = false;
             }
             else
             {
-                // File does not exist: trigger "noexisted" callback
-                _callback?.Invoke(0, DownloadState.noexisted, fileName);
+                // Create folders if they don't exist
+                //Directory.CreateDirectory(downloadFolder);
+                //Directory.CreateDirectory(modelFolder);
+
+                string fileFullname = Path.Combine(modelFolder, fileName);
+
+                if (File.Exists(fileFullname))
+                {
+                    FileInfo fileInfo = new FileInfo(fileFullname);
+                    // Delete empty file and trigger "noexisted" callback
+                    if (fileInfo.Length == 0)
+                    {
+                        File.Delete(fileFullname);
+                        _callback?.Invoke(0, DownloadState.noexisted, fileName);
+                        isValid = false;
+                    }
+                    else
+                    {
+                        if (!string.IsNullOrEmpty(md5Str))
+                        {
+                            // Check MD5 hash; delete and trigger callback if mismatch
+                            string actualMd5 = GetMD5Hash(fileFullname);
+                            if (!actualMd5.Equals(md5Str, StringComparison.OrdinalIgnoreCase))
+                            {
+                                File.Delete(fileFullname);
+                                _callback?.Invoke(0, DownloadState.noexisted, fileName);
+                                isValid = false;
+                            }
+                        }
+                        else
+                        {
+                            _callback?.Invoke(0, DownloadState.existed, fileName);
+                            isValid = true;
+                        }
+                    }
+                }
+                else
+                {
+                    // File does not exist: trigger "noexisted" callback
+                    _callback?.Invoke(0, DownloadState.noexisted, fileName);
+                    isValid = false;
+                }
             }
+            return isValid;
         }
 
         /// <summary>

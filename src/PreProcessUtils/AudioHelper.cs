@@ -95,10 +95,6 @@ namespace PreProcessUtils
             duration = audioFileReader.TotalTime;
             float[] wavsdata = new float[datas.Length / sizeof(float)];
             Buffer.BlockCopy(datas, 0, wavsdata, 0, datas.Length);
-            //if (sampleRate != 16000)
-            //{
-            //    wavsdata = Resample(wavsdata, sampleRate, 16000);
-            //}
             if (sampleRate != 16000)
             {
                 wavsdata = Resample(wavsdata, sampleRate, 16000, sourceChannels: sourceChannels);
