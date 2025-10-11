@@ -7,7 +7,6 @@
 				<Nullable>enable</Nullable>
 				<IsPackable>false</IsPackable>
 		</PropertyGroup>
-
 		<ItemGroup>
 				<ProjectReference Include="..\..\src\ManySpeech.AliFsmnVad\ManySpeech.AliFsmnVad.csproj" />
 				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
@@ -27,5 +26,4 @@
 						<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 				</None>
 		</ItemGroup>
-
 </Project>
