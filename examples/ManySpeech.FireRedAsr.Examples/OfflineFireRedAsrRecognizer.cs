@@ -125,7 +125,6 @@ namespace ManySpeech.FireRedAsr.Examples
             List<string> paths = new List<string>();
             if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
             {
-                //mediaFilePaths = Directory.GetFiles(Path.Combine(modelBasePath, modelName, "test_wavs"));
                 string fullPath = Path.Combine(modelBasePath, modelName);
                 if (!Directory.Exists(fullPath))
                 {
@@ -176,8 +175,6 @@ namespace ManySpeech.FireRedAsr.Examples
                     foreach (var sample in samples)
                     {
                         OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                        // Modify the logic here to dynamically modify hot words
-                        //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" });  
                         stream.AddSamples(sample);
                         ManySpeech.FireRedAsr.Model.OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
                         var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;

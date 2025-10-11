@@ -186,6 +186,26 @@ namespace PreProcessUtils
 
             if (Directory.Exists(localPath))
             {
+                // 检查并删除 index.lock 文件（常见的锁定文件）
+                string[] targetExtensions = { ".idx", ".pack" };
+                // 获取所有文件并筛选出符合条件的
+                string[] mediaFilePaths = Directory.GetFiles(
+                        path: localPath,
+                        searchPattern: "*.*",  // 先获取所有文件
+                        searchOption: SearchOption.AllDirectories
+                    )
+                    .Where(file => targetExtensions.Contains(
+                        Path.GetExtension(file).ToLowerInvariant()  // 不区分大小写匹配
+                    ))
+                    .ToArray();
+                foreach (var file in mediaFilePaths)
+                {
+                    if (File.Exists(file))
+                    {
+                        File.SetAttributes(file, FileAttributes.Normal);
+                        File.Delete(file);
+                    }
+                }
                 DownloadDisplay(msg: $"开始删除目录：'{localPath}'");
                 try
                 {
@@ -210,7 +230,6 @@ namespace PreProcessUtils
                 DownloadDisplay(msg: $"目录不存在，无需删除：'{localPath}'");
             }
         }
-
         private async Task DownloadModels(string localPath, string baseFolder, string modelName)
         {
             try
