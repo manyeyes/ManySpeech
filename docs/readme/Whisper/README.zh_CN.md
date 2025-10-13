@@ -1,5 +1,5 @@
-# WhisperAsr
+ï»¿# WhisperAsr
 A C# library for decoding the Whisper ASR onnx model
 
-ÕâÊÇÒ»¸öÓÃÓÚ½âÂë whisper asr onnx Ä£ĞÍµÄc#¿â£¬Ê¹ÓÃc#±àĞ´£¬Ö§³Ö net461+¡¢net60+¡¢netcoreapp3.1 ¼° netstandard2.0+ µÈ¶àÖÖ»·¾³£¬Ö§³Ö¿çÆ½Ì¨±àÒë£¬Ö§³ÖAOT±àÒë¡£Ê¹ÓÃ¼òµ¥·½±ã¡£
+è¿™æ˜¯ä¸€ä¸ªç”¨äºè§£ç  whisper asr onnx æ¨¡å‹çš„c#åº“ï¼Œä½¿ç”¨c#ç¼–å†™ï¼Œæ”¯æŒ net461+ã€net60+ã€netcoreapp3.1 åŠ netstandard2.0+ ç­‰å¤šç§ç¯å¢ƒï¼Œæ”¯æŒè·¨å¹³å°ç¼–è¯‘ï¼Œæ”¯æŒAOTç¼–è¯‘ã€‚ä½¿ç”¨ç®€å•æ–¹ä¾¿ã€‚
 
