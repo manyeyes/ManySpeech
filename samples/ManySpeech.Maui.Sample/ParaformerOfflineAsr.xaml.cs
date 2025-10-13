@@ -5,14 +5,14 @@ using System.Text;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class RecognitionForFiles : ContentPage
+public partial class ParaformerOfflineAsr : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
     // 1.打开 https://modelscope.cn/profile/manyeyes?tab=model 页面
     // 2.搜索 sensevoice, paraformer onnx 离线模型（非流式模型）
     // 3.设置 _modelName 值，_modelName = [模型名称]
-    private string _modelName = "sensevoice-small-int8-onnx";
+    private string _modelName = "paraformer-seaco-large-zh-timestamp-int8-onnx-offline";
     // 需要检查的文件 <文件名, hash>
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
         {"model.int8.onnx",""},
@@ -21,7 +21,7 @@ public partial class RecognitionForFiles : ContentPage
         {"tokens.txt","" }
     };
 
-    public RecognitionForFiles()
+    public ParaformerOfflineAsr()
     {
         InitializeComponent();
         DownloadCheck();
