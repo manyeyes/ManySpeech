@@ -63,6 +63,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManySpeech.Maui.Sample", "s
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Tests", "Tests", "{114D12D7-B60D-496E-95C7-EDB2B2707A4C}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ManySpeech.WhisperAsr", "src\ManySpeech.WhisperAsr\ManySpeech.WhisperAsr.csproj", "{CF0611EA-BC62-92F1-8203-24A0841EA588}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -159,6 +161,10 @@ Global
 		{BAB805C7-3BFB-40BB-8DAF-AFF467BFE88E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{BAB805C7-3BFB-40BB-8DAF-AFF467BFE88E}.Release|Any CPU.Build.0 = Release|Any CPU
 		{BAB805C7-3BFB-40BB-8DAF-AFF467BFE88E}.Release|Any CPU.Deploy.0 = Release|Any CPU
+		{CF0611EA-BC62-92F1-8203-24A0841EA588}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CF0611EA-BC62-92F1-8203-24A0841EA588}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CF0611EA-BC62-92F1-8203-24A0841EA588}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CF0611EA-BC62-92F1-8203-24A0841EA588}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -186,6 +192,7 @@ Global
 		{6BDEA656-9CB3-C79C-DC31-97AC987B83D8} = {02EA681E-C7D8-13C7-8484-4AC65E1B71E8}
 		{072F0408-5846-6CE9-7E2D-E982706EB9C1} = {254A7859-4EFA-4B6B-89F4-70152CFD1B59}
 		{BAB805C7-3BFB-40BB-8DAF-AFF467BFE88E} = {254A7859-4EFA-4B6B-89F4-70152CFD1B59}
+		{CF0611EA-BC62-92F1-8203-24A0841EA588} = {1F94B2FD-668B-43A6-9776-921D7674B434}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {35FFA26A-48A6-4E70-8EBB-3CB94B3D7E28}
