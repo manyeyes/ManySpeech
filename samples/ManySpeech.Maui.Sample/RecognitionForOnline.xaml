@@ -1,0 +1,209 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="ManySpeech.Maui.Sample.RecognitionForOnline">
+    <ContentPage.Resources>
+        <Style TargetType="Button" x:Key="SmallButtonStyle">
+            <Setter Property="Padding" Value="2,3" />
+            <Setter Property="Margin" Value="1,3" />
+            <Setter Property="FontSize" Value="Default" />
+            <Setter Property="MinimumHeightRequest" Value="20" />
+            <!-- 限制最小高度 -->
+            <Setter Property="MinimumWidthRequest" Value="60" />
+            <!-- 限制最小宽度 -->
+        </Style>
+    </ContentPage.Resources>
+    <Grid RowDefinitions="Auto,*">
+        <!-- 顶部固定区域 -->
+        <StackLayout Grid.Row="0" BackgroundColor="Transparent" Padding="16,10">
+            <Grid ColumnSpacing="5" RowSpacing="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="80" />
+                    <ColumnDefinition Width="100" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Label Text="models not checked" Grid.Row="0" Grid.Column="0"
+           x:Name="ModelStatusLabel"
+           VerticalTextAlignment="Center" HorizontalTextAlignment="Start"/>
+                <Button Grid.Row="0" Grid.Column="1"
+                    x:Name="BtnDownLoadCheck" Style="{StaticResource SmallButtonStyle}"
+                    Text="Check"
+                    SemanticProperties.Hint="Check if the model exists"
+                    Clicked="OnDownLoadCheckClicked"
+                    HorizontalOptions="Center" >
+                    <!--<Button.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Offset="0" Color="Red" x:Name="color1" />
+                            <GradientStop Offset="1" Color="#000" x:Name="color2" />
+                        </LinearGradientBrush>
+                    </Button.Background>-->
+                </Button>
+                <!--<Button Grid.Row="0" Grid.Column="2"
+x:Name="BtnDownLoadModels" Style="{StaticResource SmallButtonStyle}"
+Text="Download"
+SemanticProperties.Hint="Counts the number of times you click"
+Clicked="OnDownLoadModelsClicked" />-->
+                <Button Grid.Row="0" Grid.Column="2"
+x:Name="BtnDeleteModels" Style="{StaticResource SmallButtonStyle}"
+Text="Delete Model"
+SemanticProperties.Hint="Counts the number of times you click"
+Clicked="OnDeleteModelsClicked" />
+                <Label Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3"
+x:Name="DownloadResultsLabel"
+Text="" IsVisible="False"/>
+                <Label Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="3"
+           x:Name="DownloadProgressLabel"
+           Text="" 
+           IsVisible="False"
+           HorizontalOptions="FillAndExpand"
+           HorizontalTextAlignment="Start"/>
+                <ProgressBar  IsVisible="False" Grid.Row="3" Grid.Column="0" Grid.ColumnSpan="3"
+    x:Name="DownloadProgressBar" HorizontalOptions="FillAndExpand" />
+            </Grid>
+
+            <Grid ColumnSpacing="5" RowSpacing="5">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="3*" />
+                    <ColumnDefinition Width="3*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                </Grid.RowDefinitions>
+                <Button Grid.Row="0" Grid.Column="0"
+x:Name="BtnRecognitionExample" Style="{StaticResource SmallButtonStyle}"
+Text="Example"
+SemanticProperties.Hint="Counts the number of times you click"
+Clicked="OnBtnRecognitionExampleClicked"
+HorizontalOptions="FillAndExpand" />
+                <Button Grid.Row="0" Grid.Column="1"
+x:Name="BtnRecognitionFiles" Style="{StaticResource SmallButtonStyle}"
+Text="Recognition Files"
+SemanticProperties.Hint="Counts the number of times you click"
+Clicked="OnBtnRecognitionFilesClicked"
+HorizontalOptions="FillAndExpand" />
+                <Button Grid.Row="0" Grid.Column="2" IsVisible="true"
+x:Name="BtnRecognitionMicStart" Style="{StaticResource SmallButtonStyle}"
+Text="Mic Start"
+SemanticProperties.Hint="Start capturing microphone signals"
+Clicked="OnBtnRecognitionMicStartClicked"
+HorizontalOptions="FillAndExpand" />
+                <Button Grid.Row="0" Grid.Column="3" IsVisible="true"
+x:Name="BtnRecognitionMicStop" Style="{StaticResource SmallButtonStyle}"
+Text="Mic Stop"
+SemanticProperties.Hint="Stop capturing microphone signals"
+Clicked="OnBtnRecognitionMicStopClicked"
+HorizontalOptions="FillAndExpand" />
+                <Button Grid.Row="0" Grid.Column="4" IsVisible="true"
+x:Name="BtnRecognitionMicClose" Style="{StaticResource SmallButtonStyle}"
+Text="Clear And Reset"
+SemanticProperties.Hint="Turn off microphone"
+Clicked="OnBtnRecognitionMicCloseClicked"
+HorizontalOptions="FillAndExpand" />
+            </Grid>
+            <Grid ColumnSpacing="5" RowSpacing="5" BackgroundColor="Transparent">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="8*" />
+                    <ColumnDefinition Width="4*" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="36" />
+                </Grid.RowDefinitions>
+                <HorizontalStackLayout Grid.Column="0" Grid.Row="0"
+             FlowDirection="LeftToRight"
+             HorizontalOptions="StartAndExpand"
+                       VerticalOptions="EndAndExpand">
+                    <Label
+                       FlowDirection="MatchParent"
+                       Text="Display recognition results"
+                       SemanticProperties.HeadingLevel="Level2"
+                       SemanticProperties.Description="Display recognition results"
+                       FontSize="15"
+                       VerticalTextAlignment="End"
+                       HorizontalOptions="FillAndExpand"/>
+                    <Button x:Name="BtnShowAsrLogs"  Style="{StaticResource SmallButtonStyle}"
+                        IsEnabled="false"
+                        FlowDirection="MatchParent"
+                        VerticalOptions="EndAndExpand"
+                        Clicked="OnShowAsrLogsClicked"
+                        Text="i" WidthRequest="20" HeightRequest="10" MinimumWidthRequest="20" MinimumHeightRequest="16" />
+                </HorizontalStackLayout>
+                <Button Grid.Column="1" Grid.Row="0"
+                    x:Name="BtnEditAsrResults" Style="{StaticResource SmallButtonStyle}"
+                    Text="Edit" MinimumHeightRequest="15" HeightRequest="20"
+                    Clicked="OnEditAsrResultsClicked"
+                    HorizontalOptions="EndAndExpand" />
+                <Button Grid.Column="1" Grid.Row="0"
+                    x:Name="BtnEditedAsrResults" Style="{StaticResource SmallButtonStyle}"
+                    Text="Completed" MinimumHeightRequest="15" HeightRequest="20"
+                    IsVisible="False"
+                    Clicked="OnEditedAsrResultsClicked"
+                    HorizontalOptions="EndAndExpand" />
+            </Grid>
+        </StackLayout>
+        <!-- 底部滚动区域 -->
+        <ScrollView x:Name="LabelAsrResultsScrollView" Grid.Row="1" Margin="0,15">
+            <VerticalStackLayout
+                Spacing="0"
+                Padding="15,0"
+                VerticalOptions="Start">
+                <StackLayout>
+
+                </StackLayout>
+                <Border StrokeThickness="0.2" FlowDirection="MatchParent"
+	                StrokeShape="RoundRectangle 5"
+	                Padding="0,0"
+	                HorizontalOptions="FillAndExpand">
+                    <Border.Stroke>
+                        <LinearGradientBrush EndPoint="0,500">
+                            <GradientStop Color="LightGray"
+					  Offset="0.1"/>
+                            <GradientStop Color="Red"
+					  Offset="0.1"/>
+                        </LinearGradientBrush>
+                    </Border.Stroke>
+                    <HorizontalStackLayout HorizontalOptions="FillAndExpand" 
+    VerticalOptions="CenterAndExpand">
+
+                        <Label FlowDirection="MatchParent"
+                            Text="......" 
+                            SemanticProperties.HeadingLevel="Level2"
+                            FontSize="15"
+                            Padding="10,10,10,10"
+                            x:Name="AsrResults"
+                            WidthRequest="600"
+                            HorizontalOptions="StartAndExpand"/>
+                        <!--<Label FlowDirection="MatchParent" 
+                            Text="" 
+                            SemanticProperties.HeadingLevel="Level2"
+                            FontSize="15"
+                            Padding="10,10,10,10"
+                            x:Name="AsrResults2"
+                            WidthRequest="600"
+                            HorizontalOptions="EndAndExpand"/>-->
+                    </HorizontalStackLayout>
+
+                </Border>
+
+                <Editor 
+                x:Name="EditorAsrResults"
+                IsVisible="False"
+                FontSize="15"
+                Margin="0"            
+                Placeholder="Enter your response here"/>
+
+            </VerticalStackLayout>
+
+        </ScrollView>
+    </Grid>
+
+
+</ContentPage>

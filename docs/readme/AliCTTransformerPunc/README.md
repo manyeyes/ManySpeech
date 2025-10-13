@@ -1,9 +1,9 @@
 （[简体中文](README.zh_CN.md) |  English）
 
-# AliCTTransformerPunc
+# ManySpeech.AliCTTransformerPunc
 #### Introduction:
 
-AliCTTransformerPunc is a "text punctuation prediction" library written in C#. Under the hood, it utilizes Microsoft.ML.OnnxRuntime to decode ONNX models. This library boasts excellent compatibility in terms of framework adaptation, supporting multiple environments such as net461+, net60+, netcoreapp3.1, and netstandard2.0+. It supports cross-platform compilation as well as AOT compilation, and is simple and convenient to use.
+ManySpeech.AliCTTransformerPunc is a "text punctuation prediction" library written in C#. Under the hood, it utilizes Microsoft.ML.OnnxRuntime to decode ONNX models. This library boasts excellent compatibility in terms of framework adaptation, supporting multiple environments such as net461+, net60+, netcoreapp3.1, and netstandard2.0+. It supports cross-platform compilation as well as AOT compilation, and is simple and convenient to use.
 
 #### Supported Models (ONNX)
 | Model Name | Vocabulary Size | Supported Languages | Download Link |
@@ -17,7 +17,7 @@ The punc.yaml configuration parameters used for decoding generally do not need t
 ## Model Invocation Method:
 
 ###### 1. Add Project Reference
-using AliCTTransformerPunc;
+using ManySpeech.AliCTTransformerPunc;
 
 ###### 2. Model Initialization and Configuration
 ```csharp
@@ -26,7 +26,7 @@ string modelName = "alicttransformerpunc-large-zh-en-onnx";
 string modelFilePath = applicationBase + "./"+ modelName + "/model.int8.onnx";
 string configFilePath = applicationBase + "./" + modelName + "/punc.yaml";
 string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-AliCTTransformerPunc.CTTransformer ctTransformer = new CTTransformer(modelFilePath, configFilePath, tokensFilePath);
+CTTransformer ctTransformer = new CTTransformer(modelFilePath, configFilePath, tokensFilePath);
 ```
 
 ###### 3. Invocation

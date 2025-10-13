@@ -25,8 +25,8 @@
 				<Summary>c# library for decoding whisper Models，used in speech recognition (ASR)</Summary>
 				<Description>c# library for decoding whisper Models，used in speech recognition (ASR).</Description>
 				<PackageTags>speech recognition asr whisper ai local privacy</PackageTags>
-				<!--<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl>
-				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>-->
+				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl>
+				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>
 				<IncludeSymbols>true</IncludeSymbols>
 				<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 				<Nullable>enable</Nullable>

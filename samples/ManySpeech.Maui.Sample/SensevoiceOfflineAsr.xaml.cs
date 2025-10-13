@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class RecognitionForFiles : ContentPage
+public partial class SensevoiceOfflineAsr : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
@@ -21,7 +21,7 @@ public partial class RecognitionForFiles : ContentPage
         {"tokens.txt","" }
     };
 
-    public RecognitionForFiles()
+    public SensevoiceOfflineAsr()
     {
         InitializeComponent();
         DownloadCheck();

@@ -1,41 +1,43 @@
 ﻿using ManySpeech.Maui.Sample.SpeechProcessing;
 using ManySpeech.Maui.Sample.Utils;
 using PreProcessUtils;
+using System;
 using System.Text;
+using static Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class RecognitionForFiles : ContentPage
+public partial class FireRedOfflineAsr : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
     // 1.打开 https://modelscope.cn/profile/manyeyes?tab=model 页面
-    // 2.搜索 sensevoice, paraformer onnx 离线模型（非流式模型）
-    // 3.设置 _modelName 值，_modelName = [模型名称]
-    private string _modelName = "sensevoice-small-int8-onnx";
+    // 2.搜索 FireRed 离线模型（非流式模型）
+    // 3.设置 _modelName = [模型名称]
+    private string _modelName = "fireredasr-aed-large-zh-en-onnx-offline-20250124";
     // 需要检查的文件 <文件名, hash>
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
-        {"model.int8.onnx",""},
-        {"am.mvn","" },
-        {"asr.json","" },
+        {"encoder.int8.onnx",""},
+        {"decoder.int8.onnx",""},
         {"tokens.txt","" }
     };
 
-    public RecognitionForFiles()
+    public FireRedOfflineAsr()
     {
         InitializeComponent();
-        DownloadCheck();
+        CheckModels();
     }
 
-    private async void OnDownLoadCheckClicked(object sender, EventArgs e)
+    #region event
+    private async void OnCheckModelsClicked(object sender, EventArgs e)
     {
-        BtnDownLoadCheck.IsEnabled = false;
+        BtnCheckModels.IsEnabled = false;
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            DownloadCheck();
+            CheckModels();
         });
-        BtnDownLoadCheck.IsEnabled = true;
+        BtnCheckModels.IsEnabled = true;
     }
 
     private async void OnDownLoadModelsClicked(object sender, EventArgs e)
@@ -61,6 +63,7 @@ public partial class RecognitionForFiles : ContentPage
         });
         BtnDeleteModels.IsEnabled = true;
     }
+    #endregion
 
     private async void DownloadModels()
     {
@@ -81,7 +84,7 @@ public partial class RecognitionForFiles : ContentPage
         await Task.Run(() => gitHelper.DeleteModels(_modelBase, _modelName));
     }
 
-    private void DownloadCheck()
+    private void CheckModels()
     {
         DownloadHelper downloadHelper = new DownloadHelper(_modelBase, this.DownloadDisplay);
         ModelStatusLabel.Dispatcher.Dispatch(
@@ -231,7 +234,7 @@ public partial class RecognitionForFiles : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            RecognizerTestFilesByOffline();
+            RecognitionExampleByOffline();
         });
         BtnRecognitionExample.IsEnabled = true;
     }
@@ -276,33 +279,18 @@ public partial class RecognitionForFiles : ContentPage
         catch (Exception ex)
         {
             // The user canceled or something went wrong
+            ShowResults("The user canceled or something went wrong:"+ex.ToString());
         }
 
         return null;
     }
 
-    public void CreateDownloadFile(string fileName)
-    {
-
-        var downloadFolder = FileSystem.AppDataDirectory + "/Download/";
-        Directory.CreateDirectory(downloadFolder);
-        var filePath = downloadFolder + fileName;
-        File.Create(filePath);
-    }
-        
-
     public void RecognizerFilesByOffline(List<string> fullpaths)
     {
-        var recognizer = new OfflineAliParaformerAsrRecognizer();
+        var recognizer = new OfflineFireRedAsrRecognizer();
         SetOfflineRecognizerCallbackForResult(recognizer, "offline", "text");
         SetOfflineRecognizerCallbackForCompleted(recognizer);
-        AsrResults.Dispatcher.Dispatch(
-                         new Action(
-                             delegate
-                             {
-                                 AsrResults.Text = "Speech recognition in progress, please wait……";
-                             }
-                             ));
+        ShowResults("Speech recognition in progress, please wait ...");
         List<float[]>? samples = new List<float[]>();
         List<string> paths = new List<string>();
         TimeSpan totalDuration = new TimeSpan(0L);
@@ -327,44 +315,39 @@ public partial class RecognitionForFiles : ContentPage
         }
         if (samples.Count == 0)
         {
-            AsrResults.Dispatcher.Dispatch(
-                         new Action(
-                             delegate
-                             {
-                                 AsrResults.Text = "No media file is read!";
-                             }
-                             ));
+            ShowResults("No media file is read!");
             return;
         }
-        AsrResults.Dispatcher.Dispatch(
+        this.Dispatcher.Dispatch(
                          new Action(
                               async delegate
                              {
-                                 AsrResults.Text = "";
+                                 ShowResults("");
                                  string modelAccuracy = "int8";
                                  string methodType = "one";
                                  int threads = 2;
                                  var samplesList = new List<List<float[]>>();
                                  samplesList = samples.Select(x => new List<float[]>() { x }).ToList();
-                                 await recognizer.RecognizeAsync(
-                                        samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                                 try
+                                 {
+                                     await recognizer.RecognizeAsync(
+                                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                                 }
+                                 catch (Exception ex)
+                                 {
+                                     ShowTips(ex.Message);
+                                 }
                              }));
 
     }
 
-    public void RecognizerTestFilesByOffline(List<float[]>? samples = null)
+    public void RecognitionExampleByOffline(List<float[]>? samples = null)
     {
-        var recognizer = new OfflineAliParaformerAsrRecognizer();
+        var recognizer = new OfflineFireRedAsrRecognizer();
         SetOfflineRecognizerCallbackForResult(recognizer, "offline", "text");
         SetOfflineRecognizerCallbackForCompleted(recognizer);
         if (recognizer == null) { return; }
-        AsrResults.Dispatcher.Dispatch(
-                         new Action(
-                             delegate
-                             {
-                                 AsrResults.Text = "Speech recognition in progress, please wait ...";
-                             }
-                             ));
+        ShowResults("Speech recognition in progress, please wait ...");
         TimeSpan totalDuration = new TimeSpan(0L);
         List<string> paths = new List<string>();
         try
@@ -410,45 +393,71 @@ public partial class RecognitionForFiles : ContentPage
             }
             if (samples.Count == 0)
             {
-                AsrResults.Dispatcher.Dispatch(
-                         new Action(
-                             delegate
-                             {
-                                 AsrResults.Text = "No media file is read!";
-                             }
-                             ));
+                ShowResults("No media file is read!");
                 return;
             }
-            AsrResults.Dispatcher.Dispatch(
+            this.Dispatcher.Dispatch(
                              new Action(
                                  async delegate
                                  {
-                                     AsrResults.Text = "";
+                                     ShowResults("");
                                      string modelAccuracy = "int8";
                                      string methodType = "one";
                                      int threads = 2;
                                      var samplesList = new List<List<float[]>>();
                                      samplesList = samples.Select(x => new List<float[]>() { x }).ToList();
-                                     await recognizer.RecognizeAsync(
-                                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                                     try
+                                     {
+                                         await recognizer.RecognizeAsync(
+                                                samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                                     }
+                                     catch (Exception ex)
+                                     {
+                                         ShowTips(ex.Message);
+                                     }
                                  }
                                  ));
         }
         catch (Exception ex)
         {
-            AsrResults.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     AsrResults.Text = ex.Message;
-                                 }
-                                 ));
+            ShowResults(ex.Message);
         }
 
     }
 
+    private void ShowTips(string str)
+    {
+        this.Dispatcher.Dispatch(
+                    new Action(
+                        async delegate
+                        {
+                            await DisplayAlert("Tips", str, "close");
+                        }));
+    }
+
+    private void ShowResults(string str, bool isAppend = false)
+    {
+        AsrResults.Dispatcher.Dispatch(
+                             new Action(
+                                 delegate
+                                 {
+                                     if (isAppend)
+                                     {
+                                         AsrResults.Text += str;
+                                     }
+                                     else
+                                     {
+                                         AsrResults.Text = str;
+                                     }
+
+                                 }
+                                 ));
+
+
+    }
+
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineAliParaformerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
+    private void SetOfflineRecognizerCallbackForResult(OfflineFireRedAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
     {
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
@@ -461,20 +470,20 @@ public partial class RecognitionForFiles : ContentPage
                 switch (outputFormat)
                 {
                     case "text":
-                        AsrResults.Dispatcher.Dispatch(
+                        this.Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
                                      StringBuilder r = new StringBuilder();
                                      r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
                                      r.AppendLine(text);
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
+                                     ShowResults($"{r.ToString()}" + "\r", true);
                                  }
                                  ));
                         await LabelAsrResultsScrollView.ScrollToAsync(0D, (double)ScrollToPosition.End, true);
                         break;
                     case "json":
-                        AsrResults.Dispatcher.Dispatch(
+                        this.Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
@@ -491,7 +500,7 @@ public partial class RecognitionForFiles : ContentPage
                                          r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
                                      }
                                      r.AppendLine("}");
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
+                                     ShowResults($"{r.ToString()}" + "\r", true);
                                  }
                                  ));
                         break;
@@ -500,13 +509,13 @@ public partial class RecognitionForFiles : ContentPage
             i++;
         };
     }
-    private void SetOfflineRecognizerCallbackForCompleted(OfflineAliParaformerAsrRecognizer recognizer)
+    private void SetOfflineRecognizerCallbackForCompleted(OfflineFireRedAsrRecognizer recognizer)
     {
         recognizer.ResetRecognitionCompletedHandlers();
         recognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
         {
             double elapsedMilliseconds = totalTime.TotalMilliseconds;
-            AsrResults.Dispatcher.Dispatch(
+            this.Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
@@ -514,7 +523,7 @@ public partial class RecognitionForFiles : ContentPage
                                      r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
                                      r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
                                      r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
+                                     ShowResults($"{r.ToString()}" + "\r", true);
                                  }
                                  ));
         };

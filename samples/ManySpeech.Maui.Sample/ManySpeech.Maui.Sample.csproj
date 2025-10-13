@@ -36,6 +36,15 @@
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
 		<TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
 		<SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'tizen'">6.5</SupportedOSPlatformVersion>
+		<GenerateAppInstallerFile>True</GenerateAppInstallerFile>
+		<AppxPackageSigningEnabled>True</AppxPackageSigningEnabled>
+		<PackageCertificateKeyFile>ManySpeech.Maui.Sample_TemporaryKey.pfx</PackageCertificateKeyFile>
+		<AppxPackageSigningTimestampDigestAlgorithm>SHA256</AppxPackageSigningTimestampDigestAlgorithm>
+		<AppxAutoIncrementPackageRevision>True</AppxAutoIncrementPackageRevision>
+		<AppxSymbolPackageEnabled>False</AppxSymbolPackageEnabled>
+		<GenerateTestArtifacts>True</GenerateTestArtifacts>
+		<AppInstallerUri>C:/ManySpeech</AppInstallerUri>
+		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
 	</PropertyGroup>
 
 	<ItemGroup>
@@ -63,17 +72,62 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <ProjectReference Include="..\..\src\AudioInOut\AudioInOut.csproj" />
 	  <ProjectReference Include="..\..\src\ManySpeech.AliCTTransformerPunc\ManySpeech.AliCTTransformerPunc.csproj" />
 	  <ProjectReference Include="..\..\src\ManySpeech.AliFsmnVad\ManySpeech.AliFsmnVad.csproj" />
 	  <ProjectReference Include="..\..\src\ManySpeech.AliParaformerAsr\ManySpeech.AliParaformerAsr.csproj" />
+	  <ProjectReference Include="..\..\src\ManySpeech.FireRedAsr\ManySpeech.FireRedAsr.csproj" />
+	  <ProjectReference Include="..\..\src\ManySpeech.K2TransducerAsr\ManySpeech.K2TransducerAsr.csproj" />
 	  <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 	</ItemGroup>
 
 	<ItemGroup>
+	  <Compile Update="FireRedOfflineAsr.xaml.cs">
+	    <DependentUpon>FireRedOfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="ParaformerOnlineAsr.xaml.cs">
+	    <DependentUpon>ParaformerOnlineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="K2transducerOfflineAsr.xaml.cs">
+	    <DependentUpon>K2transducerOfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="K2transducerOnlineAsr.xaml.cs">
+	    <DependentUpon>K2transducerOnlineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="SensevoiceOfflineAsr.xaml.cs">
+	    <DependentUpon>SensevoiceOfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="ParaformerOfflineAsr.xaml.cs">
+	    <DependentUpon>ParaformerOfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	</ItemGroup>
+
+	<ItemGroup>
+	  <MauiXaml Update="FireRedOfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="MySplashPage.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="ParaformerOnlineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="K2transducerOfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="K2transducerOnlineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="SensevoiceOfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="ParaformerOfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="RecognitionForFiles.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="RecognitionForOnline.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	</ItemGroup>

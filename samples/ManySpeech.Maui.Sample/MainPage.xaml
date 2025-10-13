@@ -8,7 +8,7 @@
             Padding="30,20"
             Spacing="25">
             <Image
-                Source="dotnet_bot_512x241.png"
+                Source="dotnet_bot_368x173.png"
                 HeightRequest="128"
                 Aspect="AspectFit"
                 SemanticProperties.Description="dot net bot in a race car number eight" />
@@ -21,7 +21,7 @@
 
             <Label
                 Text="https://github.com/manyeyes/ManySpeech"
-                Style="{StaticResource Headline}"
+                Style="{StaticResource SubHeadline}"
                 TextColor="LightBlue"
                 TextDecorations="Underline" 
                 SemanticProperties.HeadingLevel="Level2"

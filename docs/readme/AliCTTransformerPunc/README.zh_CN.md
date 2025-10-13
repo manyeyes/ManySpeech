@@ -1,9 +1,9 @@
 （ 简体中文  | [英文](README.md) ）
 
-# AliCTTransformerPunc
+# ManySpeech.AliCTTransformerPunc
 ##### 简介：
 
-AliCTTransformerPunc是一个使用C#编写的“文本标点预测”库，底层调用Microsoft.ML.OnnxRuntime对onnx模型进行解码。该类库在框架适配方面具有良好的兼容性，支持 net461+、net60+、netcoreapp3.1 及 netstandard2.0+ 等多种环境，支持跨平台编译，支持AOT编译。使用简单方便。
+ManySpeech.AliCTTransformerPunc 是一个使用C#编写的“文本标点预测”库，底层调用Microsoft.ML.OnnxRuntime对onnx模型进行解码。该类库在框架适配方面具有良好的兼容性，支持 net461+、net60+、netcoreapp3.1 及 netstandard2.0+ 等多种环境，支持跨平台编译，支持AOT编译。使用简单方便。
 
 ##### 支持的模型（ONNX）
 |  模型名称 |词汇量|  支持语言 | 下载地址  |
@@ -17,7 +17,7 @@ AliCTTransformerPunc是一个使用C#编写的“文本标点预测”库，底�
 ## 模型调用方法：
 
 ###### 1.添加项目引用
-using AliCTTransformerPunc;
+using ManySpeech.AliCTTransformerPunc;
 
 ###### 2.模型初始化和配置
 ```csharp
@@ -26,7 +26,7 @@ string modelName = "alicttransformerpunc-large-zh-en-onnx";
 string modelFilePath = applicationBase + "./"+ modelName + "/model.int8.onnx";
 string configFilePath = applicationBase + "./" + modelName + "/punc.yaml";
 string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-AliCTTransformerPunc.CTTransformer ctTransformer = new CTTransformer(modelFilePath, configFilePath, tokensFilePath);
+CTTransformer ctTransformer = new CTTransformer(modelFilePath, configFilePath, tokensFilePath);
 ```
 ###### 3.调用
 ```csharp
@@ -42,17 +42,17 @@ end!
 ```
 
 ###### 相关工程：
-* 语音识别，解决语音转文本的问题，项目地址：[AliParaformerAsr](https://github.com/manyeyes/AliParaformerAsr "AliParaformerAsr") 
-* 语音端点检测，解决长音频合理切分的问题，项目地址：[AliFsmnVad](https://github.com/manyeyes/AliFsmnVad "AliFsmnVad") 
+- 语音处理套件，项目地址：[ManySpeech](https://github.com/manyeyes/ManySpeech "ManySpeech") 
+* 包含语音处理全链路模型，语音识别、语音端点检测、降噪增强等。 
 
 ##### 其他说明：
-测试用例：AliCTTransformerPunc.Examples。
+测试用例：ManySpeech.AliCTTransformerPunc.Examples。
 测试环境：windows11。
 
 ## 模型介绍：
 ##### 模型用途
 项目中使用的Punc模型是阿里巴巴达摩院开源的Controllable Time-delay Transformer模型。可用于语音识别模型输出文本的标点预测。
-
+ 
 ##### 模型结构：
 Controllable Time-delay Transformer（CTTransformerPunc）是达摩院语音团队提出的高效后处理框架中的标点模块。本项目为中文通用标点模型，模型可以被应用于文本类输入的标点预测，也可应用于语音识别结果的后处理步骤，协助语音识别模块输出具有可读性的文本结果。
 
