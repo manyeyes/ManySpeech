@@ -66,6 +66,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
+		<PackageReference Include="ManySpeech.AliCTTransformerPunc" Version="1.0.6" />
+		<PackageReference Include="ManySpeech.AliFsmnVad" Version="1.1.4" />
+		<PackageReference Include="ManySpeech.AliParaformerAsr" Version="1.1.9" />
+		<PackageReference Include="ManySpeech.FireRedAsr" Version="1.0.5" />
+		<PackageReference Include="ManySpeech.K2TransducerAsr" Version="1.0.9" />
+		<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.0.7" />
+		<PackageReference Include="ManySpeech.WenetAsr" Version="1.0.2" />
+		<PackageReference Include="ManySpeech.WhisperAsr" Version="1.0.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
@@ -73,11 +81,6 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\src\AudioInOut\AudioInOut.csproj" />
-	  <ProjectReference Include="..\..\src\ManySpeech.AliCTTransformerPunc\ManySpeech.AliCTTransformerPunc.csproj" />
-	  <ProjectReference Include="..\..\src\ManySpeech.AliFsmnVad\ManySpeech.AliFsmnVad.csproj" />
-	  <ProjectReference Include="..\..\src\ManySpeech.AliParaformerAsr\ManySpeech.AliParaformerAsr.csproj" />
-	  <ProjectReference Include="..\..\src\ManySpeech.FireRedAsr\ManySpeech.FireRedAsr.csproj" />
-	  <ProjectReference Include="..\..\src\ManySpeech.K2TransducerAsr\ManySpeech.K2TransducerAsr.csproj" />
 	  <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 	</ItemGroup>
 
