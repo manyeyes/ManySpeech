@@ -15,7 +15,7 @@
 				<Nullable>enable</Nullable>
 				<!-- info -->
 				<PackageId>ManySpeech.SileroVad</PackageId>
-				<Version>1.1.1</Version>
+				<Version>1.1.2</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>

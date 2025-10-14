@@ -13,7 +13,7 @@ namespace ManySpeech.MoonshineAsr.Examples
             string uncachedDecodeFilePath = applicationBase + "./" + modelName + "/uncached_decode.int8.onnx";
             string configFilePath = applicationBase + "./" + modelName + "/conf.json";
             string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-            MoonshineAsr.OfflineRecognizer offlineRecognizer = new MoonshineAsr.OfflineRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, configFilePath: configFilePath, threadsNum: 1);
+            OfflineRecognizer offlineRecognizer = new OfflineRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, configFilePath: configFilePath, threadsNum: 1);
             return offlineRecognizer;
         }
 
@@ -21,7 +21,7 @@ namespace ManySpeech.MoonshineAsr.Examples
         {
             //string modelName = "moonshine-tiny-en-onnx";
             string modelName = "moonshine-base-en-onnx";
-            MoonshineAsr.OfflineRecognizer offlineRecognizer = initMoonshineAsrOfflineRecognizer(modelName);
+            OfflineRecognizer offlineRecognizer = initMoonshineAsrOfflineRecognizer(modelName);
             TimeSpan total_duration = new TimeSpan(0L);
             List<List<float[]>> samplesList = new List<List<float[]>>();
             if (samples == null)

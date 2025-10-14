@@ -1,10 +1,12 @@
-# AliFsmnVad
+ ([简体中文](README.zh_CN.md) | English )
 
-AliFsmnVad is a C# library for **Fsmn-Vad model decoding**, primarily designed for **Voice Activity Detection (VAD)** to accurately identify valid speech segments in audio.
+# ManySpeech.AliFsmnVad User Guide
+
+ManySpeech.AliFsmnVad is a C# library for **Fsmn-Vad model decoding**, primarily designed for **Voice Activity Detection (VAD)** to accurately identify valid speech segments in audio.
 
 
 ## 1. Introduction
-Developed in C#, AliFsmnVad enables efficient decoding of ONNX-format Fsmn-Vad models by leveraging the `Microsoft.ML.OnnxRuntime` component. It offers the following core features:
+Developed in C#, ManySpeech.AliFsmnVad enables efficient decoding of ONNX-format Fsmn-Vad models by leveraging the `Microsoft.ML.OnnxRuntime` component. It offers the following core features:
 - **Excellent Compatibility**: Supports frameworks including .NET Framework 4.6.1+ and .NET 6.0+. Compatible with cross-platform compilation (Windows, macOS, Linux, Android, iOS) and AOT compilation for flexible deployment.
 - **High Performance**: The Real-Time Factor (RTF) for the full speech endpoint detection process is approximately 0.008, with processing speed far exceeding the requirements of real-time audio streams.
 - **Focused Functionality**: As a 16kHz general-purpose VAD tool, it is based on the "FSMN-Monophone VAD" efficient model proposed by the Speech Team of DAMO Academy. It accurately detects the start and end timestamps of valid speech in long audio segments. By extracting valid audio segments for input to speech recognition engines, it significantly reduces recognition errors caused by invalid speech and improves the accuracy of speech recognition tasks.
@@ -135,13 +137,6 @@ An independent test project `ManySpeech.AliFsmnVad.Examples` is provided, contai
 - Linux: Linux distributions compatible with .NET 6.0+ (install dependencies in advance; see [.NET Official Documentation](https://learn.microsoft.com/en-us/dotnet/core/install/linux))
 - Android: Android 5.0 (API 21) or later
 - iOS: Develop with Xamarin or .NET MAUI; supports iOS 11.0 or later
-
-### 6.3 Dependency Notes
-The reading and processing of audio sample data (`samples`) in the examples depend on the **NAudio library**, which needs to be installed via NuGet:
-```bash
-Install-Package NAudio
-```
-
 
 ## 7. Model Download
 Download the official Fsmn-Vad model (16kHz general-purpose version) from the following platforms:
