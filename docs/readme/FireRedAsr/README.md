@@ -1,60 +1,103 @@
-# FireRedAsr
-FireRedAsr is a C# library for decoding the FireRedASR AED-L model, used in speech recognition (ASR).
+# ManySpeech.FireRedAsr User Guide
 
-##### Introduction:
-FireRedAsr is a speech recognition (ASR) library developed based on C#. Boasting excellent compatibility, this library supports framework versions such as .NET 4.6.1+ and .NET 6.0+. It not only focuses on efficiently performing speech recognition tasks but also features outstanding cross-platform capabilities, supporting compilation and invocation on multiple platforms including Windows, Linux, Android, macOS, and iOS, making it widely adaptable to various scenarios.
+## I. Introduction
+ManySpeech.FireRedAsr is a C# library used for decoding the FireRedASR AED-L model, focusing on the Automatic Speech Recognition (ASR) task. Its underlying mechanism utilizes Microsoft.ML.OnnxRuntime to decode ONNX models, and it has several advantages:
 
-The core-dependent FireRedASR-AED model is designed to balance high performance and computational efficiency. It adopts an attention-based encoder-decoder (AED) architecture and can serve as an efficient speech representation module in large language model (LLM)-based speech models, providing stable and high-quality technical support for speech recognition tasks.
+### (I) Compatibility and Framework Support
+- **Multi-environment Support**: It is compatible with multiple environments such as net461+, net60+, netcoreapp3.1, and netstandard2.0+, which can meet the needs of different development scenarios.
+- **Cross-platform Compilation Features**: It supports cross-platform compilation. Whether it's Windows, macOS, Linux, Android, iOS, or other systems, it can be compiled and used, expanding the scope of application.
+- **Support for AOT Compilation**: It is simple and convenient to use, facilitating developers to quickly integrate it into their projects.
 
-##### Supported Models (ONNX)
-| Model Name  | Type | Supported Languages  | Download Link  |
-| ------------ | ------------ | ------------ | ------------ |
-| fireredasr-aed-large-zh-en-onnx-offline-20250124 | Non-streaming  | Chinese, English  |[modelscope](https://www.modelscope.cn/models/manyeyes/fireredasr-aed-large-zh-en-onnx-offline-20250124 "modelscope") |
+### (II) Core Model-related Aspects
+The core FireRedASR-AED model, which it relies on, aims to balance high performance and computational efficiency. It adopts an Attention-based Encoder-Decoder (AED) architecture and can serve as an efficient speech representation module in speech models based on Large Language Models (LLMs), providing stable and high-quality technical support for speech recognition tasks.
 
-##### How to Use
-###### 1. Clone the project source code
+FireRedASR itself is a series of open-source industrial-grade Automatic Speech Recognition (ASR) models that support Mandarin, Chinese dialects, and English. It has reached a new state-of-the-art (SOTA) level in public Mandarin ASR benchmark tests and also has excellent lyric recognition capabilities. It contains two variants:
+- FireRedASR-LLM: Aimed at achieving the most advanced performance and supporting seamless end-to-end speech interaction, it adopts an Encoder-Adapter-Large Language Model (LLM) framework.
+- FireRedASR-AED: Designed to balance high performance and computational efficiency, and serving as an effective speech representation module in LLM-based speech models, it utilizes an Attention-based Encoder-Decoder (AED) architecture. The fireredasr-aed-large-zh-en-onnx-offline-20250124 is an ONNX model derived from FireRedASR-AED-L, which supports one/batch decoding and can be deployed locally through ManySpeech to achieve speech transcription.
+
+## II. Installation Methods
+It is recommended to install via the NuGet package manager. Here are several specific installation approaches:
+
+### (I) Using Package Manager Console
+Execute the following command in the "Package Manager Console" of Visual Studio:
 ```bash
-cd /path/to
-git clone https://github.com/manyeyes/FireRedASR.git
+Install-Package ManySpeech.FireRedAsr
 ```
-###### 2. Download the model from the above list to the directory: /path/to/FireRedASR/FireRedASR.Examples
+
+### (II) Using.NET CLI
+Execute the following command in the command line:
 ```bash
-cd /path/to/FireRedASR/FireRedASR.Examples
-git clone https://www.modelscope.cn/manyeyes/[model name].git
+dotnet add package ManySpeech.FireRedAsr
 ```
-###### 3. Load the project using VS2022 (or other IDEs)
-###### 4. Set the files in the model directory to: Copy to Output Directory -> Copy if newer
-###### 5. Modify the code in the example: string modelName = [model directory name]
-###### 6. Run the project
-###### 7. How to Invoke
-Refer to the sample code in FireRedAsrExamples.cs
-###### 8. Running Results
+
+### (III) Manual Installation
+Search for "ManySpeech.FireRedAsr" in the NuGet package manager interface and click "Install".
+
+## III. Code Calling Methods
+
+### (I) Offline (Non-streaming) Model Calling
+1. **Adding Project References**
+Add the following references in the code:
+```csharp
+using ManySpeech.FireRedAsr;
+using ManySpeech.FireRedAsr.Model;
 ```
-æœ±ç«‹å—åœ¨ä¸Šå¸‚è§é¢ä¼šä¸Šè¡¨ç¤º
-
-è¿™æ˜¯ç¬¬ä¸€ç§ç¬¬äºŒç§å«å‘ƒä¸always alwaysä»€ä¹ˆæ„æ€å•Š
-
-å¥½é¦–å…ˆè¯´ä¸€ä¸‹åˆšæ‰è¿™ä¸ªç»ç†è¯´å®Œäº†è¿™ä¸ªé”€å”®é—®é¢˜å’±å†è¯´ä¸€ä¸‹å’±ä»¬çš„å•†åœºé—®é¢˜é¦–å…ˆå’±ä»¬å•†åœºä¸ŠåŠå¹´ä¸šè¿™ä¸ªå…ˆå„éƒ¨é—¨å„¿æ±‡æŠ¥ä¸€ä¸‹å°±æ˜¯ä¸šç»©
-
-elapsed_milliseconds:4391.234375
-total_duration:21015.0625
-rtf:0.2089565222563578
-Hello, World!
+2. **Model Initialization and Configuration**
+**Paraformer Model Initialization Method**:
+```csharp
+string applicationBase = AppDomain.CurrentDomain.BaseDirectory;
+string modelName = "fireredasr-aed-large-zh-en-onnx-offline-20250124";
+string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
+string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
+string configFilePath = applicationBase + "./" + modelName + "/config.json";
+string mvnFilePath = applicationBase + "./" + modelName + "/am.mvn";
+string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
+OfflineRecognizer offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
 ```
-###### Related Projects:
-* Speech endpoint detection, solving the problem of reasonable segmentation of long audio. Project address: [AliFsmnVad](https://github.com/manyeyes/AliFsmnVad "AliFsmnVad") 
-* Text punctuation prediction, solving the problem of missing punctuation in recognition results. Project address: [AliCTTransformerPunc](https://github.com/manyeyes/AliCTTransformerPunc "AliCTTransformerPunc")
+3. **Calling Process**
+```csharp
+List<float[]> samples = new List<float[]>();
+// Here, the relevant code for converting the wav file to samples is omitted. For details, please refer to the ManySpeech.FireRedAsr.Examples sample code.
+List<OfflineStream> streams = new List<OfflineStream>();
+foreach (var sample in samples)
+{
+    OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+    stream.AddSamples(sample);
+    streams.Add(stream);
+}
+List<OfflineRecognizerResultEntity> results = offlineRecognizer.GetResults(streams);
+```
+4. **Example of Output Results**
+```
+ÖìÁ¢ÄÏÔÚÉÏÊĞ¼ûÃæ»áÉÏ±íÊ¾
 
-###### Other Instructions:
+ÕâÊÇµÚÒ»ÖÖµÚ¶şÖÖ½ĞßÀÓëalways alwaysÊ²Ã´ÒâË¼°¡
 
-Test case: FireRedASR.Examples.
-Test CPU: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz   2.59 GHz
-Supported platforms:
-Windows 7 SP1 or later,
-macOS 10.13 (High Sierra) or later, iOS, etc.,
-Linux distributions (specific dependencies are required, see the list of Linux distributions supported by .NET 6),
-Android (Android 5.0 (API 21) or later).
+ºÃÊ×ÏÈËµÒ»ÏÂ¸Õ²ÅÕâ¸ö¾­ÀíËµÍêÁËÕâ¸öÏúÊÛÎÊÌâÔÛÔÙËµÒ»ÏÂÔÛÃÇµÄÉÌ³¡ÎÊÌâÊ×ÏÈÔÛÃÇÉÌ³¡ÉÏ°ëÄêÒµÕâ¸öÏÈ¸÷²¿ÃÅ¶ù»ã±¨Ò»ÏÂ¾ÍÊÇÒµ¼¨
 
-Reference
-----------
-[1] https://github.com/FireRedTeam/FireRedASR
+elapsed_milliseconds: 4391.234375
+total_duration: 21015.0625
+rtf: 0.2089565222563578
+```
+
+## IV. Related Projects
+- **Voice Endpoint Detection**: To solve the problem of reasonable segmentation of long audio, you can add the ManySpeech.AliFsmnVad library. Install it using the following command:
+```bash
+dotnet add package ManySpeech.AliFsmnVad
+```
+- **Text Punctuation Prediction**: To address the lack of punctuation in recognition results, you can add the ManySpeech.AliCTTransformerPunc library. Install it using the following command:
+```bash
+dotnet add package ManySpeech.AliCTTransformerPunc
+```
+
+## V. Other Notes
+- **Test Cases**: FireRedASR.Examples.
+- **Test CPU**: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz   2.59 GHz.
+- **Supported Models (ONNX)**:
+
+| Model Name | Type | Supported Languages | Download Address |
+| ---- | ---- | ---- | ---- |
+| fireredasr-aed-large-zh-en-onnx-offline-20250124 | Non-streaming | Chinese, English | [modelscope](https://www.modelscope.cn/models/manyeyes/fireredasr-aed-large-zh-en-onnx-offline-20250124 "modelscope") |
+
+**Reference**:
+[1] https://github.com/FireRedTeam/FireRedASR 

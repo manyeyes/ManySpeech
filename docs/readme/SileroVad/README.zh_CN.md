@@ -1,63 +1,112 @@
- ( 简体中文 | [English](README.EN.md))
+ ( 简体中文 | [English](README.md) )
 
-# SileroVad
+# ManySpeech.SileroVad 使用指南
 
-C# 语音端点检测库，用于基于 Silero VAD 模型的语音活动检测。
+## 一、简介
+**ManySpeech.SileroVad** 是一个采用 C# 开发的语音端点检测（VAD）库，底层基于 `Microsoft.ML.OnnxRuntime` 实现 ONNX 模型解码。该库具备以下特点：
+- **多环境支持**：可兼容 net461+、net60+、netcoreapp3.1 以及 netstandard2.0+ 等多种环境，能适配不同开发场景的需求。
+- **跨平台编译特性**：支持跨平台编译，无论是 Windows、macOS 还是 Linux、Android 等系统，都能进行编译使用，拓展了应用的范围。
+- **支持 AOT 编译**：使用起来简单便捷，方便开发者快速集成到项目中。
 
-## 简介
+## 二、安装方式
+推荐通过 NuGet 包管理器进行安装，以下为三种具体安装途径：
 
-**SileroVad** 是一个采用 C# 开发的语音端点检测（VAD）库，底层基于 `Microsoft.ML.OnnxRuntime` 实现 ONNX 模型解码。该库具有以下特点：
-- 多框架支持：兼容 .NET Framework 4.6.1+、.NET 6.0+、.NET Core 3.1 及 .NET Standard 2.0+
-- 跨平台能力：支持 Windows、macOS、Linux 等系统，可进行跨平台编译
-- 部署灵活：支持 AOT（Ahead-of-Time）编译，使用简单便捷
-
-
-## 支持的模型（ONNX）
-
-| 模型名称              | 类型         | 下载地址                                                                 |
-|-----------------------|--------------|--------------------------------------------------------------------------|
-| silero-vad-v6-onnx    | 流式/非流式  | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v6-onnx)   |
-| silero-vad-v5-onnx    | 流式/非流式  | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v5-onnx)   |
-| silero-vad-onnx       | 流式/非流式  | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-onnx)      |
-
-
-## 快速开始
-
-### 1. 克隆项目源码
+### （一）使用 Package Manager Console
+在 Visual Studio 的「Package Manager Console」中执行以下命令：
 ```bash
-cd /path/to/your/workspace
-git clone https://github.com/manyeyes/SileroVad.git
+Install-Package ManySpeech.SileroVad
 ```
 
-### 2. 下载模型文件
-将上述表格中的模型下载至示例项目目录：
+### （二）使用.NET CLI
+在命令行中输入以下命令来安装：
+```bash
+dotnet add package ManySpeech.SileroVad
+```
+
+### （三）手动安装
+在 NuGet 包管理器界面搜索「ManySpeech.SileroVad」，点击「安装」即可。
+
+## 三、快速开始
+
+### （一）下载 VAD 模型
 ```bash
 cd /path/to/your/workspace/SileroVad/SileroVad.Examples
 # 替换 [模型名称] 为实际模型名（如 silero-vad-v6-onnx）
 git clone https://www.modelscope.cn/manyeyes/[模型名称].git
 ```
 
-### 3. 配置项目
-- 使用 Visual Studio 2022 或其他兼容 IDE 加载解决方案
-- 将模型目录中的所有文件设置为：**复制到输出目录 -> 如果较新则复制**
-
-### 4. 准备语音识别模型（可选）
+### （二）下载 ASR 模型（可选）
 示例中通过 `OfflineRecognizer` 方法实现语音识别，需额外下载 ASR 模型：
 ```bash
 cd /path/to/your/workspace/SileroVad/SileroVad.Examples
 git clone https://www.modelscope.cn/manyeyes/aliparaformerasr-large-zh-en-timestamp-onnx-offline.git
 ```
 
-### 5. 运行示例
-- 修改示例代码中的模型路径：`string modelName = "[模型目录名]"`
-- 程序入口：`Program.cs`，默认执行两个测试用例：
-  - 非流式检测：`TestOfflineVad()`（源码：`OfflineVad.cs`）
-  - 流式检测：`TestOnlineVad()`（源码：`OnlineVad.cs`）
+### （三）配置项目
+1. **使用 Visual Studio 2022 或其他兼容 IDE 加载解决方案**：利用合适的开发工具打开项目解决方案，为后续操作做好准备。
+2. **将模型目录中的所有文件设置为：复制到输出目录 -> 如果较新则复制**：确保模型文件能正确地随项目输出，以便在运行时可正常调用，保证项目能顺利获取到所需的模型资源。
 
+### （四）引入命名空间
+安装完成后，在代码文件头部引入以下命名空间：
+```csharp
+using ManySpeech.SileroVad;
+using ManySpeech.SileroVad.Model;
+```
 
-## 运行效果
+### （五）初始化模型和配置
+需提前准备 3 个核心文件（模型文件、配置文件、均值归一化文件），初始化时指定文件路径及批量解码参数：
+```csharp
+// 获取应用程序根目录（避免硬编码路径）
+string applicationBase = AppDomain.CurrentDomain.BaseDirectory;
+string modelName = "silero-vad-v6-onnx"; // 模型文件夹名称
 
-### 非流式检测输出
+// 拼接模型、配置、均值归一化文件的完整路径
+string modelFilePath = applicationBase + "./" + modelName + "/silero_vad.onnx";
+string configFilePath = applicationBase + "./" + modelName + "/vad.yaml";
+
+int batchSize = 2; // 批量解码大小（根据硬件性能调整，建议 1~4）
+
+// 初始化 AliFsmnVad 实例（加载模型并配置参数）
+AliFsmnVad aliFsmnVad = new OfflineVad(modelFilePath, configFilePath: configFilePath, threshold: 0F, isDebug: false);
+```
+
+### （六）调用核心方法
+根据音频文件大小选择不同的调用方式，小文件适合一次性处理，大文件建议分步处理以降低内存占用：
+```csharp
+// samples：音频采样数据（需提前通过 NAudio 等库读取，格式为 float[]）
+// batch stream decode
+List<OfflineStream> streams = new List<OfflineStream>();
+foreach (float[] samplesItem in samples)
+{
+    OfflineStream stream = offlineVad.CreateOfflineStream();
+    stream.AddSamples(samplesItem);
+    streams.Add(stream);
+}
+
+Console.WriteLine("vad infer result:");
+List<SileroVad.Model.VadResultEntity> results = offlineVad.GetResults(streams);
+foreach (SileroVad.Model.VadResultEntity result in results)
+{
+    foreach (var item in result.Segments.Zip(result.Waveforms))
+    {
+        Console.WriteLine(string.Format("{0}-->{1}", TimeSpan.FromMilliseconds(item.First.Start / 16).ToString(@"hh\:mm\:ss\,fff"), TimeSpan.FromMilliseconds(item.First.End / 16).ToString(@"hh\:mm\:ss\,fff")));
+        //使用 ManySpeech.AliParaformerAsr 库对切分后的 samples 进行识别
+        //OfflineRecognizer(new List<float[]>() { item.Second });
+        Console.WriteLine("");
+    }
+
+}
+```
+
+### （七）直接运行示例看效果
+1. **修改示例代码中的模型路径**：将 `string modelName = "[模型目录名]"` 修改为实际对应的模型目录名称，确保程序能准确找到并加载模型。
+2. **程序入口**：程序入口为 `Program.cs`，默认执行两个测试用例：
+    - **非流式检测**：`TestOfflineVad()`（源码：`OfflineVad.cs`）。
+    - **流式检测**：`TestOnlineVad()`（源码：`OnlineVad.cs`）。
+
+## 四、运行效果
+
+### （一）非流式检测输出
 ```bash
 load vad model elapsed_milliseconds:337.1796875
 vad infer result:
@@ -125,7 +174,7 @@ rtf:0.06315918423456582
 ------------------------
 ```
 
-### 流式检测输出
+### （二）流式检测输出
 ```bash
 load vad model elapsed_milliseconds:75.21875
 00:00:00,032-->00:00:05,632
@@ -150,23 +199,30 @@ rtf:0.046472417091836735
 ------------------------
 ```
 
+## 五、相关工程
+- **语音识别**：为验证 vad 效果，可添加 ManySpeech.AliParaformerAsr 库对切分后的 samples 进行识别，通过以下命令安装：
+```bash
+dotnet add package ManySpeech.AliParaformerAsr
+```
 
-## 相关项目
+## 六、系统要求
 
-- **语音识别**：[AliParaformerAsr](https://github.com/manyeyes/AliParaformerAsr)
-- **语音端点检测（长音频切分）**：[AliFsmnVad](https://github.com/manyeyes/AliFsmnVad)
-- **文本标点预测**：[AliCTTransformerPunc](https://github.com/manyeyes/AliCTTransformerPunc)
+### （一）测试环境
+Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz 2.59 GHz。
 
+### （二）支持平台
+- **Windows**：Windows 7 SP1 及以上版本。
+- **macOS**：macOS 10.13 (High Sierra) 及以上版本（含 iOS）。
+- **Linux**：兼容.NET 6 支持的发行版（需满足特定依赖）。
+- **Android**：Android 5.0 (API 21) 及以上版本。
 
-## 系统要求
+## 七、模型下载（支持的 ONNX 模型）
 
-- **测试环境**：Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz 2.59 GHz
-- **支持平台**：
-  - Windows：Windows 7 SP1 及以上版本
-  - macOS：macOS 10.13 (High Sierra) 及以上版本（含 iOS）
-  - Linux：兼容 .NET 6 支持的发行版（需满足特定依赖）
-  - Android：Android 5.0 (API 21) 及以上版本
+| 模型名称              | 类型         | 下载地址                                                                 |
+|-----------------------|--------------|--------------------------------------------------------------------------|
+| silero-vad-v6-onnx    | 流式/非流式  | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v6-onnx)   |
+| silero-vad-v5-onnx    | 流式/非流式  | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v5-onnx)   |
+| silero-vad-onnx       | 流式/非流式  | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-onnx)      |
 
-
-## 引用参考
-[1] [Silero VAD](https://github.com/snakers4/silero-vad)
+## 八、引用参考
+[1] [Silero VAD](https://github.com/snakers4/silero-vad) 

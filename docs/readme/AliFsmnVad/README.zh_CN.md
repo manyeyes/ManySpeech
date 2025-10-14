@@ -1,14 +1,10 @@
-# AliFsmnVad
-
-AliFsmnVad 是一款用于 **Fsmn-Vad 模型解码**的 C# 库，核心用途是实现**语音活动检测（Voice Activity Detection, VAD）**，精准识别音频中的有效语音片段。
-
+# ManySpeech.AliFsmnVad 使用指南
 
 ## 1. 简介
-AliFsmnVad 基于 C# 开发，通过调用 `Microsoft.ML.OnnxRuntime` 组件实现对 ONNX 格式 Fsmn-Vad 模型的高效解码，具备以下核心特性：
+ManySpeech.AliFsmnVad 是一款用于 **Fsmn-Vad 模型解码**的 C# 库，核心用途是实现**语音活动检测（Voice Activity Detection, VAD）**，精准识别音频中的有效语音片段。其底层借助 `Microsoft.ML.OnnxRuntime` 对 ONNX 格式 Fsmn-Vad 模型进行高效解码，具备以下核心特性：
 - **兼容性优异**：支持 .NET Framework 4.6.1+、.NET 6.0+ 等框架，可跨 Windows、macOS、Linux、Android、iOS 等平台编译，且支持 AOT 编译，部署灵活。
 - **性能高效**：语音端点检测全流程的实时因子（RTF）约为 0.008，处理速度远高于实时音频流需求。
 - **功能聚焦**：作为 16kHz 通用 VAD 工具，基于达摩院语音团队提出的「FSMN-Monophone VAD」高效模型，可精准检测长语音片段中有效语音的起止时间点；通过提取有效音频片段输入识别引擎，能显著减少无效语音带来的识别误差，提升语音识别准确性。
-
 
 ## 2. 安装方式
 通过 NuGet 包管理器安装（推荐）：
@@ -118,8 +114,8 @@ rtf: 0.009405292985552491
 
 ## 5. 语音识别衔接
 将 `SegmentEntity.Waveform` 作为输入参数，可对接主流语音识别库执行后续识别任务，支持的库包括：
-- AliParaformerAsr
-- K2TransducerAsr
+- ManySpeech.AliParaformerAsr
+- ManySpeech.K2TransducerAsr
 - SherpaOnnxSharp（调用其 `offlineRecognizer` 相关方法）
 
 具体调用示例可参考对应库的官方文档或 `ManySpeech.AliFsmnVad.Examples` 测试项目。
@@ -135,13 +131,6 @@ rtf: 0.009405292985552491
 - Linux：支持 .NET 6.0+ 官方兼容的 Linux 发行版（需提前安装依赖库，详见 [.NET 官方文档](https://learn.microsoft.com/zh-cn/dotnet/core/install/linux)）
 - Android：Android 5.0 (API 21) 及以上版本
 - iOS：需配合 Xamarin 或 .NET MAUI 开发，支持 iOS 11.0 及以上版本
-
-### 6.3 依赖说明
-示例中音频采样数据（`samples`）的读取与处理依赖 **NAudio 库**，需通过 NuGet 安装：
-```bash
-Install-Package NAudio
-```
-
 
 ## 7. 模型下载
 可从以下平台下载官方 Fsmn-Vad 模型（16kHz 通用版）：

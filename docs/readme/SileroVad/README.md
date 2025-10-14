@@ -1,68 +1,122 @@
- ([简体中文](README.md) | English )
+ ([简体中文](README.zh_CN_.md) | English )
 
-# SileroVad
+# ManySpeech.SileroVad User Guide
 
-A C# voice activity detection library for speech activity detection based on the Silero VAD model.
+## I. Introduction
+**ManySpeech.SileroVad** is a Voice Activity Detection (VAD) library developed in C#. Its underlying implementation uses `Microsoft.ML.OnnxRuntime` to decode ONNX models. This library has the following features:
 
+### (I) Multi-environment Support
+It is compatible with environments such as net461+, net60+, netcoreapp3.1, and netstandard2.0+, which can meet the needs of different development scenarios.
 
-## Introduction
+### (II) Cross-platform Compilation Feature
+It supports cross-platform compilation. Whether it's Windows, macOS, Linux, Android or other systems, it can be compiled and used, expanding the scope of application.
 
-**SileroVad** is a Voice Activity Detection (VAD) library developed in C#, with ONNX model decoding implemented under the hood using `Microsoft.ML.OnnxRuntime`. This library features the following:
-- Multi-framework support: Compatible with .NET Framework 4.6.1+, .NET 6.0+, .NET Core 3.1, and .NET Standard 2.0+
-- Cross-platform capability: Supports Windows, macOS, Linux, and other systems, enabling cross-platform compilation
-- Flexible deployment: Supports AOT (Ahead-of-Time) compilation and is simple and convenient to use
+### (III) Support for AOT Compilation
+It is simple and convenient to use, facilitating developers to quickly integrate it into their projects.
 
+## II. Installation Methods
+It is recommended to install via the NuGet package manager. Here are three specific installation methods:
 
-## Supported Models (ONNX)
-
-| Model Name            | Type              | Download Link                                                          |
-|-----------------------|-------------------|-------------------------------------------------------------------------|
-| silero-vad-v6-onnx    | Streaming/Offline | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v6-onnx)   |
-| silero-vad-v5-onnx    | Streaming/Offline | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v5-onnx)   |
-| silero-vad-onnx       | Streaming/Offline | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-onnx)      |
-
-
-## Quick Start
-
-### 1. Clone the Project Source Code
+### (I) Using Package Manager Console
+Execute the following command in the "Package Manager Console" of Visual Studio:
 ```bash
-cd /path/to/your/workspace
-git clone https://github.com/manyeyes/SileroVad.git
+Install-Package ManySpeech.SileroVad
 ```
 
-### 2. Download Model Files
-Download the model from the table above to the sample project directory:
+### (II) Using.NET CLI
+Enter the following command in the command line to install:
+```bash
+dotnet add package ManySpeech.SileroVad
+```
+
+### (III) Manual Installation
+Search for "ManySpeech.SileroVad" in the NuGet package manager interface and click "Install".
+
+## III. Quick Start
+
+### (I) Download the VAD Model
 ```bash
 cd /path/to/your/workspace/SileroVad/SileroVad.Examples
 # Replace [Model Name] with the actual model name (e.g., silero-vad-v6-onnx)
 git clone https://www.modelscope.cn/manyeyes/[Model Name].git
 ```
 
-### 3. Configure the Project
-- Load the solution using Visual Studio 2022 or another compatible IDE
-- Set all files in the model directory to: **Copy to Output Directory -> Copy if newer**
-
-### 4. Prepare Speech Recognition Model (Optional)
-The sample implements speech recognition via the `OfflineRecognizer` method, which requires an additional ASR (Automatic Speech Recognition) model download:
+### (II) Download the ASR Model (Optional)
+In the example, speech recognition is achieved through the `OfflineRecognizer` method, and an additional ASR model needs to be downloaded:
 ```bash
 cd /path/to/your/workspace/SileroVad/SileroVad.Examples
 git clone https://www.modelscope.cn/manyeyes/aliparaformerasr-large-zh-en-timestamp-onnx-offline.git
 ```
 
-### 5. Run the Sample
-- Modify the model path in the sample code: `string modelName = "[Model Directory Name]"`
-- Program entry: `Program.cs`, which executes two test cases by default:
-  - Offline detection: `TestOfflineVad()` (Source code: `OfflineVad.cs`)
-  - Streaming detection: `TestOnlineVad()` (Source code: `OnlineVad.cs`)
+### (III) Configure the Project
+1. **Load the solution using Visual Studio 2022 or other compatible IDEs**: Open the project solution with appropriate development tools to prepare for subsequent operations.
+2. **Set all files in the model directory to "Copy to Output Directory -> Copy if Newer"**: Ensure that the model files can be correctly output with the project so that they can be called normally during runtime, guaranteeing that the project can obtain the required model resources smoothly.
 
+### (IV) Import Namespaces
+After installation, import the following namespaces at the beginning of the code file:
+```csharp
+using ManySpeech.SileroVad;
+using ManySpeech.SileroVad.Model;
+```
 
-## Running Results
+### (V) Initialize the Model and Configure
+Three core files (model file, configuration file, and mean normalization file) need to be prepared in advance. When initializing, specify the file paths and batch decoding parameters:
+```csharp
+// Get the application root directory (to avoid hard-coded paths)
+string applicationBase = AppDomain.CurrentDomain.BaseDirectory;
+string modelName = "silero-vad-v6-onnx"; // Model folder name
 
-### Offline Detection Output
+// Concatenate the full paths of the model, configuration, and mean normalization files
+string modelFilePath = applicationBase + "./" + modelName + "/silero_vad.onnx";
+string configFilePath = applicationBase + "./" + modelName + "/vad.yaml";
+
+int batchSize = 2; // Batch decoding size (adjust according to hardware performance, recommended to be between 1 and 4)
+
+// Initialize the AliFsmnVad instance (load the model and configure parameters)
+AliFsmnVad aliFsmnVad = new OfflineVad(modelFilePath, configFilePath: configFilePath, threshold: 0F, isDebug: false);
+```
+
+### (VI) Call the Core Methods
+Choose different calling methods according to the size of the audio file. Small files are suitable for one-time processing, while large files are recommended to be processed in steps to reduce memory usage:
+```csharp
+// samples: Audio sample data (needs to be read in advance through libraries like NAudio, in the format of float[])
+// batch stream decode
+List<OfflineStream> streams = new List<OfflineStream>();
+foreach (float[] samplesItem in samples)
+{
+    OfflineStream stream = offlineVad.CreateOfflineStream();
+    stream.AddSamples(samplesItem);
+    streams.Add(stream);
+}
+
+Console.WriteLine("vad infer result:");
+List<SileroVad.Model.VadResultEntity> results = offlineVad.GetResults(streams);
+foreach (SileroVad.Model.VadResultEntity result in results)
+{
+    foreach (var item in result.Segments.Zip(result.Waveforms))
+    {
+        Console.WriteLine(string.Format("{0}-->{1}", TimeSpan.FromMilliseconds(item.First.Start / 16).ToString(@"hh\:mm\:ss\,fff"), TimeSpan.FromMilliseconds(item.First.End / 16).ToString(@"hh\:mm\:ss\,fff")));
+        // Use the ManySpeech.AliParaformerAsr library to recognize the segmented samples
+        // OfflineRecognizer(new List<float[]>() { item.Second });
+        Console.WriteLine("");
+    }
+}
+```
+
+### (VII) Run the Examples Directly to See the Effects
+1. **Modify the model path in the example code**: Change `string modelName = "[Model Directory Name]"` to the actual corresponding model directory name to ensure that the program can accurately find and load the model.
+2. **Program Entry**: The program entry is `Program.cs`, and it executes two test cases by default:
+    - **Offline Detection**: `TestOfflineVad()` (source code: `OfflineVad.cs`).
+    - **Online Detection**: `TestOnlineVad()` (source code: `OnlineVad.cs`).
+
+## IV. Running Results
+
+### (I) Offline Detection Output
 ```bash
 load vad model elapsed_milliseconds:337.1796875
 vad infer result:
 00:00:00,000-->00:00:02,410
+loading asr model elapsed_milliseconds:1320.9375
 试错的过程很简单
 
 00:00:02,934-->00:00:05,834
@@ -125,7 +179,7 @@ rtf:0.06315918423456582
 ------------------------
 ```
 
-### Streaming Detection Output
+### (II) Online Detection Output
 ```bash
 load vad model elapsed_milliseconds:75.21875
 00:00:00,032-->00:00:05,632
@@ -150,23 +204,30 @@ rtf:0.046472417091836735
 ------------------------
 ```
 
+## V. Related Projects
+- **Speech Recognition**: To verify the effect of VAD, you can add the ManySpeech.AliParaformerAsr library to recognize the segmented samples. Install it using the following command:
+```bash
+dotnet add package ManySpeech.AliParaformerAsr
+```
 
-## Related Projects
+## VI. System Requirements
 
-- **Speech Recognition**: [AliParaformerAsr](https://github.com/manyeyes/AliParaformerAsr)
-- **Voice Activity Detection (Long Audio Segmentation)**: [AliFsmnVad](https://github.com/manyeyes/AliFsmnVad)
-- **Text Punctuation Prediction**: [AliCTTransformerPunc](https://github.com/manyeyes/AliCTTransformerPunc)
+### (I) Test Environment
+Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz 2.59 GHz.
 
+### (II) Supported Platforms
+- **Windows**: Windows 7 SP1 or later versions.
+- **macOS**: macOS 10.13 (High Sierra) or later versions (including iOS).
+- **Linux**: Compatible with the distributions supported by.NET 6 (specific dependencies need to be met).
+- **Android**: Android 5.0 (API 21) or later versions.
 
-## System Requirements
+## VII. Model Downloads (Supported ONNX Models)
 
-- **Test Environment**: Intel(R) Core(TM) i7-10750H CPU @ 2.60GHz 2.59 GHz
-- **Supported Platforms**:
-  - Windows: Windows 7 SP1 and above
-  - macOS: macOS 10.13 (High Sierra) and above (including iOS)
-  - Linux: Distributions compatible with .NET 6 (specific dependencies required)
-  - Android: Android 5.0 (API 21) and above
+| Model Name | Type | Download Link |
+| ---- | ---- | ---- |
+| silero-vad-v6-onnx | Streaming/Non-streaming | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v6-onnx) |
+| silero-vad-v5-onnx | Streaming/Non-streaming | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-v5-onnx) |
+| silero-vad-onnx | Streaming/Non-streaming | [ModelScope](https://modelscope.cn/models/manyeyes/silero-vad-onnx) |
 
-
-## References
-[1] [Silero VAD](https://github.com/snakers4/silero-vad)
+## VIII. References
+[1] [Silero VAD](https://github.com/snakers4/silero-vad) 
