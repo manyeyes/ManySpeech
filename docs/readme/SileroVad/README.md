@@ -1,4 +1,4 @@
- ([简体中文](README.zh_CN_.md) | English )
+ ([简体中文](README.zh_CN.md) | English )
 
 # ManySpeech.SileroVad User Guide
 

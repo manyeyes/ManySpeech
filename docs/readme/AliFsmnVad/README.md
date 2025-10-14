@@ -1,3 +1,5 @@
+ ([简体中文](README.zh_CN.md) | English )
+
 # ManySpeech.AliFsmnVad User Guide
 
 ManySpeech.AliFsmnVad is a C# library for **Fsmn-Vad model decoding**, primarily designed for **Voice Activity Detection (VAD)** to accurately identify valid speech segments in audio.

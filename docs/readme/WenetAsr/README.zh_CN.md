@@ -1,4 +1,6 @@
-﻿# ManySpeech.WenetAsr 使用指南
+﻿ ( 简体中文 | [English](README.md) )
+
+# ManySpeech.WenetAsr 使用指南
 
 ## 一、简介
 ManySpeech.WenetAsr 是一个用于解码 Wenet ASR ONNX 模型的 C# 库，具备以下特点：

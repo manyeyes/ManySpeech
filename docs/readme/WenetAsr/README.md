@@ -1,4 +1,6 @@
-﻿# ManySpeech.WenetAsr User Guide
+﻿ ([简体中文](README.zh_CN.md) | English )
+
+# ManySpeech.WenetAsr User Guide
 
 ## I. Introduction
 ManySpeech.WenetAsr is a C# library for decoding the Wenet ASR ONNX model, with the following features:

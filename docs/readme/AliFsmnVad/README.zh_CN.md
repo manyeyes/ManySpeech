@@ -1,3 +1,5 @@
+ ( 简体中文 | [English](README.md) )
+
 # ManySpeech.AliFsmnVad 使用指南
 
 ## 1. 简介

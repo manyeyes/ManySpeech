@@ -1,3 +1,5 @@
+ ([简体中文](README.zh_CN.md) | English )
+
 # ManySpeech.MoonshineAsr User Guide
 
 ## I. Introduction

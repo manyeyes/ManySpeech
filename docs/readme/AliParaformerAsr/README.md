@@ -1,3 +1,5 @@
+ ([¼òÌåÖÐÎÄ](README.zh_CN.md) | English )
+
 # ManySpeech.AliParaformerAsr User Guide
 
 ## I. Introduction

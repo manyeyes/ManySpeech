@@ -1,3 +1,5 @@
+ ([¼òÌåÖÐÎÄ](README.zh_CN.md) | English )
+
 # ManySpeech.FireRedAsr User Guide
 
 ## I. Introduction
