@@ -59,7 +59,7 @@ namespace ManySpeech.SileroVad.Examples
             }
 
             TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-            // one stream decode
+            // batch stream decode
             List<OfflineStream> streams = new List<OfflineStream>();
             foreach (float[] samplesItem in samples)
             {

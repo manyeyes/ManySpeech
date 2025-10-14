@@ -15,7 +15,7 @@ namespace ManySpeech.MoonshineAsr.Examples
             string vadModelFilePath = applicationBase + "/" + vadModelName + "/" + "model.int8.onnx";
             string vadMvnFilePath = applicationBase + vadModelName + "/" + "vad.mvn";
             string vadConfigFilePath = applicationBase + vadModelName + "/" + "vad.json";
-            MoonshineAsr.OnlineVadRecognizer onlineVadRecognizer = new MoonshineAsr.OnlineVadRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, vadModelFilePath, vadConfigFilePath, vadMvnFilePath, threadsNum: 1);
+            OnlineVadRecognizer onlineVadRecognizer = new OnlineVadRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, vadModelFilePath, vadConfigFilePath, vadMvnFilePath, threadsNum: 1);
             return onlineVadRecognizer;
         }
 
@@ -24,7 +24,7 @@ namespace ManySpeech.MoonshineAsr.Examples
             //string modelName = "moonshine-tiny-en-onnx";
             string modelName = "moonshine-base-en-onnx";
             string vadModelName = "speech_fsmn_vad_zh-cn-16k-common-onnx";
-            MoonshineAsr.OnlineVadRecognizer onlineVadRecognizer = initMoonshineAsrOnlineVadRecognizer(modelName,vadModelName);
+            OnlineVadRecognizer onlineVadRecognizer = initMoonshineAsrOnlineVadRecognizer(modelName,vadModelName);
             TimeSpan total_duration = TimeSpan.Zero;
             TimeSpan start_time = TimeSpan.Zero;
             TimeSpan end_time = TimeSpan.Zero;
