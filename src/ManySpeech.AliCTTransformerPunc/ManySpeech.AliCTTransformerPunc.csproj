@@ -14,14 +14,14 @@
 				<Nullable>enable</Nullable>
 				<!-- info -->
 				<PackageId>ManySpeech.AliCTTransformerPunc</PackageId>
-				<Version>1.0.5</Version>
+				<Version>1.0.6</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
 				<Summary>AliCTTransformerPunc is a "text punctuation prediction" library written in C#</Summary>
 				<Description>AliCTTransformerPunc is a "text punctuation prediction" library written in C#, which uses Microsoft.ML.OnnxRuntime to decode the ONNX model at the bottom layer, supports framework .Net6.0+, supports cross-platform compilation, and supports AOT compilation. It is simple and convenient to use.</Description>
-				<PackageProjectUrl>https://github.com/manyeyes/AliCTTransformerPunc</PackageProjectUrl>
-				<RepositoryUrl>https://github.com/manyeyes/AliCTTransformerPunc</RepositoryUrl>
+				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl>
+				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>
 				<IncludeSymbols>true</IncludeSymbols>
 				<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 				<PackageReadmeFile>App_Readme/README.md</PackageReadmeFile>

@@ -41,7 +41,7 @@
 				<MinVerDefaultPreReleaseIdentifiers>preview.0</MinVerDefaultPreReleaseIdentifiers>
 				<!--<MinVerBuildMetadata Condition="'$(manyeyes_hash)' != ''">manyeyes-$(manyeyes_hash.Substring(0,7))</MinVerBuildMetadata>
 			<manyeyes_hash> a1b2c3d4e5f67890abcdef </manyeyes_hash>-->
-				<Version>1.0.8</Version>
+				<Version>1.0.9</Version>
 				<!-- 文件版本与产品版本保持一致 -->
 				<FileVersion>1.0.8</FileVersion>
 				<!-- 预览版本信息（手动控制预览号，每次发布预览版时递增） -->

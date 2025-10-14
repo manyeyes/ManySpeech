@@ -14,7 +14,7 @@
 				<Nullable>enable</Nullable>
 				<!-- info -->
 				<PackageId>ManySpeech.AliFsmnVad</PackageId>
-				<Version>1.1.3</Version>
+				<Version>1.1.4</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
