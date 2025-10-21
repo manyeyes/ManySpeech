@@ -8,7 +8,7 @@ using System.Threading;
 
 namespace AudioInOut.Player
 {
-    internal class WindowsWaveOutPlayer : BasePlayer, IDisposable
+    public class WindowsWaveOutPlayer : BasePlayer, IDisposable
     {
         #region WaveOut Native Methods
         private static class WaveOutNative

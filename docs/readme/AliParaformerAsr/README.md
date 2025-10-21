@@ -3,7 +3,7 @@
 # ManySpeech.AliParaformerAsr User Guide
 
 ## I. Introduction
-ManySpeech.AliParaformerAsr is a "speech recognition" library written in C#. It decodes ONNX models by calling Microsoft.ML.OnnxRuntime at the bottom layer. It has several notable features:
+ManySpeech.AliParaformerAsr is a dedicated speech recognition component within the [ManySpeech](https://github.com/manyeyes/ManySpeech "ManySpeech") voice processing suite. It decodes ONNX models by calling Microsoft.ML.OnnxRuntime at the bottom layer. It has several notable features:
 - **Multi-environment Support**: It is compatible with multiple environments such as net461+, net60+, netcoreapp3.1, and netstandard2.0+, meeting the needs of different development scenarios.
 - **Cross-platform Compilation**: It supports cross-platform compilation, enabling it to be compiled and used on various operating systems like Windows, macOS, Linux, and Android, thus expanding its application range.
 - **AOT Compilation Support**: It is simple and convenient to use, facilitating developers to quickly integrate it into their projects.

@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace AudioInOut.Player
 {
-    internal class LinuxAlsaPlayer : BasePlayer, IDisposable
+    public class LinuxAlsaPlayer : BasePlayer, IDisposable
     {
         #region ALSA Native Methods
         private static class AlsaNative

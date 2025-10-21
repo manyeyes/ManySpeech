@@ -3,7 +3,7 @@
 # ManySpeech.AliParaformerAsr 使用指南
 
 ## 一、简介
-ManySpeech.AliParaformerAsr 是一款使用 C# 编写的“语音识别”库，其底层借助 Microsoft.ML.OnnxRuntime 对 onnx 模型进行解码，具备诸多优势：
+ManySpeech.AliParaformerAsr 是 [ManySpeech](https://github.com/manyeyes/ManySpeech "ManySpeech") 语音处理套件中一个专门的语音识别组件，支持paraformer-large、paraformer-seaco-large、sensevoice-small 等模型，其底层借助 Microsoft.ML.OnnxRuntime 对 onnx 模型进行解码，具备诸多优势：
 - **多环境支持**：可兼容 net461+、net60+、netcoreapp3.1 以及 netstandard2.0+ 等多种环境，能适配不同开发场景的需求。
 - **跨平台编译特性**：支持跨平台编译，无论是 Windows、macOS 还是 Linux、Android 等系统，都能进行编译使用，拓展了应用的范围。
 - **支持 AOT 编译**：使用起来简单便捷，方便开发者快速集成到项目中。
