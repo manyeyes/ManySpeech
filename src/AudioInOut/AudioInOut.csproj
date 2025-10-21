@@ -1,13 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
-				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
-				<!-- 平台最低版本要求 -->
-				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
-				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">21.0</SupportedOSPlatformVersion>
-				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-ios'))">14.2</SupportedOSPlatformVersion>
-				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">15.0</SupportedOSPlatformVersion>
+				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;</TargetFrameworks>
 				<!-- 统一配置 .NET 6+ 共有的属性 -->
 				<DefineConstants>$(DefineConstants);MODERN_DOTNET</DefineConstants>
 				<LangVersion>10</LangVersion>
@@ -25,8 +19,8 @@
 				<Summary>c# library for audio playback, recording, and processing, supporting Windows, Linux, and Mac platforms.</Summary>
 				<Description>AudioInOut is based on NET's high-performance audio processing library provides cross platform audio playback, recording, and processing functions.</Description>
 				<PackageTags>audio playback recording cross-platform</PackageTags>
-				<PackageProjectUrl>https://github.com/manyeyes/AudioInOut</PackageProjectUrl>
-				<RepositoryUrl>https://github.com/manyeyes/AudioInOut</RepositoryUrl>
+				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl>
+				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>
 				<IncludeSymbols>true</IncludeSymbols>
 				<SymbolPackageFormat>snupkg</SymbolPackageFormat>
 				<Nullable>enable</Nullable>

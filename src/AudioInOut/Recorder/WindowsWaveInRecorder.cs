@@ -1,16 +1,17 @@
-﻿using System;
+﻿using AudioInOut.Base;
+using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.InteropServices;
+using System.Runtime.InteropServices.ComTypes;
 using System.Text;
 using System.Threading.Tasks;
-using AudioInOut.Base;
 using static AudioInOut.Recorder.WaveInterop;
 
 namespace AudioInOut.Recorder
 {
-    internal class WindowsWaveInRecorder :BaseRecorder, IDisposable
+    public class WindowsWaveInRecorder : BaseRecorder, IDisposable
     {
         private bool _disposed = false;
         private readonly object _disposeLock = new object();
@@ -34,7 +35,7 @@ namespace AudioInOut.Recorder
         private readonly WaveInProc _callbackDelegate;
         private readonly GCHandle _callbackHandle;
 
-        public WindowsWaveInRecorder(int bufferMilliseconds = 100)
+        public WindowsWaveInRecorder(int bufferMilliseconds = 200)
         {
             //_sampleRate = 16000;
             _bufferMilliseconds = bufferMilliseconds;
@@ -149,17 +150,17 @@ namespace AudioInOut.Recorder
 
             return normalizedSamples;
         }
-
         private void PrepareBuffers()
         {
             // 计算缓冲区大小
             int bufferSize = SampleRate * _bufferMilliseconds * (BitsPerSample / 8) * Channels / 1000;
             const int bufferCount = 3; // 三重缓冲
-
+            CleanupBuffers();
             for (int i = 0; i < bufferCount; i++)
             {
                 // 分配音频数据缓冲区
                 nint dataPtr = Marshal.AllocHGlobal(bufferSize);
+
                 _bufferPointers.Add(dataPtr);
 
                 // 创建 wave header
@@ -178,27 +179,56 @@ namespace AudioInOut.Recorder
                 nint headerPtr = Marshal.AllocHGlobal(Marshal.SizeOf<WaveHeader>());
                 Marshal.StructureToPtr(header, headerPtr, false);
                 _headerPointers.Add(headerPtr);
-
-                // 准备 header
-                var prepareResult = waveInPrepareHeader(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
-
-                if (prepareResult != MMSYSERR_NOERROR)
+                try
                 {
-                    Console.WriteLine($"Warning: Prepare header failed. Error: {prepareResult}");
-                    continue;
+                    // 准备 header
+                    var prepareResult = waveInPrepareHeader(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
+
+                    if (prepareResult != MMSYSERR_NOERROR)
+                    {
+                        Console.WriteLine($"Warning: Prepare header failed. Error: {prepareResult}");
+                        continue;
+                    }
+
+                    // 添加缓冲区
+                    var addResult = waveInAddBuffer(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
+
+                    if (addResult != MMSYSERR_NOERROR)
+                    {
+                        //waveInUnprepareHeader(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>()); // 释放已准备的header
+                        //CleanupBuffers();
+                        //throw new InvalidOperationException($"Failed to add buffer (index {i}): {errorMsg} (Code: {addResult})");
+                        Console.WriteLine($"Warning: Add buffer failed. Error: {addResult}");
+                    }
                 }
-
-                // 添加缓冲区
-                var addResult = waveInAddBuffer(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
-
-                if (addResult != MMSYSERR_NOERROR)
+                catch (Exception ex)
                 {
-                    Console.WriteLine($"Warning: Add buffer failed. Error: {addResult}");
+                    // 发生错误时，清理当前循环已分配的资源
+                    Console.WriteLine($"Error in PrepareBuffers (index {i}): {ex.Message}");
+
+                    // 移除当前循环添加的指针（避免 Cleanup 释放未分配的资源）
+                    if (dataPtr != default(nint) && _bufferPointers.Contains(dataPtr))
+                    {
+                        _bufferPointers.Remove(dataPtr);
+                        Marshal.FreeHGlobal(dataPtr);
+                    }
+                    if (headerPtr != default(nint) && _headerPointers.Contains(headerPtr))
+                    {
+                        _headerPointers.Remove(headerPtr);
+                        waveInUnprepareHeader(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
+                        Marshal.FreeHGlobal(headerPtr);
+                    }
+
+                    // 彻底清理所有已分配的资源
+                    CleanupBuffers();
+
+                    // 终止循环，不再继续分配
+                    throw; // 抛出异常，让上层处理（如终止启动）
                 }
             }
         }
 
-        public override void StartCapture()
+        public override async Task StartCapture()
         {
             if (IsCapturing) return;
 
@@ -215,7 +245,6 @@ namespace AudioInOut.Recorder
                 {
                     throw new InvalidOperationException($"Failed to start recording. Error: {result}");
                 }
-
                 IsCapturing = true;
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 麦克风实时采集已启动，按 ESC 键停止...");
             }
@@ -235,7 +264,7 @@ namespace AudioInOut.Recorder
                 {
                     Console.WriteLine($"Warning: Stop failed. Error: {stopResult}");
                 }
-
+                waveInReset(_waveInHandle); // 清空驱动队列
                 // 清理缓冲区
                 CleanupBuffers();
 
@@ -432,6 +461,9 @@ namespace AudioInOut.Recorder
 
         [DllImport("winmm.dll", EntryPoint = "waveInStop")]
         public static extern int waveInStop(nint hwi);
+
+        [DllImport("winmm.dll", EntryPoint = "waveInReset")]
+        public static extern int waveInReset(nint hwi);
 
         [DllImport("winmm.dll", EntryPoint = "waveInPrepareHeader")]
         public static extern int waveInPrepareHeader(nint hwi, nint pwh, int cbwh);

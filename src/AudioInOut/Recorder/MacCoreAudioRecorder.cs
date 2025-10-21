@@ -13,7 +13,7 @@ namespace AudioInOut.Recorder
     public delegate void AudioQueueInputCallback(nint inUserData, nint inAQ, nint inBuffer,
         nint inStartTime, ulong inNumPackets, nint inPacketDesc);
 
-    internal class MacCoreAudioRecorder :BaseRecorder, IDisposable
+    public class MacCoreAudioRecorder : BaseRecorder, IDisposable
     {
         private nint _audioQueue = default(nint);
         private bool _isCapturing = false;
@@ -33,7 +33,7 @@ namespace AudioInOut.Recorder
             _audioChunkQueue = new ConcurrentQueue<float[]>();
         }
 
-        public override void StartCapture()
+        public override async Task StartCapture()
         {
             if (_isCapturing) return;
 

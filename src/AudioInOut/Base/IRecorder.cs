@@ -34,7 +34,7 @@ namespace AudioInOut.Base
         /// <summary>
         /// 开始音频采集
         /// </summary>
-        void StartCapture();
+        Task StartCapture();
 
         /// <summary>
         /// 停止音频采集

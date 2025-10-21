@@ -13,7 +13,7 @@ namespace AudioInOut.Base
         public int BitsPerSample => 16;
         public int Channels => 1;
 
-        public abstract void StartCapture();
+        public abstract Task StartCapture();
         public abstract void StopCapture();
         public abstract Task<List<List<float[]>>?> GetNextMicChunkAsync(CancellationToken cancellationToken);
 

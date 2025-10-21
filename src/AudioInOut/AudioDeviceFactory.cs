@@ -1,6 +1,5 @@
 ﻿using AudioInOut.Base;
 using AudioInOut.Recorder;
-using AudioInOut.Base;
 using AudioInOut.Player;
 using System.Runtime.InteropServices;
 
@@ -86,7 +85,7 @@ namespace AudioInOut
         /// <summary>
         /// 创建特定采样率的音频采集设备
         /// </summary>
-        public static IRecorder CreateAudioCapture(int sampleRate, int bufferMilliseconds = 100)
+        public static IRecorder CreateAudioCapture(int sampleRate, int bufferMilliseconds = 100) 
         {
             // 这里可以根据需要创建支持不同采样率的设备
             // 目前所有设备都固定为16kHz，如果需要可变采样率，可以修改实现

@@ -7,7 +7,7 @@ using System.Threading;
 
 namespace AudioInOut.Player
 {
-    internal class MacCoreAudioPlayer : BasePlayer, IDisposable
+    public class MacCoreAudioPlayer : BasePlayer, IDisposable
     {
         #region Core Audio Native Methods
         private static class CoreAudioNative

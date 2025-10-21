@@ -8,7 +8,7 @@ using AudioInOut.Base;
 
 namespace AudioInOut.Recorder
 {
-    internal class LinuxAlsaRecorder : BaseRecorder, IDisposable
+    public class LinuxAlsaRecorder : BaseRecorder, IDisposable
     {
         private nint _pcmHandle = default(nint);//nint.Zero;
         private bool _isCapturing = false;
@@ -27,7 +27,7 @@ namespace AudioInOut.Recorder
             _audioChunkQueue = new ConcurrentQueue<float[]>();
         }
 
-        public override void StartCapture()
+        public override async Task StartCapture()
         {
             if (_isCapturing) return;
 
