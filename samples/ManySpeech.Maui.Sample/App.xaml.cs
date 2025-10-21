@@ -5,18 +5,24 @@
         public App()
         {
             InitializeComponent();
-
-            //MainPage = new AppShell();
             MainPage = new MySplashPage();
             _ = EndSplash();
         }
         async Task EndSplash()
         {
-            await Task.Delay(1000);
-            MainThread.BeginInvokeOnMainThread(() =>
+            try
             {
-                MainPage = new AppShell();
-            });
+                await Task.Delay(1500);
+                MainThread.BeginInvokeOnMainThread(() =>
+                {
+                    MainPage = new AppShell();
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"MainPage switching failed: {ex.Message}");
+                MainPage = new AppShell(); 
+            }
         }
     }
 }

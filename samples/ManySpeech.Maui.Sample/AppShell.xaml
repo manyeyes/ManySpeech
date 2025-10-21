@@ -5,7 +5,7 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:ManySpeech.Maui.Sample"
     xmlns:sys="clr-namespace:System;assembly=netstandard"
-    Shell.FlyoutBehavior="Locked"
+    Shell.FlyoutBehavior="Flyout"
     Shell.NavBarIsVisible="{OnPlatform Default='False', iOS='True', Android='True'}"    
     Shell.NavBarHasShadow="True"
     Shell.TabBarForegroundColor="WhiteSmoke"
@@ -37,7 +37,7 @@
     </Shell.ItemTemplate>
     <Shell.FlyoutHeader>
         <VerticalStackLayout HorizontalOptions="Start" VerticalOptions="Center" Padding="0,0">
-            <Label Margin="{OnPlatform Default='15,0,0,12',
+            <Label Margin="{OnPlatform Default='15,30,0,12',
                     iOS='0',
                     MacCatalyst='0'}"
 Padding="{OnPlatform Default='4,0',
@@ -47,9 +47,6 @@ HorizontalTextAlignment="Start"
 Text="ManySpeech" FontSize="Small"/>
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
-    <!--<FlyoutItem Title="Home" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:MainPage}"/>
-    </FlyoutItem>-->
     <FlyoutItem Title="Home" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:MainPage}">
             <ShellContent.Icon>
@@ -76,13 +73,12 @@ Text="ManySpeech" FontSize="Small"/>
         <ShellContent ContentTemplate="{DataTemplate local:SensevoiceOfflineAsr}"/>
     </FlyoutItem>
     <FlyoutItem Title="wenet-asr-offline" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:RecognitionForOnline}"/>
+        <ShellContent ContentTemplate="{DataTemplate local:WenetOfflineAsr}"/>
     </FlyoutItem>
     <FlyoutItem Title="wenet-asr-online" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:RecognitionForOnline}"/>
+        <ShellContent ContentTemplate="{DataTemplate local:WenetOnlineAsr}"/>
     </FlyoutItem>
     <!--
-
     <FlyoutItem Title="whisper-asr-offline" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:RecognitionForOnline}"/>
     </FlyoutItem>

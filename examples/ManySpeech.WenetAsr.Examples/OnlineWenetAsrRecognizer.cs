@@ -9,7 +9,7 @@ namespace ManySpeech.WenetAsr.Examples
     internal partial class OnlineWenetAsrRecognizer : BaseAsr
     {
         private static OnlineRecognizer? _onlineRecognizer;
-        public static OnlineRecognizer? initOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
+        public static OnlineRecognizer? InitOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
             if (_onlineRecognizer == null)
             {
@@ -114,7 +114,7 @@ namespace ManySpeech.WenetAsr.Examples
             {
                 modelBasePath = applicationBase;
             }
-            OnlineRecognizer? onlineRecognizer = initOnlineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            OnlineRecognizer? onlineRecognizer = InitOnlineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (onlineRecognizer == null)
             {
                 Console.WriteLine("Init models failure!");

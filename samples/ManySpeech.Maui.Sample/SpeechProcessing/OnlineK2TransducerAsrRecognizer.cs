@@ -29,10 +29,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string encoderFilePath = modelBasePath + "./" + modelName + "/model.int8.onnx";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
                 string decoderFilePath = "";
                 string joinerFilePath = "";
-                string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
+                string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
                     string folderPath = Path.Combine(modelBasePath, modelName);
@@ -137,50 +137,57 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 throw new InvalidOperationException("Failed to initialize recognizer");
             }
             var results = new List<AsrResultEntity>();
-            Console.WriteLine("Automatic speech recognition in progress!");
-            var stopwatch = Stopwatch.StartNew();
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
-            if (streamDecodeMethod == "one")
+            try
             {
-                //one stream decode
-                for (int j = 0; j < samplesList.Count; j++)
+                Console.WriteLine("Automatic speech recognition in progress!");
+                var stopwatch = Stopwatch.StartNew();
+                streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
+                if (streamDecodeMethod == "one")
                 {
-                    DateTime processStartTime = DateTime.Now;
-                    using var stream = onlineRecognizer.CreateOnlineStream();
-                    List<int[]> timestamps = new List<int[]>() { new int[2] };
-                    foreach (float[] samplesItem in samplesList[j])
+                    //one stream decode
+                    for (int j = 0; j < samplesList.Count; j++)
                     {
-                        stream.AddSamples(samplesItem);
-                        var nativeResult = onlineRecognizer.GetResult(stream);
-                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
-                        var resultEntity = ConvertToResultEntity(nativeResult, j, processingTime);
-                        resultEntity.ModelName = modelName;
-                        if (samplesItem.SkipLast(Math.Min(samplesItem.Length, 1600)).Average() != 0)
+                        DateTime processStartTime = DateTime.Now;
+                        using var stream = onlineRecognizer.CreateOnlineStream();
+                        List<int[]> timestamps = new List<int[]>() { new int[2] };
+                        foreach (float[] samplesItem in samplesList[j])
                         {
-                            timestamps.Add(new int[] { timestamps.Last()[1], timestamps.Last()[1] + (int)CalculateAudioDuration(samplesItem) });
+                            stream.AddSamples(samplesItem);
+                            var nativeResult = onlineRecognizer.GetResult(stream);
+                            var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                            var resultEntity = ConvertToResultEntity(nativeResult, j, processingTime);
+                            resultEntity.ModelName = modelName;
+                            if (samplesItem.SkipLast(Math.Min(samplesItem.Length, 1600)).Average() != 0)
+                            {
+                                timestamps.Add(new int[] { timestamps.Last()[1], timestamps.Last()[1] + (int)CalculateAudioDuration(samplesItem) });
+                            }
+                            resultEntity.Timestamps = timestamps.ToArray();
+                            results.Add(resultEntity);
+                            RaiseRecognitionResult(resultEntity);
                         }
-                        resultEntity.Timestamps = timestamps.ToArray();
-                        results.Add(resultEntity);
-                        RaiseRecognitionResult(resultEntity);
+                    }
+                    // one stream decode
+                }
+                if (streamDecodeMethod == "batch")
+                {
+                    await ProcessMultiStream(onlineRecognizer, samplesList, modelName);
+                }
+                if (streamDecodeMethod == "chunk")
+                {
+                    for (int j = 0; j < samplesList.Count; j++)
+                    {
+                        var chunkResults = await ProcessChunkStream(onlineRecognizer, new List<List<float[]>> { samplesList[j] }, modelName);
+                        results.AddRange(chunkResults);
                     }
                 }
-                // one stream decode
+                stopwatch.Stop();
+                int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
+                RaiseRecognitionCompleted(stopwatch.Elapsed, TimeSpan.FromMilliseconds(totalDurationMs), results.Count);
             }
-            if (streamDecodeMethod == "batch")
+            catch (Exception ex)
             {
-                await ProcessMultiStream(onlineRecognizer, samplesList, modelName);
+                Console.WriteLine($"Error occurred: {ex.Message}");
             }
-            if (streamDecodeMethod == "chunk")
-            {
-                for (int j = 0; j < samplesList.Count; j++)
-                {
-                    var chunkResults = await ProcessChunkStream(onlineRecognizer, new List<List<float[]>> { samplesList[j] }, modelName);
-                    results.AddRange(chunkResults);
-                }
-            }
-            stopwatch.Stop();
-            int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
-            RaiseRecognitionCompleted(stopwatch.Elapsed, TimeSpan.FromMilliseconds(totalDurationMs), results.Count);
             return results;
         }
 

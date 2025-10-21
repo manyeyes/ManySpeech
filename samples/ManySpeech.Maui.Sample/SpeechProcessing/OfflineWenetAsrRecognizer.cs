@@ -1,11 +1,11 @@
-﻿using ManySpeech.AliParaformerAsr;
-using ManySpeech.AliParaformerAsr.Model;
-using ManySpeech.Maui.Sample.SpeechProcessing.Base;
+﻿using ManySpeech.Maui.Sample.SpeechProcessing.Base;
 using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
+using ManySpeech.WenetAsr;
+using ManySpeech.WenetAsr.Model;
 
 namespace ManySpeech.Maui.Sample.SpeechProcessing
 {
-    internal partial class OfflineAliParaformerAsrRecognizer : BaseAsr
+    internal partial class OfflineWenetAsrRecognizer : BaseAsr
     {
         private OfflineRecognizer? _recognizer;
         public OfflineRecognizer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
@@ -16,12 +16,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string modelFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
-                string configFilePath = modelBasePath + "/" + modelName + "/asr.yaml";
-                string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
+                string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
+                string ctcFilePath = modelBasePath + "/" + modelName + "/ctc.int8.onnx";
                 string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
-                string modelebFilePath = modelBasePath + "/" + modelName + "/model_eb.int8.onnx";
-                string hotwordFilePath = modelBasePath + "/" + modelName + "/hotword.txt";
                 try
                 {
                     string folderPath = Path.Combine(modelBasePath, modelName);
@@ -44,55 +42,51 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         })
                         .ToList();
 
-                    // Process model path (priority: containing modelAccuracy>last one that matches prefix)
-                    var modelCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("_eb"))
+                    // Process encoder path (priority: containing modelAccuracy>last one that matches prefix)
+                    var encoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("encoder."))
                         .ToList();
-                    if (modelCandidates.Any())
+                    if (encoderCandidates.Any())
                     {
                         // Prioritize selecting files that contain the specified model accuracy
-                        var preferredModel = modelCandidates
+                        var preferredModel = encoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        modelFilePath = preferredModel?.TargetPath ?? modelCandidates.Last().TargetPath;
+                        encoderFilePath = preferredModel?.TargetPath ?? encoderCandidates.Last().TargetPath;
                     }
 
-                    // Process modeleb path
-                    var modelebCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model_eb"))
+                    // Process decoder path
+                    var decoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("decoder."))
                         .ToList();
-                    if (modelebCandidates.Any())
+                    if (decoderCandidates.Any())
                     {
-                        var preferredModeleb = modelebCandidates
+                        var preferredModeleb = decoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        modelebFilePath = preferredModeleb?.TargetPath ?? modelebCandidates.Last().TargetPath;
+                        decoderFilePath = preferredModeleb?.TargetPath ?? decoderCandidates.Last().TargetPath;
                     }
 
-                    // Process config paths (take the last one that matches the prefix)
-                    configFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("asr") && (f.FileName.EndsWith(".yaml") || f.FileName.EndsWith(".json")))
-                        ?.TargetPath ?? "";
-
-                    // Process mvn paths (take the last one that matches the prefix)
-                    mvnFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("am") && f.FileName.EndsWith(".mvn"))
-                        ?.TargetPath ?? "";
+                    // Process ctc path
+                    var ctcCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("ctc."))
+                        .ToList();
+                    if (ctcCandidates.Any())
+                    {
+                        var preferredModeleb = ctcCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        ctcFilePath = preferredModeleb?.TargetPath ?? ctcCandidates.Last().TargetPath;
+                    }
 
                     // Process token paths (take the last one that matches the prefix)
                     tokensFilePath = fileInfos
                         .LastOrDefault(f => f.FileName.StartsWith("tokens") && f.FileName.EndsWith(".txt"))
                         ?.TargetPath ?? "";
 
-                    // Process hotword paths (take the last one that matches the prefix)
-                    hotwordFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("hotword") && f.FileName.EndsWith(".txt"))
-                        ?.TargetPath ?? "";
-
-                    if (string.IsNullOrEmpty(modelFilePath) || string.IsNullOrEmpty(tokensFilePath))
+                    if (new[] { encoderFilePath, decoderFilePath, ctcFilePath, tokensFilePath }.Any(string.IsNullOrEmpty))
                     {
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OfflineRecognizer(modelFilePath: modelFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, modelebFilePath: modelebFilePath, hotwordFilePath: hotwordFilePath, threadsNum: threadsNum);
+                    _recognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, ctcFilePath: ctcFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -112,10 +106,11 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return _recognizer;
         }
+
         public override async Task<List<AsrResultEntity>> RecognizeAsync(
             List<List<float[]>> samplesList,
             string modelBasePath,
-            string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline",
+            string modelName = "wenet-u2pp-conformer-wenetspeech-onnx-offline-20220506",
             string modelAccuracy = "int8",
             string streamDecodeMethod = "one",
             int threadsNum = 2)
@@ -124,7 +119,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             {
                 modelBasePath = applicationBase;
             }
-            OfflineRecognizer offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            OfflineRecognizer? offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (offlineRecognizer == null)
             {
                 throw new InvalidOperationException("Failed to initialize recognizer");
@@ -144,8 +139,6 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         for (int i = 0; i < samplesList.Count; i++)
                         {
                             OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                            // Modify the logic here to dynamically modify hot words
-                            //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" }); 
                             foreach (var sample in samplesList[i])
                             {
                                 stream.AddSamples(sample);
@@ -195,6 +188,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         Console.WriteLine(ex.Message);
                         Console.WriteLine(ex.InnerException?.InnerException.Message);
                     }
+                    // batch method
                 }
                 int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
                 RaiseRecognitionCompleted(DateTime.Now - processStartTime, TimeSpan.FromMilliseconds(totalDurationMs), samplesList.Count);
@@ -205,7 +199,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return results;
         }
-        protected static AsrResultEntity ConvertToResultEntity(AliParaformerAsr.Model.OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        protected static AsrResultEntity ConvertToResultEntity(OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
         {
             return new AsrResultEntity
             {

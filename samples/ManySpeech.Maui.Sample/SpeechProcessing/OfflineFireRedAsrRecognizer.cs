@@ -17,11 +17,11 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string encoderFilePath = modelBasePath + "./" + modelName + "/encoder.int8.onnx";
-                string decoderFilePath = modelBasePath + "./" + modelName + "/decoder.int8.onnx";
-                string configFilePath = modelBasePath + "./" + modelName + "/config.json";
-                string mvnFilePath = modelBasePath + "./" + modelName + "/am.mvn";
-                string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
+                string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
+                string configFilePath = modelBasePath + "/" + modelName + "/config.json";
+                string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
+                string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
                     string folderPath = Path.Combine(modelBasePath, modelName);
@@ -125,70 +125,77 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 throw new InvalidOperationException("Failed to initialize recognizer");
             }
             var results = new List<AsrResultEntity>();
-            Console.WriteLine("Automatic speech recognition in progress!");
-            DateTime processStartTime = DateTime.Now;
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
-            if (streamDecodeMethod == "one")
+            try
             {
-                // Non batch method
-                Console.WriteLine("Recognition results:\r\n");
-                try
+                Console.WriteLine("Automatic speech recognition in progress!");
+                DateTime processStartTime = DateTime.Now;
+                streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
+                if (streamDecodeMethod == "one")
                 {
-                    for (int i = 0; i < samplesList.Count; i++)
+                    // Non batch method
+                    Console.WriteLine("Recognition results:\r\n");
+                    try
                     {
-                        OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                        foreach (var sample in samplesList[i])
+                        for (int i = 0; i < samplesList.Count; i++)
                         {
-                            stream.AddSamples(sample);
+                            OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                            foreach (var sample in samplesList[i])
+                            {
+                                stream.AddSamples(sample);
+                            }
+                            OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                            var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                            var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
+                            results.Add(resultEntity);
+                            RaiseRecognitionResult(resultEntity);
                         }
-                        OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
-                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
-                        var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
-                        results.Add(resultEntity);
-                        RaiseRecognitionResult(resultEntity);
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.InnerException?.InnerException);
+                    }
+                    // Non batch method
+                }
+                if (streamDecodeMethod == "batch")
+                {
+                    //2. batch method
+                    Console.WriteLine("Recognition results:\r\n");
+                    try
+                    {
+                        //int n = 0;
+                        List<OfflineStream> streams = new List<OfflineStream>();
+                        foreach (var sampleGroup in samplesList)
+                        {
+                            var stream = offlineRecognizer.CreateOfflineStream();
+                            foreach (var sample in sampleGroup)
+                            {
+                                stream.AddSamples(sample);
+                            }
+                            streams.Add(stream);
+                        }
+                        var nativeResults = offlineRecognizer.GetResults(streams);
+                        for (int i = 0; i < nativeResults.Count; i++)
+                        {
+                            var resultEntity = ConvertToResultEntity(nativeResults[i], i, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
+                            resultEntity.ModelName = modelName;
+                            results.Add(resultEntity);
+                            RaiseRecognitionResult(resultEntity);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.InnerException?.InnerException.Message);
                     }
                 }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.InnerException?.InnerException);
-                }
-                // Non batch method
+                int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
+                RaiseRecognitionCompleted(DateTime.Now - processStartTime, TimeSpan.FromMilliseconds(totalDurationMs), samplesList.Count);
             }
-            if (streamDecodeMethod == "batch")
+            catch (Exception ex)
             {
-                //2. batch method
-                Console.WriteLine("Recognition results:\r\n");
-                try
-                {
-                    //int n = 0;
-                    List<OfflineStream> streams = new List<OfflineStream>();
-                    foreach (var sampleGroup in samplesList)
-                    {
-                        var stream = offlineRecognizer.CreateOfflineStream();
-                        foreach (var sample in sampleGroup)
-                        {
-                            stream.AddSamples(sample);
-                        }
-                        streams.Add(stream);
-                    }
-                    var nativeResults = offlineRecognizer.GetResults(streams);
-                    for (int i = 0; i < nativeResults.Count; i++)
-                    {
-                        var resultEntity = ConvertToResultEntity(nativeResults[i], i, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
-                        resultEntity.ModelName = modelName;
-                        results.Add(resultEntity);
-                        RaiseRecognitionResult(resultEntity);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.InnerException?.InnerException.Message);
-                }
+                Console.WriteLine($"Error occurred: {ex.Message}");
             }
-            int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
-            RaiseRecognitionCompleted(DateTime.Now - processStartTime, TimeSpan.FromMilliseconds(totalDurationMs), samplesList.Count);
             return results;
         }
         protected static AsrResultEntity ConvertToResultEntity(FireRedAsr.Model.OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)

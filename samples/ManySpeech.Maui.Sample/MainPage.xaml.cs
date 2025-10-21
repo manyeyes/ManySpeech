@@ -2,14 +2,13 @@
 {
     public partial class MainPage : ContentPage
     {
-        int count = 0;
         private Timer _timer;
         private DateTime _currentTime;
 
         public MainPage()
         {
             InitializeComponent();
-            StartClock();
+            StartClock(); 
         }
 
         private void StartClock()

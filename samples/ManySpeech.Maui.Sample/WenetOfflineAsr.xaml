@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="ManySpeech.Maui.Sample.ParaformerOfflineAsr">
+             x:Class="ManySpeech.Maui.Sample.WenetOfflineAsr">
     <ContentPage.Resources>
         <Style TargetType="Button" x:Key="SmallButtonStyle">
             <Setter Property="Padding" Value="2,3" />
@@ -16,7 +16,7 @@
 
     <Grid RowDefinitions="Auto,*">
         <!-- 顶部固定区域 -->
-        <StackLayout Grid.Row="0" BackgroundColor="Transparent" Padding="16,10">
+        <StackLayout Grid.Row="0" BackgroundColor="Transparent" Padding="20,10">
             <StackLayout BackgroundColor="Transparent" Padding="0,10">
                 <Label Text=""
                        x:Name="LblTitle" FontSize="Title"
@@ -132,23 +132,20 @@ HorizontalOptions="Fill" />
         </StackLayout>
 
         <!-- 底部滚动区域 -->
-        <ScrollView x:Name="LabelResultsScrollView" Grid.Row="1" Margin="0,15">
-            <VerticalStackLayout
-            Spacing="0"
-            Padding="15,0"
-            VerticalOptions="Start">
-                <Border StrokeThickness="0.2" FlowDirection="MatchParent"
-                StrokeShape="RoundRectangle 5"
-                Padding="0,0"
-                HorizontalOptions="Fill">
-                    <Border.Stroke>
-                        <LinearGradientBrush EndPoint="0,500">
-                            <GradientStop Color="LightGray"
-				  Offset="0.1"/>
-                            <GradientStop Color="Red"
-				  Offset="0.1"/>
-                        </LinearGradientBrush>
-                    </Border.Stroke>
+        <Border StrokeThickness="0.1" FlowDirection="MatchParent" Grid.Row="1"
+            StrokeShape="RoundRectangle 5" Padding="-15,10" Margin="10,10"
+            HorizontalOptions="Fill">
+            <Border.Stroke>
+                <LinearGradientBrush EndPoint="0,500">
+                    <GradientStop Color="LightGray" Offset="0.1"/>
+                    <GradientStop Color="Red" Offset="0.1"/>
+                </LinearGradientBrush>
+            </Border.Stroke>
+            <ScrollView x:Name="LabelResultsScrollView">
+                <VerticalStackLayout
+                    Spacing="0"
+                    Padding="15,0"
+                    VerticalOptions="Start">
                     <Label FlowDirection="MatchParent"
                         Text="" 
                         LineBreakMode="WordWrap"
@@ -157,17 +154,15 @@ HorizontalOptions="Fill" />
                         Padding="10,10,10,10"
                         x:Name="LblResults"
                         HorizontalOptions="Start"/>
-                </Border>
-
-                <Editor 
-            x:Name="EditorResults"
-            IsVisible="False"
-            FontSize="15"
-            Margin="0"            
-            Placeholder="Enter your response here"/>
-
-            </VerticalStackLayout>
-
-        </ScrollView>
+                    <Editor 
+                        x:Name="EditorResults"
+                        IsVisible="False"
+                        FontSize="15"
+                        Margin="0"
+                        BackgroundColor="Transparent"
+                        Placeholder="Enter your response here"/>
+                </VerticalStackLayout>
+            </ScrollView>
+        </Border>
     </Grid>
 </ContentPage>

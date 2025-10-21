@@ -5,25 +5,26 @@ using System.Text;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class ParaformerOfflineAsr : ContentPage
+public partial class WenetOfflineAsr : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
     // 1.打开 https://modelscope.cn/profile/manyeyes?tab=model 页面
-    // 2.搜索 sensevoice, paraformer offline onnx 离线模型（非流式模型）
+    // 2.搜索 wenet offline onnx 离线模型（非流式模型）
     // 3.设置 _modelName 值，_modelName = [模型名称]
-    private string _modelName = "paraformer-seaco-large-zh-timestamp-int8-onnx-offline";
+    //private string _modelName = "wenet-u2pp-conformer-gigaspeech-onnx-offline-20210728";
+    private string _modelName = "wenet-u2pp-conformer-wenetspeech-onnx-offline-20220506";
     // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
     // hash为空时，仅判断文件是否存在
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
-        {"model.int8.onnx",""},
-        {"am.mvn","" },
-        {"asr.json","" },
+        {"encoder.int8.onnx",""},
+        {"decoder.int8.onnx","" },
+        {"ctc.int8.onnx","" },
         {"tokens.txt","" }
     }; 
-    OfflineAliParaformerAsrRecognizer? _recognizer;
+    OfflineWenetAsrRecognizer? _recognizer;
 
-    public ParaformerOfflineAsr()
+    public WenetOfflineAsr()
     {
         InitializeComponent();
         CheckModels();
@@ -306,7 +307,7 @@ public partial class ParaformerOfflineAsr : ContentPage
             int threads = 2;
             if (_recognizer == null)
             {
-                _recognizer = new OfflineAliParaformerAsrRecognizer();
+                _recognizer = new OfflineWenetAsrRecognizer();
                 SetOfflineRecognizerCallbackForResult(_recognizer, "offline", "text");
                 SetOfflineRecognizerCallbackForCompleted(_recognizer);
             }
@@ -424,7 +425,7 @@ public partial class ParaformerOfflineAsr : ContentPage
     }
 
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineAliParaformerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
+    private void SetOfflineRecognizerCallbackForResult(OfflineWenetAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
     {
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
@@ -464,7 +465,7 @@ public partial class ParaformerOfflineAsr : ContentPage
             i++;
         };
     }
-    private void SetOfflineRecognizerCallbackForCompleted(OfflineAliParaformerAsrRecognizer recognizer)
+    private void SetOfflineRecognizerCallbackForCompleted(OfflineWenetAsrRecognizer recognizer)
     {
         recognizer.ResetRecognitionCompletedHandlers();
         recognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>

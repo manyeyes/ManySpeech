@@ -14,7 +14,7 @@ namespace ManySpeech.Maui.Sample.Utils
         private static string _applicationBase = AppDomain.CurrentDomain.BaseDirectory;
         public SysConf() { }
 
-        //public static string ApplicationBase { get => _applicationBase; set => _applicationBase = value; }
+        public static string ApplicationBase { get => _applicationBase; set => _applicationBase = value; }
         public static string AppDataPath { get => _appDataPath; set => _appDataPath = value; }
     }
 }

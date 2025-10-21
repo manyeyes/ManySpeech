@@ -438,17 +438,17 @@ public partial class RecognitionForOnline : ContentPage
     int i = 1;
     private async void AppendAsrResults(string str, bool isAppend = true)
     {
-        AsrResults.Dispatcher.Dispatch(
+        LblResults.Dispatcher.Dispatch(
                     new Action(
                         delegate
                         {
                             if (isAppend)
                             {
-                                AsrResults.Text += str;
+                                LblResults.Text += str;
                             }
                             else
                             {
-                                AsrResults.Text = str;
+                                LblResults.Text = str;
                             }
                             //EditorAsrResults.CursorPosition = (int)EditorAsrResults.Height;
                         }
@@ -481,11 +481,11 @@ public partial class RecognitionForOnline : ContentPage
     }
     private void ClearAsrResults()
     {
-        AsrResults.Dispatcher.Dispatch(
+        LblResults.Dispatcher.Dispatch(
                     new Action(
                         delegate
                         {
-                            AsrResults.Text = "";
+                            LblResults.Text = "";
                         }
                         ));
     }
@@ -526,19 +526,19 @@ public partial class RecognitionForOnline : ContentPage
     }
     private void OnEditAsrResultsClicked(object sender, EventArgs e)
     {
-        EditorAsrResults.Text = AsrResults.Text;
+        EditorAsrResults.Text = LblResults.Text;
         EditorAsrResults.IsVisible = true;
-        EditorAsrResults.HeightRequest = AsrResults.Height;
-        AsrResults.IsVisible = false;
+        EditorAsrResults.HeightRequest = LblResults.Height;
+        LblResults.IsVisible = false;
         BtnEditAsrResults.IsVisible = false;
         BtnEditedAsrResults.IsVisible = true;
     }
 
     private void OnEditedAsrResultsClicked(object sender, EventArgs e)
     {
-        AsrResults.Text = EditorAsrResults.Text;
+        LblResults.Text = EditorAsrResults.Text;
         EditorAsrResults.IsVisible = false;
-        AsrResults.IsVisible = true;
+        LblResults.IsVisible = true;
         BtnEditAsrResults.IsVisible = true;
         BtnEditedAsrResults.IsVisible = false;
     }
@@ -547,10 +547,10 @@ public partial class RecognitionForOnline : ContentPage
     {
         ClearAsrResults();
         ClearAsrLogs();
-        AsrResults.Text = "";
+        LblResults.Text = "";
         EditorAsrResults.Text = "";
         EditorAsrResults.IsVisible = false;
-        AsrResults.IsVisible = true;
+        LblResults.IsVisible = true;
         BtnEditAsrResults.IsVisible = true;
         BtnEditedAsrResults.IsVisible = false;
     }
@@ -577,19 +577,19 @@ public partial class RecognitionForOnline : ContentPage
                 switch (outputFormat)
                 {
                     case "text":
-                        AsrResults.Dispatcher.Dispatch(
+                        LblResults.Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
                                      StringBuilder r = new StringBuilder();
                                      r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
                                      r.AppendLine(text);
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
+                                     LblResults.Text += $"{r.ToString()}" + "\r";
                                  }
                                  ));
                         break;
                     case "json":
-                        AsrResults.Dispatcher.Dispatch(
+                        LblResults.Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
@@ -606,7 +606,7 @@ public partial class RecognitionForOnline : ContentPage
                                          r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
                                      }
                                      r.AppendLine("}");
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
+                                     LblResults.Text += $"{r.ToString()}" + "\r";
                                  }
                                  ));
                         break;
@@ -621,7 +621,7 @@ public partial class RecognitionForOnline : ContentPage
         recognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
         {
             double elapsedMilliseconds = totalTime.TotalMilliseconds;
-            AsrResults.Dispatcher.Dispatch(
+            LblResults.Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
@@ -629,7 +629,7 @@ public partial class RecognitionForOnline : ContentPage
                                      r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
                                      r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
                                      r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
+                                     LblResults.Text += $"{r.ToString()}" + "\r";
                                  }
                                  ));
         };
