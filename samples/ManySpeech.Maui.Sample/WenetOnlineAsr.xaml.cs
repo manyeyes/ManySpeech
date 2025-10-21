@@ -18,9 +18,8 @@ public partial class WenetOnlineAsr : ContentPage
     // hash为空时，仅判断文件是否存在
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
         {"encoder.int8.onnx",""},
-        {"decoder.int8.onnx",""},
-        {"am.mvn","" },
-        {"asr.json","" },
+        {"decoder.int8.onnx","" },
+        {"ctc.int8.onnx","" },
         {"tokens.txt","" }
     };
     private IRecorder _micCapture;
@@ -523,10 +522,18 @@ public partial class WenetOnlineAsr : ContentPage
         LblResults.IsVisible = true;
         BtnEditAsrResults.IsVisible = true;
         BtnEditedAsrResults.IsVisible = false;
+        SetOnlineRecognizerCallbackForResult(_recognizer);
     }
-    #region callback    
+    #region callback  
+
     private async void SetOnlineRecognizerCallbackForResult(OnlineWenetAsrRecognizer recognizer, string? recognizerType = "online", string outputFormat = "text")
     {
+        if (recognizer == null)
+        {
+            return;
+        }
+        SortedDictionary<int, string> _results = new SortedDictionary<int, string>();
+        int lastResultIndex = 0;
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
@@ -535,18 +542,18 @@ public partial class WenetOnlineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                if (lastResultIndex != resultIndex)
+                {
+                    lastResultIndex = resultIndex;
+                }
                 StringBuilder r = new StringBuilder();
                 switch (outputFormat)
                 {
                     case "text":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine(text);
-                        ShowResults($"{r.ToString()}");
+                        _results[resultIndex] = text;
                         break;
                     case "json":
                         r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
                         r.AppendLine("{");
                         r.AppendLine($"\"text\": \"{text}\",");
                         if (result.Tokens.Length > 0)
@@ -558,9 +565,16 @@ public partial class WenetOnlineAsr : ContentPage
                             r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
                         }
                         r.AppendLine("}");
-                        ShowResults($"{r.ToString()}");
+                        _results[resultIndex] = r.ToString();
                         break;
                 }
+                r.Clear();
+                foreach (var item in _results)
+                {
+                    r.AppendLine($"[{recognizerType} Stream {item.Key}]");
+                    r.AppendLine(item.Value);
+                }
+                ShowResults($"{r.ToString()}",false);
             }
             i++;
         };

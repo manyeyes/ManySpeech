@@ -522,11 +522,18 @@ public partial class ParaformerOnlineAsr : ContentPage
         EditorResults.IsVisible = false;
         LblResults.IsVisible = true;
         BtnEditAsrResults.IsVisible = true;
-        BtnEditedAsrResults.IsVisible = false;
+        BtnEditedAsrResults.IsVisible = false; 
+        SetOnlineRecognizerCallbackForResult(_recognizer);
     }
     #region callback    
     private async void SetOnlineRecognizerCallbackForResult(OnlineAliParaformerAsrRecognizer recognizer, string? recognizerType = "online", string outputFormat = "text")
     {
+        if (recognizer == null)
+        {
+            return;
+        }
+        SortedDictionary<int, string> _results = new SortedDictionary<int, string>();
+        int lastResultIndex = 0;
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
@@ -535,18 +542,18 @@ public partial class ParaformerOnlineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                if (lastResultIndex != resultIndex)
+                {
+                    lastResultIndex = resultIndex;
+                }
                 StringBuilder r = new StringBuilder();
                 switch (outputFormat)
                 {
                     case "text":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine(text);
-                        ShowResults($"{r.ToString()}");
+                        _results[resultIndex] = text;
                         break;
                     case "json":
                         r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
                         r.AppendLine("{");
                         r.AppendLine($"\"text\": \"{text}\",");
                         if (result.Tokens.Length > 0)
@@ -558,9 +565,16 @@ public partial class ParaformerOnlineAsr : ContentPage
                             r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
                         }
                         r.AppendLine("}");
-                        ShowResults($"{r.ToString()}");
+                        _results[resultIndex] = r.ToString();
                         break;
                 }
+                r.Clear();
+                foreach (var item in _results)
+                {
+                    r.AppendLine($"[{recognizerType} Stream {item.Key}]");
+                    r.AppendLine(item.Value);
+                }
+                ShowResults($"{r.ToString()}", false);
             }
             i++;
         };
