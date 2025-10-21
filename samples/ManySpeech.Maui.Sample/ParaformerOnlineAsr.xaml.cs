@@ -1,4 +1,5 @@
-﻿using ManySpeech.Maui.Sample.SpeechProcessing;
+﻿using AudioInOut.Base;
+using ManySpeech.Maui.Sample.SpeechProcessing;
 using ManySpeech.Maui.Sample.Utils;
 using PreProcessUtils;
 using System.Text;
@@ -10,10 +11,11 @@ public partial class ParaformerOnlineAsr : ContentPage
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
     // 1.打开 https://modelscope.cn/profile/manyeyes?tab=model 页面
-    // 2.搜索 sensevoice, paraformer onnx 离线模型（非流式模型）
+    // 2.搜索 paraformer online onnx 流式模型
     // 3.设置 _modelName 值，_modelName = [模型名称]
     private string _modelName = "paraformer-large-zh-en-int8-onnx-online";
-    // 需要检查的文件 <文件名, hash>
+    // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
+    // hash为空时，仅判断文件是否存在
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
         {"encoder.int8.onnx",""},
         {"decoder.int8.onnx",""},
@@ -21,40 +23,44 @@ public partial class ParaformerOnlineAsr : ContentPage
         {"asr.json","" },
         {"tokens.txt","" }
     };
-    private AudioInOut.Base.IRecorder _micCapture;
+    private IRecorder _micCapture;
+    private CancellationTokenSource _micCaptureCts = new CancellationTokenSource();
+    private OnlineAliParaformerAsrRecognizer _recognizer;
 
-    public ParaformerOnlineAsr()
+    public ParaformerOnlineAsr(IRecorder micCapture)
     {
         InitializeComponent();
-        DownloadCheck();
+        CheckModels();
+        _micCapture = micCapture;
+        LblTitle.Text = _modelName;
     }
 
-    private async void OnDownLoadCheckClicked(object sender, EventArgs e)
+    private async void OnCheckModelsClicked(object sender, EventArgs e)
     {
-        BtnDownLoadCheck.IsEnabled = false;
-        BtnDownLoadCheck.Text = "Checking...";
+        BtnCheckModels.IsEnabled = false;
+        BtnCheckModels.Text = "Checking...";
         DownloadResultsLabel.Text = "";
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            DownloadCheck();
+            CheckModels();
         });
-        BtnDownLoadCheck.Text = "Check";
-        BtnDownLoadCheck.IsEnabled = true;
+        BtnCheckModels.Text = "Check";
+        BtnCheckModels.IsEnabled = true;
     }
 
-    //private async void OnDownLoadModelsClicked(object sender, EventArgs e)
-    //{
-    //    BtnDownLoadModels.IsEnabled = false;
-    //    DownloadProgressBar.Progress = 0 / 100.0;
-    //    DownloadProgressLabel.Text = "";
-    //    TaskFactory taskFactory = new TaskFactory();
-    //    await taskFactory.StartNew(async () =>
-    //    {
-    //        DownloadModels();
-    //    });
-    //    BtnDownLoadModels.IsEnabled = true;
-    //}
+    private async void OnDownLoadModelsClicked(object sender, EventArgs e)
+    {
+        BtnDownLoadModels.IsEnabled = false;
+        DownloadProgressBar.Progress = 0 / 100.0;
+        DownloadProgressLabel.Text = "";
+        TaskFactory taskFactory = new TaskFactory();
+        await taskFactory.StartNew(async () =>
+        {
+            DownloadModels();
+        });
+        BtnDownLoadModels.IsEnabled = true;
+    }
 
     private async void OnDeleteModelsClicked(object sender, EventArgs e)
     {
@@ -66,10 +72,10 @@ public partial class ParaformerOnlineAsr : ContentPage
         });
         BtnDeleteModels.IsEnabled = true;
     }
-    private void DownloadCheck()
+    private void CheckModels()
     {
         DownloadHelper downloadHelper = new DownloadHelper(_modelBase, this.DownloadDisplay);
-        ModelStatusLabel.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                          new Action(
                              async delegate
                              {
@@ -97,7 +103,7 @@ public partial class ParaformerOnlineAsr : ContentPage
     }
     private async void DownloadModels()
     {
-        DownloadResultsLabel.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
@@ -226,8 +232,6 @@ public partial class ParaformerOnlineAsr : ContentPage
         }
     }
 
-
-
     private async void OnBtnRecognitionMicStartClicked(object sender, EventArgs e)
     {
         ResetComponent();
@@ -236,58 +240,53 @@ public partial class ParaformerOnlineAsr : ContentPage
         await taskFactory.StartNew(async () =>
         {
             // 麦克风识别，参数: -method chunk
-            int bufferMilliseconds = 200;
-            //using var micCapture = new MicAudioCapture(bufferMilliseconds);
-            _micCapture = AudioInOut.AudioDeviceFactory.CreateAudioCapture(bufferMilliseconds);
-            var cts = new CancellationTokenSource();
-
-            //_ = Task.Run(() =>
-            //{
-            //    while (!cts.Token.IsCancellationRequested)
-            //    {
-            //        if (Console.ReadKey(true).Key == ConsoleKey.Escape)
-            //        {
-            //            cts.Cancel();
-            //            _micCapture.StopCapture();
-            //            break;
-            //        }
-            //    }
-            //}, cts.Token);
-            _micCapture.StartCapture();
-
+            if (_micCapture == null)
+            {
+                return;
+            }
             try
             {
-                _micCapture.StartCapture();
+                _micCaptureCts = new CancellationTokenSource();
+                await _micCapture.StartCapture();
+
                 string recognizerType = "online";
                 string outputFormat = "text";
                 string modelAccuracy = "int8";
                 int threads = 2;
-                var recognizer = new OnlineAliParaformerAsrRecognizer();
-                SetOnlineRecognizerCallbackForResult(recognizer, recognizerType, outputFormat);
-                //SetOnlineRecognizerCallbackForCompleted(recognizer);
-                //if (recognizerType == "2pass")
-                //{
-                //    var recognizer2 = GetOfflineRecognizer(AsrCategory.AliParaformerAsr);
-                //    SetRecognizerCallbackForCompleted2Pass(recognizer, recognizer2, _modelBase, _model2Name, modelAccuracy, "chunk", threads);//, outputFormat, _asrCategory.GetDescription()
-                //}
-                while (!cts.Token.IsCancellationRequested)
+                if (_recognizer == null)
                 {
-                    var micChunk = await _micCapture.GetNextMicChunkAsync(cts.Token);
-                    if (micChunk == null) break;
-
-                    await recognizer.RecognizeAsync(
-                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads); // methodType chunk(fix)
+                    _recognizer = new OnlineAliParaformerAsrRecognizer();
+                    SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
+                    //SetOnlineRecognizerCallbackForCompleted(_recognizer);
+                    //if (recognizerType == "2pass")
+                    //{
+                    //    var recognizer2 = GetOfflineRecognizer(AsrCategory.AliParaformerAsr);
+                    //    SetRecognizerCallbackForCompleted2Pass(_recognizer, recognizer2, _modelBase, _model2Name, modelAccuracy, "chunk", threads);//, outputFormat, _asrCategory.GetDescription()
+                    //}
                 }
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Real-time recognition completed");
+                while (!_micCaptureCts.Token.IsCancellationRequested)
+                {
+                    var micChunk = await _micCapture.GetNextMicChunkAsync(_micCaptureCts.Token);
+                    if (micChunk == null) continue;
+                    if (micChunk != null)
+                    {
+                        await _recognizer.RecognizeAsync(
+                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads); // methodType chunk(fix)
+                    }
+                }
+                ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition completed");
             }
             catch (OperationCanceledException)
             {
-                Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Real-time recognition canceled by user");
+                ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition canceled by user");
             }
             finally
             {
-                cts.Cancel();
-                _micCapture.Dispose();
+                if (_recognizer != null)
+                {
+                    _recognizer.Dispose();
+                    _recognizer = null;
+                }
             }
 
         });
@@ -299,20 +298,20 @@ public partial class ParaformerOnlineAsr : ContentPage
     private async void OnBtnRecognitionMicStopClicked(object sender, EventArgs e)
     {
         TaskFactory taskFactory = new TaskFactory();
-        await taskFactory.StartNew(async () =>
+        await taskFactory.StartNew(() =>
         {
             _micCapture.StopCapture();
+            _micCaptureCts.Cancel();
         });
         this.BtnRecognitionMicStart.IsEnabled = true;
         BtnRecognitionMicStart.Background = default;
         BtnRecognitionMicStart.TextColor = default;
-        //this.BtnRecognitionMicStart.Background = null;
     }
 
-    private async void OnBtnRecognitionMicCloseClicked(object sender, EventArgs e)
+    private async void OnBtnRecognitionClearClicked(object sender, EventArgs e)
     {
-        ClearAsrLogs();
-        ClearAsrResults();
+        ClearLogs();
+        ClearResults();
     }
 
     private async void OnBtnRecognitionExampleClicked(object sender, EventArgs e)
@@ -365,15 +364,6 @@ public partial class ParaformerOnlineAsr : ContentPage
         try
         {
             var result = await FilePicker.Default.PickAsync(options);
-            //if (result != null)
-            //{
-            //    if (result.FileName.EndsWith("wav", StringComparison.OrdinalIgnoreCase))
-            //    {
-            //        using var stream = await result.OpenReadAsync();
-            //        var image = ImageSource.FromStream(() => stream);
-            //    }
-            //}
-
             return result;
         }
         catch (Exception ex)
@@ -384,184 +374,155 @@ public partial class ParaformerOnlineAsr : ContentPage
         return null;
     }
 
-    //public void CreateDownloadFile(string fileName)
-    //{
-
-    //    var downloadFolder = FileSystem.AppDataDirectory + "/Download/";
-    //    Directory.CreateDirectory(downloadFolder);
-    //    var filePath = downloadFolder + fileName;
-    //    File.Create(filePath);
-    //}
-
-    //public async Task TestRecognizerFilesByOnline()
-    //{
-    //    await RecognizerFilesByOnline();
-    //}
-
     private async Task RecognizerFilesByOnline(List<string>? fullpaths = null)
     {
-        // 文件识别 -method one/batch/chunk
-        string[] files = !fullpaths?.Any() ?? true ? SampleHelper.GetPaths(_modelBase, _modelName) : fullpaths.ToArray();
-        if (files.Length == 0) throw new Exception("No online input files found");
-
-        TimeSpan totalDuration = TimeSpan.Zero;
-        int tailLength = 6;
-        var chunkSamples = SampleHelper.GetChunkSampleFormFile(files, ref totalDuration, chunkSize: 3200, tailLength: tailLength);
-        if (!chunkSamples.HasValue) throw new Exception("Failed to read online audio files");
-        string recognizerType = "online";
-        string outputFormat = "text";
-        string modelAccuracy = "int8";
-        int threads = 2;
-        string methodType = "chunk"; // one/batch/chunk
-        var recognizer = new OnlineAliParaformerAsrRecognizer();
-        SetOnlineRecognizerCallbackForResult(recognizer, recognizerType, outputFormat);
-        if (methodType == "chunk")
+        try
         {
-            foreach (var streamSamples in chunkSamples.Value.samplesList)
+            // 文件识别 -method one/batch/chunk
+            string[] files = !fullpaths?.Any() ?? true ? SampleHelper.GetPaths(_modelBase, _modelName) : fullpaths.ToArray();
+            if (files.Length == 0) throw new Exception("No input files found");
+
+
+            string recognizerType = "online";
+            string outputFormat = "text";
+            string modelAccuracy = "int8";
+            int threads = 2;
+            string methodType = "chunk"; // one/batch/chunk
+            if (_recognizer == null)
             {
-                foreach (var sampleChunk in streamSamples)
+                _recognizer = new OnlineAliParaformerAsrRecognizer();
+                SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
+            }
+            TimeSpan totalDuration = TimeSpan.Zero;
+            int tailLength = 6;
+            var chunkSamples = SampleHelper.GetChunkSampleFormFile(files, ref totalDuration, chunkSize: 3200, tailLength: tailLength);
+            if (!chunkSamples.HasValue)
+            {
+                ShowResults("Failed to read audio files");
+                return;
+            }
+            if (methodType == "chunk")
+            {
+                foreach (var streamSamples in chunkSamples.Value.samplesList)
                 {
-                    var chunk = new List<List<float[]>> { new List<float[]> { sampleChunk } };
-                    await recognizer.RecognizeAsync(
-                        chunk, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                    foreach (var sampleChunk in streamSamples)
+                    {
+                        var chunk = new List<List<float[]>> { new List<float[]> { sampleChunk } };
+                        await _recognizer.RecognizeAsync(
+                            chunk, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                    }
                 }
             }
+            else
+            {
+                await _recognizer.RecognizeAsync(
+                            chunkSamples.Value.samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+            }
         }
-        else
+        catch (Exception ex)
         {
-            await recognizer.RecognizeAsync(
-                        chunkSamples.Value.samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+            ShowTips(ex.Message);
         }
     }
 
-    //BaiduTransAPI baiduTransAPI = new BaiduTransAPI();
-    int i = 1;
-    private async void AppendAsrResults(string str, bool isAppend = true)
+    private async void ShowResults(string str, bool isAppend = true)
     {
-        AsrResults.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                     new Action(
                         delegate
                         {
                             if (isAppend)
                             {
-                                AsrResults.Text += str;
+                                LblResults.Text += str + "\n";
                             }
                             else
                             {
-                                AsrResults.Text = str;
+                                LblResults.Text = str + "\n";
                             }
-                            //EditorAsrResults.CursorPosition = (int)EditorAsrResults.Height;
-                        }
-                        ));
-
-        //TaskFactory taskFactory = new TaskFactory();
-        //await taskFactory.StartNew(async () =>
-        //{
-        //    AsrResults2.Dispatcher.Dispatch(
-        //            new Action(
-        //                delegate
-        //                {
-        //                    int x = str.Split("\n").Length;
-        //                    if (x > i)
-        //                    {
-        //                        string transStr = BaiduTransAPI.Trans(str.Split("\n")[x - 2]) + "\n";
-        //                        if (isAppend)
-        //                        {
-        //                            AsrResults2.Text += transStr;
-        //                        }
-        //                        else
-        //                        {
-        //                            AsrResults2.Text += transStr;
-        //                        }
-        //                        i++;
-        //                    }
-        //                }
-        //                ));
-        //});
-    }
-    private void ClearAsrResults()
-    {
-        AsrResults.Dispatcher.Dispatch(
-                    new Action(
-                        delegate
-                        {
-                            AsrResults.Text = "";
                         }
                         ));
     }
-    private void AppendAsrLogs(string str, bool isAppend = true)
+    private void ClearResults()
     {
-        //_asrLogs.Append(str);
-        BtnShowAsrLogs.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                     new Action(
                         delegate
                         {
-                            if (BtnShowAsrLogs.IsEnabled == false)
+                            LblResults.Text = "";
+                        }
+                        ));
+    }
+    private void ShowLogs(string str, bool isAppend = true)
+    {
+        Dispatcher.Dispatch(
+                    new Action(
+                        delegate
+                        {
+                            if (BtnShowLogs.IsEnabled == false)
                             {
-                                BtnShowAsrLogs.IsEnabled = true;
+                                BtnShowLogs.IsEnabled = true;
                             }
                         }));
     }
-    private void ClearAsrLogs()
+    private void ClearLogs()
     {
-        //_asrLogs.Clear();
-        BtnShowAsrLogs.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                     new Action(
                         delegate
                         {
-                            if (BtnShowAsrLogs.IsEnabled == true)
+                            if (BtnShowLogs.IsEnabled == true)
                             {
-                                BtnShowAsrLogs.IsEnabled = false;
+                                BtnShowLogs.IsEnabled = false;
                             }
                         }));
     }
     private void ShowTips(string str)
     {
-        this.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                     new Action(
                         async delegate
                         {
                             await DisplayAlert("Tips", str, "close");
                         }));
     }
-    private void OnEditAsrResultsClicked(object sender, EventArgs e)
-    {
-        EditorAsrResults.Text = AsrResults.Text;
-        EditorAsrResults.IsVisible = true;
-        EditorAsrResults.HeightRequest = AsrResults.Height;
-        AsrResults.IsVisible = false;
-        BtnEditAsrResults.IsVisible = false;
-        BtnEditedAsrResults.IsVisible = true;
-    }
 
-    private void OnEditedAsrResultsClicked(object sender, EventArgs e)
-    {
-        AsrResults.Text = EditorAsrResults.Text;
-        EditorAsrResults.IsVisible = false;
-        AsrResults.IsVisible = true;
-        BtnEditAsrResults.IsVisible = true;
-        BtnEditedAsrResults.IsVisible = false;
-    }
-
-    private void ResetComponent()
-    {
-        ClearAsrResults();
-        ClearAsrLogs();
-        AsrResults.Text = "";
-        EditorAsrResults.Text = "";
-        EditorAsrResults.IsVisible = false;
-        AsrResults.IsVisible = true;
-        BtnEditAsrResults.IsVisible = true;
-        BtnEditedAsrResults.IsVisible = false;
-    }
-
-    private async void OnShowAsrLogsClicked(object sender, EventArgs e)
+    private async void OnShowLogsClicked(object sender, EventArgs e)
     {
         //if (string.IsNullOrEmpty(_asrLogs.ToString()))
         //{
         //    return;
         //}
         //await DisplayAlert("Tips", _asrLogs.ToString(), "close");
+    }
+    private void OnEditAsrResultsClicked(object sender, EventArgs e)
+    {
+        EditorResults.Text = LblResults.Text;
+        EditorResults.IsVisible = true;
+        EditorResults.HeightRequest = LblResults.Height;
+        LblResults.IsVisible = false;
+        BtnEditAsrResults.IsVisible = false;
+        BtnEditedAsrResults.IsVisible = true;
+    }
+
+    private void OnEditedAsrResultsClicked(object sender, EventArgs e)
+    {
+        LblResults.Text = EditorResults.Text;
+        EditorResults.IsVisible = false;
+        LblResults.IsVisible = true;
+        BtnEditAsrResults.IsVisible = true;
+        BtnEditedAsrResults.IsVisible = false;
+    }
+
+    private void ResetComponent()
+    {
+        ClearResults();
+        ClearLogs();
+        LblResults.Text = "";
+        EditorResults.Text = "";
+        EditorResults.IsVisible = false;
+        LblResults.IsVisible = true;
+        BtnEditAsrResults.IsVisible = true;
+        BtnEditedAsrResults.IsVisible = false;
     }
     #region callback    
     private async void SetOnlineRecognizerCallbackForResult(OnlineAliParaformerAsrRecognizer recognizer, string? recognizerType = "online", string outputFormat = "text")
@@ -574,41 +535,30 @@ public partial class ParaformerOnlineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                StringBuilder r = new StringBuilder();
                 switch (outputFormat)
                 {
                     case "text":
-                        AsrResults.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     StringBuilder r = new StringBuilder();
-                                     r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                                     r.AppendLine(text);
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
-                                 }
-                                 ));
+                        r.Clear();
+                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                        r.AppendLine(text);
+                        ShowResults($"{r.ToString()}");
                         break;
                     case "json":
-                        AsrResults.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     StringBuilder r = new StringBuilder();
-                                     r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                                     r.AppendLine("{");
-                                     r.AppendLine($"\"text\": \"{text}\",");
-                                     if (result.Tokens.Length > 0)
-                                     {
-                                         r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                                     }
-                                     if (result.Timestamps.Length > 0)
-                                     {
-                                         r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                                     }
-                                     r.AppendLine("}");
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
-                                 }
-                                 ));
+                        r.Clear();
+                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                        r.AppendLine("{");
+                        r.AppendLine($"\"text\": \"{text}\",");
+                        if (result.Tokens.Length > 0)
+                        {
+                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
+                        }
+                        if (result.Timestamps.Length > 0)
+                        {
+                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
+                        }
+                        r.AppendLine("}");
+                        ShowResults($"{r.ToString()}");
                         break;
                 }
             }
@@ -621,17 +571,11 @@ public partial class ParaformerOnlineAsr : ContentPage
         recognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
         {
             double elapsedMilliseconds = totalTime.TotalMilliseconds;
-            AsrResults.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     StringBuilder r = new StringBuilder();
-                                     r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
-                                     r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
-                                     r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
-                                     AsrResults.Text += $"{r.ToString()}" + "\r";
-                                 }
-                                 ));
+            StringBuilder r = new StringBuilder();
+            r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
+            r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
+            r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
+            ShowResults($"{r.ToString()}");
         };
     }
 

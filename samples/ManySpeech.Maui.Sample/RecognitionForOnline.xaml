@@ -170,26 +170,14 @@ HorizontalOptions="FillAndExpand" />
 					  Offset="0.1"/>
                         </LinearGradientBrush>
                     </Border.Stroke>
-                    <HorizontalStackLayout HorizontalOptions="FillAndExpand" 
-    VerticalOptions="CenterAndExpand">
-
-                        <Label FlowDirection="MatchParent"
-                            Text="......" 
-                            SemanticProperties.HeadingLevel="Level2"
-                            FontSize="15"
-                            Padding="10,10,10,10"
-                            x:Name="AsrResults"
-                            WidthRequest="600"
-                            HorizontalOptions="StartAndExpand"/>
-                        <!--<Label FlowDirection="MatchParent" 
-                            Text="" 
-                            SemanticProperties.HeadingLevel="Level2"
-                            FontSize="15"
-                            Padding="10,10,10,10"
-                            x:Name="AsrResults2"
-                            WidthRequest="600"
-                            HorizontalOptions="EndAndExpand"/>-->
-                    </HorizontalStackLayout>
+                    <Label FlowDirection="MatchParent"
+                        Text="" 
+                        LineBreakMode="WordWrap"
+                        SemanticProperties.HeadingLevel="Level2"
+                        FontSize="15"
+                        Padding="10,10,10,10"
+                        x:Name="LblResults"
+                        HorizontalOptions="Start"/>
 
                 </Border>
 
