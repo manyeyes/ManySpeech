@@ -17,9 +17,9 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string modelFilePath = modelBasePath + "./" + modelName + "/model.int8.onnx";
-                string configFilePath = modelBasePath + "./" + modelName + "/punc.json";
-                string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
+                string modelFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
+                string configFilePath = modelBasePath + "/" + modelName + "/punc.json";
+                string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
                     string folderPath = Path.Join(modelBasePath, modelName);

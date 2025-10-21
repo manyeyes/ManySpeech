@@ -17,10 +17,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string encoderFilePath = modelBasePath + "./" + modelName + "/model.int8.onnx";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
                 string decoderFilePath = "";
                 string joinerFilePath = "";
-                string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
+                string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
                     string folderPath = Path.Combine(modelBasePath, modelName);
@@ -42,13 +42,13 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         {
                             if (fileName.Contains("." + modelAccuracy + "."))
                             {
-                                encoderFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                encoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                             }
                             else
                             {
                                 if (string.IsNullOrEmpty(encoderFilePath))
                                 {
-                                    encoderFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                    encoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                                 }
                             }
                         }
@@ -56,13 +56,13 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         {
                             if (fileName.Contains("." + modelAccuracy + "."))
                             {
-                                decoderFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                decoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                             }
                             else
                             {
                                 if (string.IsNullOrEmpty(decoderFilePath))
                                 {
-                                    decoderFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                    decoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                                 }
                             }
                         }
@@ -70,19 +70,19 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         {
                             if (fileName.Contains("." + modelAccuracy + "."))
                             {
-                                joinerFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                joinerFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                             }
                             else
                             {
                                 if (string.IsNullOrEmpty(joinerFilePath))
                                 {
-                                    joinerFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                    joinerFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                                 }
                             }
                         }
                         if (fileName.StartsWith("tokens"))
                         {
-                            tokensFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                            tokensFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                         }
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
@@ -125,71 +125,78 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 throw new InvalidOperationException("Failed to initialize recognizer");
             }
             var results = new List<AsrResultEntity>();
-            Console.WriteLine("Automatic speech recognition in progress!");
-            DateTime processStartTime = DateTime.Now;
-            streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
-            if (streamDecodeMethod == "one")
+            try
             {
-                // Non batch method
-                Console.WriteLine("Recognition results:\r\n");
-                try
+                Console.WriteLine("Automatic speech recognition in progress!");
+                DateTime processStartTime = DateTime.Now;
+                streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
+                if (streamDecodeMethod == "one")
                 {
-                    for (int i = 0; i < samplesList.Count; i++)
+                    // Non batch method
+                    Console.WriteLine("Recognition results:\r\n");
+                    try
                     {
-                        OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                        foreach (var sample in samplesList[i])
+                        for (int i = 0; i < samplesList.Count; i++)
                         {
-                            stream.AddSamples(sample);
+                            OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                            foreach (var sample in samplesList[i])
+                            {
+                                stream.AddSamples(sample);
+                            }
+                            OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                            var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                            var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
+                            results.Add(resultEntity);
+                            RaiseRecognitionResult(resultEntity);
                         }
-                        OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
-                        var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
-                        var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
-                        results.Add(resultEntity);
-                        RaiseRecognitionResult(resultEntity);
                     }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.InnerException?.InnerException);
+                    }
+                    // Non batch method
                 }
-                catch (Exception ex)
+                if (streamDecodeMethod == "batch")
                 {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.InnerException?.InnerException);
+                    //2. batch method
+                    Console.WriteLine("Recognition results:\r\n");
+                    try
+                    {
+                        //int n = 0;
+                        List<OfflineStream> streams = new List<OfflineStream>();
+                        foreach (var sampleGroup in samplesList)
+                        {
+                            var stream = offlineRecognizer.CreateOfflineStream();
+                            foreach (var sample in sampleGroup)
+                            {
+                                stream.AddSamples(sample);
+                            }
+                            streams.Add(stream);
+                        }
+                        var nativeResults = offlineRecognizer.GetResults(streams);
+                        for (int i = 0; i < nativeResults.Count; i++)
+                        {
+                            var resultEntity = ConvertToResultEntity(nativeResults[i], i, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
+                            resultEntity.ModelName = modelName;
+                            results.Add(resultEntity);
+                            RaiseRecognitionResult(resultEntity);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.InnerException?.InnerException.Message);
+                    }
+                    // batch method
                 }
-                // Non batch method
+                int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
+                RaiseRecognitionCompleted(DateTime.Now - processStartTime, TimeSpan.FromMilliseconds(totalDurationMs), samplesList.Count);
             }
-            if (streamDecodeMethod == "batch")
+            catch (Exception ex)
             {
-                //2. batch method
-                Console.WriteLine("Recognition results:\r\n");
-                try
-                {
-                    //int n = 0;
-                    List<OfflineStream> streams = new List<OfflineStream>();
-                    foreach (var sampleGroup in samplesList)
-                    {
-                        var stream = offlineRecognizer.CreateOfflineStream();
-                        foreach (var sample in sampleGroup)
-                        {
-                            stream.AddSamples(sample);
-                        }
-                        streams.Add(stream);
-                    }
-                    var nativeResults = offlineRecognizer.GetResults(streams);
-                    for (int i = 0; i < nativeResults.Count; i++)
-                    {
-                        var resultEntity = ConvertToResultEntity(nativeResults[i], i, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
-                        resultEntity.ModelName = modelName;
-                        results.Add(resultEntity);
-                        RaiseRecognitionResult(resultEntity);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine(ex.Message);
-                    Console.WriteLine(ex.InnerException?.InnerException.Message);
-                }
-                // batch method
+                Console.WriteLine($"Error occurred: {ex.Message}");
             }
-            int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
-            RaiseRecognitionCompleted(DateTime.Now - processStartTime, TimeSpan.FromMilliseconds(totalDurationMs), samplesList.Count);
             return results;
         }
         protected static AsrResultEntity ConvertToResultEntity(OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)

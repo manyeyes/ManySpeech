@@ -17,9 +17,9 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string modelFilePath = modelBasePath + "./" + modelName + "/model.int8.onnx";
-                string configFilePath = modelBasePath + "./" + modelName + "/vad.json";
-                string mvnFilePath = modelBasePath + "./" + modelName + "/vad.mvn";
+                string modelFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
+                string configFilePath = modelBasePath + "/" + modelName + "/vad.json";
+                string mvnFilePath = modelBasePath + "/" + modelName + "/vad.mvn";
                 try
                 {
                     string folderPath = Path.Join(modelBasePath, modelName);
@@ -41,23 +41,23 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         {
                             if (fileName.Contains("." + modelAccuracy + "."))
                             {
-                                modelFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                modelFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                             }
                             else
                             {
                                 if (string.IsNullOrEmpty(modelFilePath))
                                 {
-                                    modelFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                                    modelFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                                 }
                             }
                         }
                         if (fileName.StartsWith("vad") && fileName.EndsWith(".json"))//fileName.EndsWith(".yaml") || 
                         {
-                            configFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                            configFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                         }
                         if (fileName.StartsWith("vad") && fileName.EndsWith(".mvn"))
                         {
-                            mvnFilePath = modelBasePath + "./" + modelName + "/" + fileName;
+                            mvnFilePath = modelBasePath + "/" + modelName + "/" + fileName;
                         }
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
