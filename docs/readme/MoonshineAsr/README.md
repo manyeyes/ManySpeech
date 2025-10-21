@@ -3,7 +3,7 @@
 # ManySpeech.MoonshineAsr User Guide
 
 ## I. Introduction
-ManySpeech.MoonshineAsr is a "speech recognition" library written in C#. Its underlying mechanism calls Microsoft.ML.OnnxRuntime to decode ONNX models. It has the following features:
+ManySpeech.MoonshineAsr is a speech recognition component within the [ManySpeech](https://github.com/manyeyes/ManySpeech "ManySpeech") speech processing suite, specifically designed for inference with the Moonshine model. It is developed using C# and calls Microsoft.ML.OnnxRuntime at the underlying level to decode ONNX models. It has the following features:
 
 ### 1. Environmental Compatibility
 It supports multiple environments such as net461+, net60+, netcoreapp3.1, and netstandard2.0+, which can meet the requirements of different development scenarios.

@@ -3,7 +3,8 @@
 # ManySpeech.MoonshineAsr 使用指南
 
 ## 一、简介
-ManySpeech.MoonshineAsr 是一个采用 C# 编写的“语音识别”库，其底层调用 Microsoft.ML.OnnxRuntime 对 onnx 模型进行解码。具备以下特点：
+
+ManySpeech.MoonshineAsr 是 [ManySpeech](https://github.com/manyeyes/ManySpeech "ManySpeech") 语音处理套件中一个专门用于 moonshine 模型推理的语音识别组件，其使用 c# 开发，底层调用 Microsoft.ML.OnnxRuntime 对 onnx 模型进行解码。具备以下特点：
 - **环境兼容性**：支持 net461+、net60+、netcoreapp3.1 以及 netstandard2.0+ 等多种环境，能适配不同开发场景需求。
 - **跨平台编译特性**：支持跨平台编译，可应用于 Windows 7 SP1 及更高版本、macOS 10.13（High Sierra）及更高版本（也支持 iOS 等）、Linux 发行版（需满足特定依赖关系，详见.NET 6 支持的 Linux 发行版列表）以及 Android 5.0（API 21）及更高版本等平台。
 - **支持 AOT 编译**：使用起来简单方便，便于开发者快速集成到项目中。
