@@ -35,7 +35,7 @@ namespace AudioInOut.Recorder
         private readonly WaveInProc _callbackDelegate;
         private readonly GCHandle _callbackHandle;
 
-        public WindowsWaveInRecorder(int bufferMilliseconds = 200)
+        public WindowsWaveInRecorder(int bufferMilliseconds = 100)
         {
             //_sampleRate = 16000;
             _bufferMilliseconds = bufferMilliseconds;
@@ -160,7 +160,6 @@ namespace AudioInOut.Recorder
             {
                 // 分配音频数据缓冲区
                 nint dataPtr = Marshal.AllocHGlobal(bufferSize);
-
                 _bufferPointers.Add(dataPtr);
 
                 // 创建 wave header
