@@ -15,17 +15,20 @@ public partial class FireRedOfflineAsr : ContentPage
     // 2.搜索 FireRed 离线模型（非流式模型）
     // 3.设置 _modelName = [模型名称]
     private string _modelName = "fireredasr-aed-large-zh-en-onnx-offline-20250124";
-    // 需要检查的文件 <文件名, hash>
+    // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
+    // hash为空时，仅判断文件是否存在
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
         {"encoder.int8.onnx",""},
         {"decoder.int8.onnx",""},
         {"tokens.txt","" }
     };
+    OfflineFireRedAsrRecognizer? _recognizer;
 
     public FireRedOfflineAsr()
     {
         InitializeComponent();
         CheckModels();
+        LblTitle.Text = _modelName;
     }
 
     #region event
@@ -234,7 +237,7 @@ public partial class FireRedOfflineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            RecognitionExampleByOffline();
+            await RecognizerFilesByOffline();
         });
         BtnRecognitionExample.IsEnabled = true;
     }
@@ -268,7 +271,11 @@ public partial class FireRedOfflineAsr : ContentPage
             }
         });
     }
-
+    private async void OnBtnRecognitionClearClicked(object sender, EventArgs e)
+    {
+        ClearLogs();
+        ClearResults();
+    }
     public async Task<FileResult> PickAndShow(PickOptions options)
     {
         try
@@ -279,152 +286,112 @@ public partial class FireRedOfflineAsr : ContentPage
         catch (Exception ex)
         {
             // The user canceled or something went wrong
-            ShowResults("The user canceled or something went wrong:"+ex.ToString());
+            ShowResults("The user canceled or something went wrong:" + ex.ToString());
         }
 
         return null;
     }
 
-    public void RecognizerFilesByOffline(List<string> fullpaths)
+    public async Task RecognizerFilesByOffline(List<string>? fullpaths = null)
     {
-        var recognizer = new OfflineFireRedAsrRecognizer();
-        SetOfflineRecognizerCallbackForResult(recognizer, "offline", "text");
-        SetOfflineRecognizerCallbackForCompleted(recognizer);
-        ShowResults("Speech recognition in progress, please wait ...");
-        List<float[]>? samples = new List<float[]>();
-        List<string> paths = new List<string>();
-        TimeSpan totalDuration = new TimeSpan(0L);
-        foreach (string fullpath in fullpaths)
-        {
-            string mediaFilePath = string.Format(fullpath);
-            if (!File.Exists(mediaFilePath))
-            {
-                continue;
-            }
-            if (AudioHelper.IsAudioByHeader(mediaFilePath))
-            {
-                TimeSpan duration = TimeSpan.Zero;
-                float[]? sample = AudioHelper.GetFileSample(wavFilePath: mediaFilePath, duration: ref duration);
-                if (sample != null)
-                {
-                    paths.Add(mediaFilePath);
-                    samples.Add(sample);
-                    totalDuration += duration;
-                }
-            }
-        }
-        if (samples.Count == 0)
-        {
-            ShowResults("No media file is read!");
-            return;
-        }
-        this.Dispatcher.Dispatch(
-                         new Action(
-                              async delegate
-                             {
-                                 ShowResults("");
-                                 string modelAccuracy = "int8";
-                                 string methodType = "one";
-                                 int threads = 2;
-                                 var samplesList = new List<List<float[]>>();
-                                 samplesList = samples.Select(x => new List<float[]>() { x }).ToList();
-                                 try
-                                 {
-                                     await recognizer.RecognizeAsync(
-                                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
-                                 }
-                                 catch (Exception ex)
-                                 {
-                                     ShowTips(ex.Message);
-                                 }
-                             }));
-
-    }
-
-    public void RecognitionExampleByOffline(List<float[]>? samples = null)
-    {
-        var recognizer = new OfflineFireRedAsrRecognizer();
-        SetOfflineRecognizerCallbackForResult(recognizer, "offline", "text");
-        SetOfflineRecognizerCallbackForCompleted(recognizer);
-        if (recognizer == null) { return; }
-        ShowResults("Speech recognition in progress, please wait ...");
-        TimeSpan totalDuration = new TimeSpan(0L);
-        List<string> paths = new List<string>();
         try
         {
-            if (samples == null)
+            string[] files = !fullpaths?.Any() ?? true ? SampleHelper.GetPaths(_modelBase, _modelName) : fullpaths.ToArray();
+            if (files.Length == 0)
             {
-                samples = new List<float[]>();
-                string[]? mediaFilePaths = null;
-                if (mediaFilePaths == null || mediaFilePaths.Count() == 0)
-                {
-                    string fullPath = Path.Combine(_modelBase, _modelName);
-                    if (!Directory.Exists(fullPath))
-                    {
-                        mediaFilePaths = Array.Empty<string>(); // 路径不正确时返回空数组
-                    }
-                    else
-                    {
-                        mediaFilePaths = Directory.GetFiles(
-                            path: fullPath,
-                            searchPattern: "*.wav",
-                            searchOption: SearchOption.AllDirectories
-                        );
-                    }
-                }
-                foreach (string mediaFilePath in mediaFilePaths)
-                {
-                    if (!File.Exists(mediaFilePath))
-                    {
-                        continue;
-                    }
-                    if (AudioHelper.IsAudioByHeader(mediaFilePath))
-                    {
-                        TimeSpan duration = TimeSpan.Zero;
-                        float[]? sample = AudioHelper.GetFileSample(wavFilePath: mediaFilePath, duration: ref duration);
-                        if (sample != null)
-                        {
-                            paths.Add(mediaFilePath);
-                            samples.Add(sample);
-                            totalDuration += duration;
-                        }
-                    }
-                }
-            }
-            if (samples.Count == 0)
-            {
-                ShowResults("No media file is read!");
+                ShowResults("No input files found");
                 return;
             }
-            this.Dispatcher.Dispatch(
-                             new Action(
-                                 async delegate
-                                 {
-                                     ShowResults("");
-                                     string modelAccuracy = "int8";
-                                     string methodType = "one";
-                                     int threads = 2;
-                                     var samplesList = new List<List<float[]>>();
-                                     samplesList = samples.Select(x => new List<float[]>() { x }).ToList();
-                                     try
-                                     {
-                                         await recognizer.RecognizeAsync(
-                                                samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
-                                     }
-                                     catch (Exception ex)
-                                     {
-                                         ShowTips(ex.Message);
-                                     }
-                                 }
-                                 ));
+            string modelAccuracy = "int8";
+            string methodType = "one";// 文件识别 -method one/batch/chunk
+            int threads = 2;
+            if (_recognizer == null)
+            {
+                _recognizer = new OfflineFireRedAsrRecognizer();
+                SetOfflineRecognizerCallbackForResult(_recognizer, "offline", "text");
+                SetOfflineRecognizerCallbackForCompleted(_recognizer);
+            }
+            if (_recognizer == null) { return; }
+            ShowResults("Speech recognition in progress, please wait ...");
+            TimeSpan totalDuration = TimeSpan.Zero;
+            int tailLength = 6;
+            var samples = SampleHelper.GetSampleFormFile(files, ref totalDuration);
+            if (!samples.HasValue)
+            {
+                ShowResults("Failed to read audio files");
+                return;
+            }
+            else
+            {
+                if (samples.Value.sampleList.Count == 0)
+                {
+                    ShowResults("No media file is read!");
+                    return;
+                }
+                var samplesList = new List<List<float[]>>();
+                samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                await _recognizer.RecognizeAsync(
+                           samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+            }
         }
         catch (Exception ex)
         {
-            ShowResults(ex.Message);
+            ShowTips(ex.Message);
         }
 
     }
 
+    private void ShowResults(string str, bool isAppend = true)
+    {
+        Dispatcher.Dispatch(
+                    new Action(
+                        delegate
+                        {
+                            if (isAppend)
+                            {
+                                LblResults.Text += str + "\n";
+                            }
+                            else
+                            {
+                                LblResults.Text = str + "\n";
+                            }
+                        }
+                        ));
+    }
+    private void ClearResults()
+    {
+        Dispatcher.Dispatch(
+                    new Action(
+                        delegate
+                        {
+                            LblResults.Text = "";
+                        }
+                        ));
+    }
+    private void ShowLogs(string str, bool isAppend = true)
+    {
+        Dispatcher.Dispatch(
+                    new Action(
+                        delegate
+                        {
+                            if (BtnShowLogs.IsEnabled == false)
+                            {
+                                BtnShowLogs.IsEnabled = true;
+                            }
+                        }));
+    }
+    private void ClearLogs()
+    {
+        Dispatcher.Dispatch(
+                    new Action(
+                        delegate
+                        {
+                            if (BtnShowLogs.IsEnabled == true)
+                            {
+                                BtnShowLogs.IsEnabled = false;
+                            }
+                        }));
+    }
     private void ShowTips(string str)
     {
         this.Dispatcher.Dispatch(
@@ -434,26 +401,26 @@ public partial class FireRedOfflineAsr : ContentPage
                             await DisplayAlert("Tips", str, "close");
                         }));
     }
-
-    private void ShowResults(string str, bool isAppend = false)
+    private async void OnShowLogsClicked(object sender, EventArgs e)
     {
-        AsrResults.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     if (isAppend)
-                                     {
-                                         AsrResults.Text += str;
-                                     }
-                                     else
-                                     {
-                                         AsrResults.Text = str;
-                                     }
+    }
+    private void OnEditResultsClicked(object sender, EventArgs e)
+    {
+        EditorResults.Text = LblResults.Text;
+        EditorResults.IsVisible = true;
+        EditorResults.HeightRequest = LblResults.Height;
+        LblResults.IsVisible = false;
+        BtnEditResults.IsVisible = false;
+        BtnEditedResults.IsVisible = true;
+    }
 
-                                 }
-                                 ));
-
-
+    private void OnEditedResultsClicked(object sender, EventArgs e)
+    {
+        LblResults.Text = EditorResults.Text;
+        EditorResults.IsVisible = false;
+        LblResults.IsVisible = true;
+        BtnEditResults.IsVisible = true;
+        BtnEditedResults.IsVisible = false;
     }
 
     #region callback
@@ -467,42 +434,30 @@ public partial class FireRedOfflineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                StringBuilder r = new StringBuilder();
                 switch (outputFormat)
                 {
                     case "text":
-                        this.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     StringBuilder r = new StringBuilder();
-                                     r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                                     r.AppendLine(text);
-                                     ShowResults($"{r.ToString()}" + "\r", true);
-                                 }
-                                 ));
-                        await LabelAsrResultsScrollView.ScrollToAsync(0D, (double)ScrollToPosition.End, true);
+                        r.Clear();
+                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                        r.AppendLine(text);
+                        ShowResults($"{r.ToString()}", true);
                         break;
                     case "json":
-                        this.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     StringBuilder r = new StringBuilder();
-                                     r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                                     r.AppendLine("{");
-                                     r.AppendLine($"\"text\": \"{text}\",");
-                                     if (result.Tokens.Length > 0)
-                                     {
-                                         r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                                     }
-                                     if (result.Timestamps.Length > 0)
-                                     {
-                                         r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                                     }
-                                     r.AppendLine("}");
-                                     ShowResults($"{r.ToString()}" + "\r", true);
-                                 }
-                                 ));
+                        r.Clear();
+                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                        r.AppendLine("{");
+                        r.AppendLine($"\"text\": \"{text}\",");
+                        if (result.Tokens.Length > 0)
+                        {
+                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
+                        }
+                        if (result.Timestamps.Length > 0)
+                        {
+                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
+                        }
+                        r.AppendLine("}");
+                        ShowResults($"{r.ToString()}", true);
                         break;
                 }
             }
@@ -515,17 +470,11 @@ public partial class FireRedOfflineAsr : ContentPage
         recognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
         {
             double elapsedMilliseconds = totalTime.TotalMilliseconds;
-            this.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     StringBuilder r = new StringBuilder();
-                                     r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
-                                     r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
-                                     r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
-                                     ShowResults($"{r.ToString()}" + "\r", true);
-                                 }
-                                 ));
+            StringBuilder r = new StringBuilder();
+            r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
+            r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
+            r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
+            ShowResults($"{r.ToString()}", true);
         };
     }
     #endregion
