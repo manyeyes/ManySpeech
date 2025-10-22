@@ -25,7 +25,7 @@ public partial class ParaformerOnlineAsr : ContentPage
     };
     private IRecorder _micCapture;
     private CancellationTokenSource _micCaptureCts = new CancellationTokenSource();
-    private OnlineAliParaformerAsrRecognizer _recognizer;
+    private OnlineAliParaformerAsrRecognizer? _recognizer;
 
     public ParaformerOnlineAsr(IRecorder micCapture)
     {
@@ -257,12 +257,6 @@ public partial class ParaformerOnlineAsr : ContentPage
                 {
                     _recognizer = new OnlineAliParaformerAsrRecognizer();
                     SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
-                    //SetOnlineRecognizerCallbackForCompleted(_recognizer);
-                    //if (recognizerType == "2pass")
-                    //{
-                    //    var recognizer2 = GetOfflineRecognizer(AsrCategory.AliParaformerAsr);
-                    //    SetRecognizerCallbackForCompleted2Pass(_recognizer, recognizer2, _modelBase, _model2Name, modelAccuracy, "chunk", threads);//, outputFormat, _asrCategory.GetDescription()
-                    //}
                 }
                 while (!_micCaptureCts.Token.IsCancellationRequested)
                 {
@@ -271,7 +265,7 @@ public partial class ParaformerOnlineAsr : ContentPage
                     if (micChunk != null)
                     {
                         await _recognizer.RecognizeAsync(
-                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads); // methodType chunk(fix)
+                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads);
                     }
                 }
                 ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition completed");
@@ -370,7 +364,6 @@ public partial class ParaformerOnlineAsr : ContentPage
         {
             // The user canceled or something went wrong
         }
-
         return null;
     }
 
@@ -488,11 +481,6 @@ public partial class ParaformerOnlineAsr : ContentPage
 
     private async void OnShowLogsClicked(object sender, EventArgs e)
     {
-        //if (string.IsNullOrEmpty(_asrLogs.ToString()))
-        //{
-        //    return;
-        //}
-        //await DisplayAlert("Tips", _asrLogs.ToString(), "close");
     }
     private void OnEditAsrResultsClicked(object sender, EventArgs e)
     {

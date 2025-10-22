@@ -21,7 +21,7 @@ public partial class K2transducerOnlineAsr : ContentPage
     };
     private IRecorder _micCapture;
     private CancellationTokenSource _micCaptureCts = new CancellationTokenSource();
-    private OnlineK2TransducerAsrRecognizer _recognizer;
+    private OnlineK2TransducerAsrRecognizer? _recognizer;
 
     public K2transducerOnlineAsr(IRecorder micCapture)
     {
@@ -253,12 +253,6 @@ public partial class K2transducerOnlineAsr : ContentPage
                 {
                     _recognizer = new OnlineK2TransducerAsrRecognizer();
                     SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
-                    //SetOnlineRecognizerCallbackForCompleted(_recognizer);
-                    //if (recognizerType == "2pass")
-                    //{
-                    //    var recognizer2 = GetOfflineRecognizer(AsrCategory.AliParaformerAsr);
-                    //    SetRecognizerCallbackForCompleted2Pass(_recognizer, recognizer2, _modelBase, _model2Name, modelAccuracy, "chunk", threads);//, outputFormat, _asrCategory.GetDescription()
-                    //}
                 }
                 while (!_micCaptureCts.Token.IsCancellationRequested)
                 {
@@ -267,7 +261,7 @@ public partial class K2transducerOnlineAsr : ContentPage
                     if (micChunk != null)
                     {
                         await _recognizer.RecognizeAsync(
-                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads); // methodType chunk(fix)
+                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads);
                     }
                 }
                 ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition completed");
@@ -484,11 +478,6 @@ public partial class K2transducerOnlineAsr : ContentPage
 
     private async void OnShowLogsClicked(object sender, EventArgs e)
     {
-        //if (string.IsNullOrEmpty(_asrLogs.ToString()))
-        //{
-        //    return;
-        //}
-        //await DisplayAlert("Tips", _asrLogs.ToString(), "close");
     }
     private void OnEditAsrResultsClicked(object sender, EventArgs e)
     {
