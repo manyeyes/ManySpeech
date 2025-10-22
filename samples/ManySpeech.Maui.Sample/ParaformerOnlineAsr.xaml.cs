@@ -25,7 +25,7 @@ public partial class ParaformerOnlineAsr : ContentPage
     };
     private IRecorder _micCapture;
     private CancellationTokenSource _micCaptureCts = new CancellationTokenSource();
-    private OnlineAliParaformerAsrRecognizer _recognizer;
+    private OnlineAliParaformerAsrRecognizer? _recognizer;
 
     public ParaformerOnlineAsr(IRecorder micCapture)
     {
@@ -257,12 +257,6 @@ public partial class ParaformerOnlineAsr : ContentPage
                 {
                     _recognizer = new OnlineAliParaformerAsrRecognizer();
                     SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
-                    //SetOnlineRecognizerCallbackForCompleted(_recognizer);
-                    //if (recognizerType == "2pass")
-                    //{
-                    //    var recognizer2 = GetOfflineRecognizer(AsrCategory.AliParaformerAsr);
-                    //    SetRecognizerCallbackForCompleted2Pass(_recognizer, recognizer2, _modelBase, _model2Name, modelAccuracy, "chunk", threads);//, outputFormat, _asrCategory.GetDescription()
-                    //}
                 }
                 while (!_micCaptureCts.Token.IsCancellationRequested)
                 {
@@ -271,7 +265,7 @@ public partial class ParaformerOnlineAsr : ContentPage
                     if (micChunk != null)
                     {
                         await _recognizer.RecognizeAsync(
-                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads); // methodType chunk(fix)
+                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads);
                     }
                 }
                 ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition completed");
@@ -370,7 +364,6 @@ public partial class ParaformerOnlineAsr : ContentPage
         {
             // The user canceled or something went wrong
         }
-
         return null;
     }
 
@@ -488,11 +481,6 @@ public partial class ParaformerOnlineAsr : ContentPage
 
     private async void OnShowLogsClicked(object sender, EventArgs e)
     {
-        //if (string.IsNullOrEmpty(_asrLogs.ToString()))
-        //{
-        //    return;
-        //}
-        //await DisplayAlert("Tips", _asrLogs.ToString(), "close");
     }
     private void OnEditAsrResultsClicked(object sender, EventArgs e)
     {
@@ -522,11 +510,17 @@ public partial class ParaformerOnlineAsr : ContentPage
         EditorResults.IsVisible = false;
         LblResults.IsVisible = true;
         BtnEditAsrResults.IsVisible = true;
-        BtnEditedAsrResults.IsVisible = false;
+        BtnEditedAsrResults.IsVisible = false; 
+        SetOnlineRecognizerCallbackForResult(_recognizer);
     }
     #region callback    
     private async void SetOnlineRecognizerCallbackForResult(OnlineAliParaformerAsrRecognizer recognizer, string? recognizerType = "online", string outputFormat = "text")
     {
+        if (recognizer == null)
+        {
+            return;
+        }
+        SortedDictionary<int, string> _results = new SortedDictionary<int, string>();
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
@@ -539,14 +533,10 @@ public partial class ParaformerOnlineAsr : ContentPage
                 switch (outputFormat)
                 {
                     case "text":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine(text);
-                        ShowResults($"{r.ToString()}");
+                        _results[resultIndex] = text;
                         break;
                     case "json":
                         r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
                         r.AppendLine("{");
                         r.AppendLine($"\"text\": \"{text}\",");
                         if (result.Tokens.Length > 0)
@@ -558,9 +548,16 @@ public partial class ParaformerOnlineAsr : ContentPage
                             r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
                         }
                         r.AppendLine("}");
-                        ShowResults($"{r.ToString()}");
+                        _results[resultIndex] = r.ToString();
                         break;
                 }
+                r.Clear();
+                foreach (var item in _results)
+                {
+                    r.AppendLine($"[{recognizerType} Stream {item.Key}]");
+                    r.AppendLine(item.Value);
+                }
+                ShowResults($"{r.ToString()}", false);
             }
             i++;
         };
