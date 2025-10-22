@@ -529,7 +529,6 @@ public partial class K2transducerOnlineAsr : ContentPage
             return;
         }
         SortedDictionary<int, string> _results = new SortedDictionary<int, string>();
-        int lastResultIndex = 0;
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
@@ -538,10 +537,6 @@ public partial class K2transducerOnlineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
-                if (lastResultIndex != resultIndex)
-                {
-                    lastResultIndex = resultIndex;
-                }
                 StringBuilder r = new StringBuilder();
                 switch (outputFormat)
                 {
