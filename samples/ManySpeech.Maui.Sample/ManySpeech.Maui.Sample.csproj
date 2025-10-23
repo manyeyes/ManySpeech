@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<TargetFrameworks>net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
-		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
+			<TargetFrameworks>net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+		<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 		<!-- Uncomment to also build the tizen app. You will need to install tizen by following this: https://github.com/Samsung/Tizen.NET -->
 		<!-- <TargetFrameworks>$(TargetFrameworks);net8.0-tizen</TargetFrameworks> -->
 
@@ -47,6 +47,38 @@
 		<HoursBetweenUpdateChecks>0</HoursBetweenUpdateChecks>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-android|AnyCPU'">
+	  <Optimize>False</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-ios|AnyCPU'">
+	  <Optimize>False</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-maccatalyst|AnyCPU'">
+	  <Optimize>False</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Debug|net9.0-windows10.0.19041.0|AnyCPU'">
+	  <Optimize>False</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-android|AnyCPU'">
+	  <Optimize>True</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-ios|AnyCPU'">
+	  <Optimize>True</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-maccatalyst|AnyCPU'">
+	  <Optimize>True</Optimize>
+	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)|$(TargetFramework)|$(Platform)'=='Release|net9.0-windows10.0.19041.0|AnyCPU'">
+	  <Optimize>True</Optimize>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<!-- App Icon -->
 		<MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#512BD4" />
@@ -71,7 +103,7 @@
 		<PackageReference Include="ManySpeech.AliParaformerAsr" Version="1.1.9" />
 		<PackageReference Include="ManySpeech.FireRedAsr" Version="1.0.5" />
 		<PackageReference Include="ManySpeech.K2TransducerAsr" Version="1.0.9" />
-		<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.0.7" />
+		<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.1.0" />
 		<PackageReference Include="ManySpeech.WenetAsr" Version="1.0.2" />
 		<PackageReference Include="ManySpeech.WhisperAsr" Version="1.0.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
@@ -87,6 +119,17 @@
 	<ItemGroup>
 	  <Compile Update="FireRedOfflineAsr.xaml.cs">
 	    <DependentUpon>FireRedOfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="MoonshineOfflineAsr.xaml.cs">
+	    <DependentUpon>MoonshineOfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="MoonshineOnlineAsr.xaml.cs">
+	    <DependentUpon>MoonshineOnlineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="Properties\Resources.Designer.cs">
+	    <DesignTime>True</DesignTime>
+	    <AutoGen>True</AutoGen>
+	    <DependentUpon>Resources.resx</DependentUpon>
 	  </Compile>
 	  <Compile Update="WenetOnlineAsr.xaml.cs">
 	    <DependentUpon>WenetOnlineAsr.xaml</DependentUpon>
@@ -112,10 +155,23 @@
 	</ItemGroup>
 
 	<ItemGroup>
+	  <EmbeddedResource Update="Properties\Resources.resx">
+	    <Generator>ResXFileCodeGenerator</Generator>
+	    <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+	  </EmbeddedResource>
+	</ItemGroup>
+
+	<ItemGroup>
 	  <MauiXaml Update="FireRedOfflineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="MySplashPage.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="MoonshineOfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="MoonshineOnlineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="WenetOnlineAsr.xaml">
