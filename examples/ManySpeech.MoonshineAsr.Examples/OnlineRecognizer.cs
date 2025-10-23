@@ -1,4 +1,5 @@
 ﻿using ManySpeech.MoonshineAsr.Model;
+using ManySpeech.MoonshineAsr;
 using PreProcessUtils;
 
 namespace ManySpeech.MoonshineAsr.Examples
@@ -13,7 +14,7 @@ namespace ManySpeech.MoonshineAsr.Examples
             string cachedDecodeFilePath = applicationBase + "./" + modelName + "/cached_decode.int8.onnx";
             string uncachedDecodeFilePath = applicationBase + "./" + modelName + "/uncached_decode.int8.onnx";
             string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-            OnlineRecognizer onlineRecognizer = new MoonshineAsr.OnlineRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, threadsNum: 1);
+            OnlineRecognizer onlineRecognizer = new OnlineRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, threadsNum: 1);
             return onlineRecognizer;
         }
 
@@ -21,7 +22,7 @@ namespace ManySpeech.MoonshineAsr.Examples
         {
             string modelName = "moonshine-tiny-en-onnx";
             //string modelName = "moonshine-base-en-onnx";
-            MoonshineAsr.OnlineRecognizer onlineRecognizer = initMoonshineAsrOnlineRecognizer(modelName);
+            OnlineRecognizer onlineRecognizer = initMoonshineAsrOnlineRecognizer(modelName);
             TimeSpan total_duration = TimeSpan.Zero;
             TimeSpan start_time = TimeSpan.Zero;
             TimeSpan end_time = TimeSpan.Zero;
@@ -64,21 +65,21 @@ namespace ManySpeech.MoonshineAsr.Examples
                 samplesList.Add(samples);
             }
             start_time = new TimeSpan(DateTime.Now.Ticks);            
-            List<MoonshineAsr.OnlineStream> onlineStreams = new List<MoonshineAsr.OnlineStream>();
+            List<OnlineStream> onlineStreams = new List<OnlineStream>();
             List<bool> isEndpoints = new List<bool>();
             List<bool> isEnds = new List<bool>();
             for (int num = 0; num < samplesList.Count; num++)
             {
-                MoonshineAsr.OnlineStream stream = onlineRecognizer.CreateOnlineStream();
+                OnlineStream stream = onlineRecognizer.CreateOnlineStream();
                 onlineStreams.Add(stream);
                 isEndpoints.Add(false);
                 isEnds.Add(false);
             }
             int i = 0;
-            List<MoonshineAsr.OnlineStream> streams = new List<MoonshineAsr.OnlineStream>();
+            List<OnlineStream> streams = new List<OnlineStream>();
             while (true)
             {
-                streams = new List<MoonshineAsr.OnlineStream>();
+                streams = new List<OnlineStream>();
 
                 for (int j = 0; j < samplesList.Count; j++)
                 {

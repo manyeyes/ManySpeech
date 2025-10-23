@@ -1,4 +1,5 @@
 ﻿using ManySpeech.MoonshineAsr.Model;
+using ManySpeech.MoonshineAsr;
 using PreProcessUtils;
 
 namespace ManySpeech.MoonshineAsr.Examples
@@ -58,7 +59,7 @@ namespace ManySpeech.MoonshineAsr.Examples
                 samplesList.Add(samples);
             }
             TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-            List<MoonshineAsr.OfflineStream> streams = new List<MoonshineAsr.OfflineStream>();
+            List<OfflineStream> streams = new List<OfflineStream>();
 
             // fit method 1
             // assemble streams
@@ -71,7 +72,7 @@ namespace ManySpeech.MoonshineAsr.Examples
             // fit method 2 or method 3
             foreach (List<float[]> samplesListItem in samplesList)
             {
-                MoonshineAsr.OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                OfflineStream stream = offlineRecognizer.CreateOfflineStream();
                 foreach (float[] sample in samplesListItem)
                 {
                     stream.AddSamples(sample);
