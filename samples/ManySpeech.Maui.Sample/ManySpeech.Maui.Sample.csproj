@@ -103,7 +103,7 @@
 		<PackageReference Include="ManySpeech.AliParaformerAsr" Version="1.1.9" />
 		<PackageReference Include="ManySpeech.FireRedAsr" Version="1.0.5" />
 		<PackageReference Include="ManySpeech.K2TransducerAsr" Version="1.0.9" />
-		<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.1.0" />
+		<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.1.1" />
 		<PackageReference Include="ManySpeech.WenetAsr" Version="1.0.2" />
 		<PackageReference Include="ManySpeech.WhisperAsr" Version="1.0.0" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
