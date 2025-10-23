@@ -397,8 +397,8 @@ public partial class MoonshineOnlineAsr : ContentPage
                 SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
             }
             TimeSpan totalDuration = TimeSpan.Zero;
-            int tailLength = 6;
-            var chunkSamples = SampleHelper.GetChunkSampleFormFile(files, ref totalDuration, chunkSize: 160 * 6, tailLength: tailLength);
+            int tailLength = 18;
+            var chunkSamples = SampleHelper.GetChunkSampleFormFile(files, ref totalDuration, chunkSize: 1600 * 6, tailLength: tailLength);
             if (!chunkSamples.HasValue)
             {
                 ShowResults("Failed to read audio files");

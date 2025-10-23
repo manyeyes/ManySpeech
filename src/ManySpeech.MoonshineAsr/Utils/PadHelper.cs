@@ -53,7 +53,6 @@ namespace ManySpeech.MoonshineAsr.Utils
                     s++;
                 }
             }
-            speech = speech.Select(x => x == 0 ? -23.025850929940457F / 32768 : x).ToArray();
             return speech;
         }
 
@@ -67,7 +66,6 @@ namespace ManySpeech.MoonshineAsr.Utils
                 float[]? curr_speech = modelInputs[i].Speech;
                 Array.Copy(curr_speech, 0, speech, i * curr_speech.Length, curr_speech.Length);
             }
-            speech = speech.Select(x => x == 0 ? -23.025850929940457F / 32768 : x).ToArray();
             return speech;
         }
     }

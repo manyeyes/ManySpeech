@@ -396,14 +396,14 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     results.Add(resultEntity);
                 }
             }
-            if (_muteTimes > maxMuteTimes || (nativeResult != null && nativeResult.Text?.Length > 0))
+            if (_muteTimes > maxMuteTimes || nativeResult != null)
             {
                 _output.Append(string.Format("{1}", _i, _lastResultPunc));
                 nativeResult.Text = string.Format("{0}", _output.ToString());
                 var resultEntity = ConvertToResultEntity(nativeResult, _i, processingTime);
                 resultEntity.ModelName = modelName;
                 resultEntity.Timestamps = _lastTimestamps.ToArray();
-                RaiseRecognitionResult(resultEntity);
+                //RaiseRecognitionResult(resultEntity);
                 RaiseRecognitionCompleted(TimeSpan.FromMilliseconds(processingTime), TimeSpan.FromMilliseconds(CalculateAudioDuration(_lastSample)), results.Count, _lastSample);
                 if (sentenceIfNeed) _output = new StringBuilder();
                 results.Clear();

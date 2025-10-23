@@ -42,7 +42,7 @@ namespace ManySpeech.MoonshineAsr
             }
 
             _asrInputEntity = new AsrInputEntity();
-            _cacheSamples = new float[320];
+            _cacheSamples = new float[160];
             _tokens = new List<int> { _unk_id };
         }
 
@@ -74,6 +74,10 @@ namespace ManySpeech.MoonshineAsr
         {
             lock (obj)
             {
+                if (_cacheSamples.Length!=2400 && _cacheSamples.Length != 320 && _cacheSamples.Average() == 0)
+                {
+                    _cacheSamples = new float[0];
+                }
                 int oLen = 0;
                 if (_cacheSamples.Length > 0)
                 {
@@ -94,10 +98,10 @@ namespace ManySpeech.MoonshineAsr
                     float[] _samples = new float[chunkSamplesLength];
                     int len = _cacheSamples.Length >= _samples.Length ? _samples.Length : _cacheSamples.Length;
                     Array.Copy(_cacheSamples, 0, _samples, 0, len);
-                    if (len < chunkSamplesLength)
-                    {
-                        _samples = _samples.Select(x => x == 0 ? -23.025850929940457F / 32768 : x).ToArray();
-                    }
+                    //if (len < chunkSamplesLength)
+                    //{
+                    //    _samples = _samples.Select(x => x == 0 ? 0 : x).ToArray();
+                    //}
                     InputSpeech(_samples);
                     //remove first segment
                     float[] _cacheSamplesTemp = new float[cacheSamplesLength - len];
@@ -172,7 +176,7 @@ namespace ManySpeech.MoonshineAsr
                             chunkLength = Math.Min(features.Length, shiftLength + 0);
                             decodeChunk = new float[chunkLength + 400];
                             //Array.Copy(features, 150, decodeChunk, 0, chunkLength);
-                            Array.Copy(features, 150, decodeChunk, 0, Math.Min(features.Length - 150, chunkLength));
+                            Array.Copy(features, 320, decodeChunk, 0, Math.Min(features.Length - 320, chunkLength));
                             times = segments_duration[0].Segment[0].Select(x => x + lastTimesEnd).ToArray();
                         }
                     }
