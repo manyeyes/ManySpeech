@@ -28,12 +28,17 @@ namespace ManySpeech.MoonshineAsr
             OnlineStream onlineStream = new OnlineStream(_asrProj);
             return onlineStream;
         }
-
+        public OnlineRecognizerResultEntity? GetResult(OnlineStream stream)
+        {
+            List<OnlineStream> streams = new List<OnlineStream>();
+            streams.Add(stream);
+            OnlineRecognizerResultEntity? onlineRecognizerResultEntity = GetResults(streams)?.FirstOrDefault();
+            return onlineRecognizerResultEntity;
+        }
         public List<OnlineRecognizerResultEntity> GetResults(List<OnlineStream> streams)
         {
             this.Forward(streams);
             List<OnlineRecognizerResultEntity> onlineRecognizerResultEntities = this.DecodeMulti(streams);
-
             return onlineRecognizerResultEntities;
         }
 
@@ -44,7 +49,6 @@ namespace ManySpeech.MoonshineAsr
                 return;
             }
             List<OnlineStream> streamsWorking = new List<OnlineStream>();
-            int contextSize = 2;
             List<AsrInputEntity> modelInputs = new List<AsrInputEntity>();
             List<List<float[]>> statesList = new List<List<float[]>>();
             int padFrameNum = _asrProj.ChunkLength;

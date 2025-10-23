@@ -1,6 +1,6 @@
 ﻿// See https://github.com/manyeyes for more information
 // Copyright (c)  2024 by manyeyes
-using AliFsmnVad;
+using ManySpeech.AliFsmnVad;
 using ManySpeech.MoonshineAsr.Model;
 
 namespace ManySpeech.MoonshineAsr
@@ -171,7 +171,8 @@ namespace ManySpeech.MoonshineAsr
                             int shiftLength = times[1] * (16000 / 1000);
                             chunkLength = Math.Min(features.Length, shiftLength + 0);
                             decodeChunk = new float[chunkLength + 400];
-                            Array.Copy(features, 150, decodeChunk, 0, chunkLength);
+                            //Array.Copy(features, 150, decodeChunk, 0, chunkLength);
+                            Array.Copy(features, 150, decodeChunk, 0, Math.Min(features.Length - 150, chunkLength));
                             times = segments_duration[0].Segment[0].Select(x => x + lastTimesEnd).ToArray();
                         }
                     }

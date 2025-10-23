@@ -2,7 +2,7 @@
 // Copyright (c)  2024 by manyeyes
 using Microsoft.ML.OnnxRuntime.Tensors;
 using ManySpeech.MoonshineAsr.Model;
-using AliFsmnVad;
+using ManySpeech.AliFsmnVad;
 
 
 namespace ManySpeech.MoonshineAsr
@@ -30,7 +30,7 @@ namespace ManySpeech.MoonshineAsr
             }
             catch (Exception ex)
             {
-                //
+                // 
             }
         }
 
@@ -39,7 +39,13 @@ namespace ManySpeech.MoonshineAsr
             OnlineVadStream onlineVadStream = new OnlineVadStream(_asrProj, _fsmnVad);
             return onlineVadStream;
         }
-
+        public OnlineRecognizerResultEntity? GetResult(OnlineVadStream stream)
+        {
+            List<OnlineVadStream> streams = new List<OnlineVadStream>();
+            streams.Add(stream);
+            OnlineRecognizerResultEntity? onlineRecognizerResultEntity = GetResults(streams)?.FirstOrDefault();
+            return onlineRecognizerResultEntity;
+        }
         public List<OnlineRecognizerResultEntity> GetResults(List<OnlineVadStream> streams)
         {
             this.Forward(streams);
@@ -312,8 +318,12 @@ namespace ManySpeech.MoonshineAsr
                 {
                     text_result = text_result.Replace("▁▁▁", " ").Replace("▁▁", "").Replace("▁", "");
                 }
+                
                 stream.Segments.Last().Text = Utils.ResultHelper.CheckText(text_result);
+                string text = string.Join(" ",stream.Segments.Select(x=>x.Text).ToList());
                 onlineRecognizerResultEntity.Segments = stream.Segments;
+                onlineRecognizerResultEntity.Text = text;
+                onlineRecognizerResultEntity.TextLen = text.Length;
                 onlineRecognizerResultEntities.Add(onlineRecognizerResultEntity);
             }
 #pragma warning restore CS8602 // 解引用可能出现空引用。

@@ -28,11 +28,11 @@ namespace ManySpeech.MoonshineAsr
             OfflineStream onlineStream = new OfflineStream(_asrProj);
             return onlineStream;
         }
-        public OfflineRecognizerResultEntity GetResult(OfflineStream stream)
+        public OfflineRecognizerResultEntity? GetResult(OfflineStream stream)
         {
             List<OfflineStream> streams = new List<OfflineStream>();
             streams.Add(stream);
-            OfflineRecognizerResultEntity offlineRecognizerResultEntity = GetResults(streams)[0];
+            OfflineRecognizerResultEntity? offlineRecognizerResultEntity = GetResults(streams)?.FirstOrDefault();
 
             return offlineRecognizerResultEntity;
         }
