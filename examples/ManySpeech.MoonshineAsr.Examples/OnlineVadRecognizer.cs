@@ -1,4 +1,5 @@
 ﻿using ManySpeech.MoonshineAsr.Model;
+using ManySpeech.MoonshineAsr;
 using PreProcessUtils;
 
 namespace ManySpeech.MoonshineAsr.Examples
@@ -67,22 +68,22 @@ namespace ManySpeech.MoonshineAsr.Examples
                 samplesList.Add(samples);
             }
             start_time = new TimeSpan(DateTime.Now.Ticks);            
-            List<MoonshineAsr.OnlineVadStream> onlineStreams = new List<MoonshineAsr.OnlineVadStream>();
+            List<OnlineVadStream> onlineStreams = new List<OnlineVadStream>();
             List<bool> isEndpoints = new List<bool>();
             List<bool> isEnds = new List<bool>();
             for (int num = 0; num < samplesList.Count; num++)
             {
-                MoonshineAsr.OnlineVadStream stream = onlineVadRecognizer.CreateOnlineVadStream();
+                OnlineVadStream stream = onlineVadRecognizer.CreateOnlineVadStream();
                 onlineStreams.Add(stream);
                 isEndpoints.Add(false);
                 isEnds.Add(false);
             }
             int i = 0;
-            List<MoonshineAsr.OnlineVadStream> streams = new List<MoonshineAsr.OnlineVadStream>();
+            List<OnlineVadStream> streams = new List<OnlineVadStream>();
 
             while (true)
             {
-                streams = new List<MoonshineAsr.OnlineVadStream>();
+                streams = new List<OnlineVadStream>();
 
                 for (int j = 0; j < samplesList.Count; j++)
                 {
