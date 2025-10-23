@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;net8.0-android;net8.0-ios;net8.0-maccatalyst</TargetFrameworks>
-				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net8.0-windows10.0.19041.0</TargetFrameworks>
+				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 				<!-- 平台最低版本要求 -->
 				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
 				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-android'))">21.0</SupportedOSPlatformVersion>
@@ -20,7 +20,7 @@
 				<!--<PublishAot>true</PublishAot>-->
 				<!-- info -->
 				<PackageId>ManySpeech.MoonshineAsr</PackageId>
-				<Version>1.0.7</Version>
+				<Version>1.0.9</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
@@ -37,8 +37,9 @@
 				<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
 				<PublishRepositoryUrl>true</PublishRepositoryUrl>
 				<EmbedUntrackedSources>true</EmbedUntrackedSources>
-				<DebugType>none</DebugType>
-				<DebugSymbols>false</DebugSymbols>
+				<DebugType>portable</DebugType>
+				<DebugSymbols>true</DebugSymbols>
+				<Optimize>false</Optimize>
 				<SignAssembly>true</SignAssembly>
 				<GenerateAssemblyInfo>true</GenerateAssemblyInfo>
 		</PropertyGroup>
@@ -50,8 +51,8 @@
 		</ItemGroup>
 
 		<ItemGroup>
+				<PackageReference Include="ManySpeech.AliFsmnVad" Version="1.1.4" />
 				<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="[1.22.1, )" />
-				<PackageReference Include="ManySpeech.AliFsmnVad" Version="[1.1.3, )" />
 				<!--<PackageReference Include="YamlDotNet" Version="[16.3.0, )" />
 				<PackageReference Include="Vecc.YamlDotNet.Analyzers.StaticGenerator" Version="[16.3.0, )" />-->
 				<!-- System.Text.Json：仅为不原生支持的框架添加引用 -->

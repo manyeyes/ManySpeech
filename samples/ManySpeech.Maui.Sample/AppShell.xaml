@@ -63,6 +63,12 @@ Text="ManySpeech" FontSize="Small"/>
     <FlyoutItem Title="k2transducer-online-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:K2transducerOnlineAsr}"/>
     </FlyoutItem>
+    <FlyoutItem Title="Moonshine-offline-asr" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:MoonshineOfflineAsr}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="Moonshine-online-asr" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:MoonshineOnlineAsr}"/>
+    </FlyoutItem>
     <FlyoutItem Title="paraformer-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:ParaformerOfflineAsr}"/>
     </FlyoutItem>
