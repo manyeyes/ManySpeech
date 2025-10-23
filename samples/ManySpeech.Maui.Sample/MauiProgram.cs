@@ -30,6 +30,7 @@ namespace ManySpeech.Maui.Sample
             builder.Services.AddTransient<K2transducerOnlineAsr>();
             builder.Services.AddTransient<ParaformerOnlineAsr>(); 
             builder.Services.AddTransient<WenetOnlineAsr>();
+            builder.Services.AddTransient<MoonshineOnlineAsr>();
             return builder.Build();
         }
     }
