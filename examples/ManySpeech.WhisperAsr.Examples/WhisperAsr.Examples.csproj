@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+		<PropertyGroup>
+				<OutputType>Exe</OutputType>
+				<TargetFramework>net9.0</TargetFramework>
+				<ImplicitUsings>enable</ImplicitUsings>
+				<Nullable>enable</Nullable>
+				<PublishAot>false</PublishAot>
+				<InvariantGlobalization>true</InvariantGlobalization>
+		</PropertyGroup>
+
+		<ItemGroup>
+				<ProjectReference Include="..\..\src\ManySpeech.WhisperAsr\ManySpeech.WhisperAsr.csproj" />
+				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
+		</ItemGroup>
+
+		<ItemGroup>
+				<None Include="../../docs/readme/Whisper/README.md" Pack="true" PackagePath="App_Readme/" Visible="false" />
+				<None Include="../../docs/readme/Whisper/README.zh_CN.md" Pack="true" PackagePath="App_Readme/" Visible="false" />
+				<None Include="../../LICENSE" Pack="true" PackagePath="App_Readme/" Visible="false" />
+		</ItemGroup>
+
+</Project>
