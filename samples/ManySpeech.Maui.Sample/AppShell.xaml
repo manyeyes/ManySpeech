@@ -84,7 +84,7 @@ Text="ManySpeech" FontSize="Small"/>
     <FlyoutItem Title="wenet-asr-online" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:WenetOnlineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="whisper-asr-online" Route="MainPage">
+    <FlyoutItem Title="whisper-asr-offline" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:WhisperOfflineAsr}"/>
     </FlyoutItem>
 </Shell>
