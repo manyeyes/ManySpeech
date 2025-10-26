@@ -7,7 +7,7 @@
     xmlns:sys="clr-namespace:System;assembly=netstandard"
     Shell.FlyoutBehavior="Flyout"
     Shell.NavBarIsVisible="{OnPlatform Default='False', iOS='True', Android='True'}"    
-    Shell.NavBarHasShadow="True"
+    Shell.NavBarHasShadow="True"    
     Shell.TabBarForegroundColor="WhiteSmoke"
     Shell.BackgroundColor="BlueViolet" 
     Title="ManySpeech"
@@ -30,14 +30,14 @@
                        Text="{Binding Title}"
                        VerticalOptions="Center"
                        LineBreakMode="WordWrap"
-                       Margin="5,0,0,0"
+                       Margin="15,0,0,0"
                     FontSize="16"/>
             </Grid>
         </DataTemplate>
     </Shell.ItemTemplate>
     <Shell.FlyoutHeader>
         <VerticalStackLayout HorizontalOptions="Start" VerticalOptions="Center" Padding="0,0">
-            <Label Margin="{OnPlatform Default='15,30,0,12',
+            <Label Margin="{OnPlatform Default='15,20,0,12',
                     iOS='0',
                     MacCatalyst='0'}"
 Padding="{OnPlatform Default='4,0',
@@ -83,5 +83,8 @@ Text="ManySpeech" FontSize="Small"/>
     </FlyoutItem>
     <FlyoutItem Title="wenet-asr-online" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:WenetOnlineAsr}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="whisper-asr-online" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:WhisperOfflineAsr}"/>
     </FlyoutItem>
 </Shell>

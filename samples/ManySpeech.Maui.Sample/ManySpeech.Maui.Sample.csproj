@@ -105,7 +105,7 @@
 		<PackageReference Include="ManySpeech.K2TransducerAsr" Version="1.0.9" />
 		<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.1.1" />
 		<PackageReference Include="ManySpeech.WenetAsr" Version="1.0.2" />
-		<PackageReference Include="ManySpeech.WhisperAsr" Version="1.0.0" />
+		<PackageReference Include="ManySpeech.WhisperAsr" Version="1.0.1" />
 		<PackageReference Include="Microsoft.Maui.Controls" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Maui.Controls.Compatibility" Version="$(MauiVersion)" />
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.1" />
@@ -130,6 +130,9 @@
 	    <DesignTime>True</DesignTime>
 	    <AutoGen>True</AutoGen>
 	    <DependentUpon>Resources.resx</DependentUpon>
+	  </Compile>
+	  <Compile Update="WhisperOfflineAsr.xaml.cs">
+	    <DependentUpon>WhisperOfflineAsr.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="WenetOnlineAsr.xaml.cs">
 	    <DependentUpon>WenetOnlineAsr.xaml</DependentUpon>
@@ -172,6 +175,9 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="MoonshineOnlineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="WhisperOfflineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="WenetOnlineAsr.xaml">
