@@ -13,7 +13,7 @@ public partial class WenetOfflineAsr : ContentPage
     // 2.搜索 wenet offline onnx 离线模型（非流式模型）
     // 3.设置 _modelName 值，_modelName = [模型名称]
     //private string _modelName = "wenet-u2pp-conformer-gigaspeech-onnx-offline-20210728";
-    private string _modelName = "wenet-u2pp-conformer-wenetspeech-onnx-offline-20220506";
+    private string _modelName = "wenet-u2pp-conformer-wenetspeech-int8-onnx-offline-20220506";
     // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
     // hash为空时，仅判断文件是否存在
     private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="ManySpeech.Maui.Sample.K2transducerOfflineAsr">
+             x:Class="ManySpeech.Maui.Sample.WhisperOfflineAsr">
     <ContentPage.Resources>
         <Style TargetType="Button" x:Key="SmallButtonStyle">
             <Setter Property="Padding" Value="2,3" />
@@ -13,10 +13,10 @@
             <!-- 限制最小宽度 -->
         </Style>
     </ContentPage.Resources>
-    
+
     <Grid RowDefinitions="Auto,*">
-        <!-- 顶部固定区域 -->        
-        <StackLayout Grid.Row="0" BackgroundColor="Transparent" Padding="16,10">
+        <!-- 顶部固定区域 -->
+        <StackLayout Grid.Row="0" BackgroundColor="Transparent" Padding="20,10">
             <StackLayout BackgroundColor="Transparent" Padding="0,10">
                 <Label Text=""
                        x:Name="LblTitle" FontSize="Title"
@@ -164,7 +164,7 @@ HorizontalOptions="Fill" VerticalOptions="Fill" >
                         Margin="0"
                         HorizontalOptions="Fill"
                         Placeholder="Enter your response here"/>
-                </Grid>               
+                </Grid>
             </ScrollView>
         </Border>
     </Grid>

@@ -8,7 +8,7 @@
         public MainPage()
         {
             InitializeComponent();
-            StartClock(); 
+            StartClock();
         }
 
         private void StartClock()
