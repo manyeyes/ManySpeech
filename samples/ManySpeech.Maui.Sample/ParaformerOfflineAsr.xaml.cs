@@ -20,9 +20,8 @@ public partial class ParaformerOfflineAsr : ContentPage
         {"am.mvn","" },
         {"asr.json","" },
         {"tokens.txt","" }
-    }; 
+    };
     OfflineAliParaformerAsrRecognizer? _recognizer;
-
     public ParaformerOfflineAsr()
     {
         InitializeComponent();
@@ -302,13 +301,13 @@ public partial class ParaformerOfflineAsr : ContentPage
                 return;
             }
             string modelAccuracy = "int8";
-            string methodType = "one";// 文件识别 -method one/batch/chunk
+            string methodType = "chunk";// 文件识别 -method one/batch/chunk
+            string outputFormat = "srt"; // text/json/srt
+            string recognizerType = "offline";
             int threads = 2;
             if (_recognizer == null)
             {
                 _recognizer = new OfflineAliParaformerAsrRecognizer();
-                SetOfflineRecognizerCallbackForResult(_recognizer, "offline", "text");
-                SetOfflineRecognizerCallbackForCompleted(_recognizer);
             }
             if (_recognizer == null) { return; }
             ShowResults("Speech recognition in progress, please wait ...");
@@ -328,7 +327,31 @@ public partial class ParaformerOfflineAsr : ContentPage
                     return;
                 }
                 var samplesList = new List<List<float[]>>();
-                samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                var timestampsList = new List<List<int[]>>();
+                if (true)//vad
+                {
+                    var vadDetector = new AliFsmnVadDetector();
+                    var vadResult = vadDetector.OfflineDetector(samples.Value.sampleList, _modelBase, "alifsmnvad-onnx", modelAccuracy, threads); // 使用多流模式
+                    samplesList = vadResult.Select(x => x.Waveform).ToList();
+                    switch (methodType)
+                    {
+                        case "one":
+                            timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
+                            break;
+                        case "batch":
+                            timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
+                            break;
+                        case "chunk":
+                            timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
+                            break;
+                    }
+                }
+                else
+                {
+                    samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                }
+                SetOfflineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat, timestampsList: timestampsList);
+                SetOfflineRecognizerCallbackForCompleted(_recognizer);
                 await _recognizer.RecognizeAsync(
                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
             }
@@ -424,9 +447,11 @@ public partial class ParaformerOfflineAsr : ContentPage
     }
 
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineAliParaformerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
+    private void SetOfflineRecognizerCallbackForResult(OfflineAliParaformerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text", int startIndex = 0, List<List<int[]>> timestampsList = null)
     {
-        int i = 0;
+        List<int> orderIndexList = timestampsList != null ? new int[timestampsList.Count].ToList() : null;
+        var timestamps = timestampsList != null ? Convert(timestampsList, orderIndexList).ToList() : null;
+        int i = startIndex;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
         {
@@ -459,6 +484,27 @@ public partial class ParaformerOfflineAsr : ContentPage
                         r.AppendLine("}");
                         ShowResults($"{r.ToString()}", true);
                         break;
+                    case "srt":
+                        r.Clear();
+                        if (timestamps != null && timestamps.Count > i - startIndex)
+                        {
+                            var outerIndex = timestamps[i - startIndex].outerIndex;
+                            var innerIndex = timestamps[i - startIndex].innerIndex;
+                            var timestamp = timestamps[i - startIndex].timestamp;
+                            r.AppendLine(resultIndex.ToString());
+                            r.AppendLine($"{TimeSpan.FromMilliseconds(timestamp[0]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')} -> {TimeSpan.FromMilliseconds(timestamp[1]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')}");
+                        }
+                        else
+                        {
+                            r.AppendLine(resultIndex.ToString());
+                            if (result.Timestamps.Count() > 0)
+                            {
+                                r.AppendLine($"{TimeSpan.FromMilliseconds(result.Timestamps.First()[0]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')}->{TimeSpan.FromMilliseconds(result.Timestamps.Last()[1]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')}");
+                            }
+                        }
+                        r.AppendLine(text);
+                        ShowResults($"{r.ToString()}", true);
+                        break;
                 }
             }
             i++;
@@ -478,5 +524,24 @@ public partial class ParaformerOfflineAsr : ContentPage
         };
     }
     #endregion
+
+    public IEnumerable<(int outerIndex, int innerIndex, int[] timestamp)>? Convert(List<List<int[]>> nestedList, List<int> orderIndexList)
+    {
+        if (nestedList == null) return null;
+        if (orderIndexList.Count == 0 || orderIndexList == null)
+        {
+            orderIndexList = new int[nestedList.Count].ToList();
+        }
+        // 扁平化处理：为每个 int [] 添加对应的外层索引（从 1 开始）
+        var flatItems = nestedList
+        .SelectMany((innerList, outerIndex) =>
+        innerList.Select((arr, innerIndex) => (
+            outerIndex: outerIndex + 1, // 外层索引从 1 开始
+            innerIndex: innerIndex + 1 + orderIndexList[outerIndex], // 内层索引从 1 开始
+             timestamp: arr
+        ))
+        );
+        return flatItems;
+    }
 }
 
