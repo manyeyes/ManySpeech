@@ -132,42 +132,40 @@ HorizontalOptions="Fill" />
         </StackLayout>
 
         <!-- 底部滚动区域 -->
-        <ScrollView x:Name="LabelResultsScrollView" Grid.Row="1" Margin="0,15">
-            <VerticalStackLayout
-            Spacing="0"
-            Padding="15,0"
-            VerticalOptions="Start">
-                <Border StrokeThickness="0.2" FlowDirection="MatchParent"
-                StrokeShape="RoundRectangle 5"
-                Padding="0,0"
-                HorizontalOptions="Fill">
-                    <Border.Stroke>
-                        <LinearGradientBrush EndPoint="0,500">
-                            <GradientStop Color="LightGray"
-				  Offset="0.1"/>
-                            <GradientStop Color="Red"
-				  Offset="0.1"/>
-                        </LinearGradientBrush>
-                    </Border.Stroke>
-                    <Label FlowDirection="MatchParent"
-                        Text="" 
+        <Border Grid.Row="1" StrokeThickness="0.2" FlowDirection="MatchParent"
+StrokeShape="RoundRectangle 5" Margin="10,15"
+Padding="0,0"
+HorizontalOptions="Fill" VerticalOptions="Fill" >
+            <Border.Stroke>
+                <LinearGradientBrush EndPoint="0,500">
+                    <GradientStop Color="LightGray"
+			  Offset="0.1"/>
+                    <GradientStop Color="Red"
+			  Offset="0.1"/>
+                </LinearGradientBrush>
+            </Border.Stroke>
+            <ScrollView x:Name="ScrollViewLabelResults" VerticalOptions="Fill" >
+                <Grid VerticalOptions="Fill">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Label Grid.Row="0"
+                        Text=""
                         LineBreakMode="WordWrap"
                         SemanticProperties.HeadingLevel="Level2"
                         FontSize="15"
                         Padding="10,10,10,10"
                         x:Name="LblResults"
-                        HorizontalOptions="Start"/>
-                </Border>
-
-                <Editor 
-            x:Name="EditorResults"
-            IsVisible="False"
-            FontSize="15"
-            Margin="0"            
-            Placeholder="Enter your response here"/>
-
-            </VerticalStackLayout>
-
-        </ScrollView>
+                        HorizontalOptions="Fill"/>
+                    <Editor Grid.Row="0"
+                        x:Name="EditorResults" 
+                        IsVisible="False"
+                        FontSize="15"
+                        Margin="0"
+                        HorizontalOptions="Fill"
+                        Placeholder="Enter your response here"/>
+                </Grid>               
+            </ScrollView>
+        </Border>
     </Grid>
 </ContentPage>
