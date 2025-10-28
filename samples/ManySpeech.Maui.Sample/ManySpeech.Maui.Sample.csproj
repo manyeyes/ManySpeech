@@ -177,6 +177,9 @@
 	  <MauiXaml Update="MoonshineOnlineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="ParaformerOfflineAsrVad.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="WhisperOfflineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
