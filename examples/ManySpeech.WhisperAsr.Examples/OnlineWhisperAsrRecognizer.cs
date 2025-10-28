@@ -17,34 +17,7 @@ namespace ManySpeech.WhisperAsr.Examples
 
         public static void test_WhisperAsrOnlineRecognizer(List<float[]>? samples = null)
         {
-            //string modelName = "whisper-tiny-onnx";
-            //string modelName = "whisper-tiny-en-onnx";
-            //string modelName = "whisper-base-onnx";
-            //string modelName = "whisper-base-en-onnx";
-            string modelName = "whisper-small-onnx";
-            //string modelName = "whisper-small-en-onnx";
-            //string modelName = "whisper-small-cantonese-cer10.1-onnx";
-            //string modelName = "whisper-small-cantonese-cer7.93-onnx";
-            //string modelName = "whisper-medium-onnx";
-            //string modelName = "whisper-medium-en-onnx";
-            //string modelName = "whisper-large-v1-onnx";
-            //string modelName = "whisper-large-v2-onnx";
-            //string modelName = "whisper-large-v2-multi-hans-onnx";
-            //string modelName = "whisper-large-v3-onnx";
-            //string modelName = "whisper-large-v3-zh-onnx-belle-20240311";
-            //string modelName = "whisper-large-v3-turbo-onnx";
-            //string modelName = "whisper-large-v3-turbo-zh-onnx-belle-20241016";
-            //string modelName = "whisper-large-v3-turbo-ja-onnx-anime-20241110";
-            //string modelName = "distil-whisper-small-en-onnx";
-            //string modelName = "distil-whisper-medium-en-onnx";
-            //string modelName = "distil-whisper-large-v2-en-onnx";
-            //string modelName = "distil-whisper-large-v3-en-onnx";
-            //string modelName = "distil-whipser-large-v3-en-onnx";
-            //string modelName = "distil-whisper-large-v2-multi-hans-onnx";
-            //string modelName = "distil-whisper-small-cantonese-onnx-alvanlii-20240404";
-            //string modelName = "whisper-small-cantonese-onnx-alvanlii-20240515";
-            //string modelName = "distil-whisper-large-v3-de-onnx-primeline-20240531";
-            //string modelName = "medusa-whisper-large-v2-onnx";
+            string modelName = "whisper-tiny-onnx";
             OnlineRecognizer onlineRecognizer = initWhisperAsrOnlineRecognizer(modelName);
             TimeSpan totalDuration = TimeSpan.Zero;
             TimeSpan start_time = TimeSpan.Zero;
@@ -64,9 +37,7 @@ namespace ManySpeech.WhisperAsr.Examples
                     {
                         continue;
                     }
-                    // method 1
                     TimeSpan duration = TimeSpan.Zero;
-                    //samples = AudioHelper.GetMediaChunkSamples(wavFilePath, ref duration, chunkSize: 160 * 6);
                     samples = AudioHelper.GetFileChunkSamples(wavFilePath, ref duration, chunkSize: 160 * 6);
                     for (int j = 0; j < 500; j++)
                     {
@@ -74,15 +45,6 @@ namespace ManySpeech.WhisperAsr.Examples
                     }
                     samplesList.Add(samples);
                     totalDuration += duration;
-                    // method 2
-                    //List<TimeSpan> durations = new List<TimeSpan>();
-                    ////samples = AudioHelper.GetMediaChunkSamples(wavFilePath, ref durations);
-                    //samples = AudioHelper.GetFileChunkSamples(wavFilePath, ref durations);
-                    //samplesList.Add(samples);
-                    //foreach(TimeSpan duration in durations)
-                    //{
-                    //    totalDuration += duration;
-                    //}
                 }
             }
             else
@@ -90,28 +52,6 @@ namespace ManySpeech.WhisperAsr.Examples
                 samplesList.Add(samples);
             }
             start_time = new TimeSpan(DateTime.Now.Ticks);
-            // one stream decode
-            //for (int j = 0; j < samplesList.Count; j++)
-            //{
-            //    OnlineStream stream = onlineRecognizer.CreateOnlineStream();
-            //    foreach (float[] samplesItem in samplesList[j])
-            //    {
-            //        stream.AddSamples(samplesItem);
-            //    }
-            //    // 1
-            //    int w = 0;
-            //    while (w < 17)
-            //    {
-            //        OnlineRecognizerResultEntity result_on = onlineRecognizer.GetResult(stream);
-            //        Console.WriteLine(result_on.text);
-            //        w++;
-            //    }
-            //    // 2
-            //    //OnlineRecognizerResultEntity result_on = onlineRecognizer.GetResult(stream);
-            //    //Console.WriteLine(result_on.text);
-            //}
-
-            //multi streams decode
             List<OnlineStream> onlineStreams = new List<OnlineStream>();
             List<bool> isEndpoints = new List<bool>();
             List<bool> isEnds = new List<bool>();

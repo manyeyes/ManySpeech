@@ -368,27 +368,20 @@ public partial class ParaformerOfflineAsrVad : ContentPage
                 }
                 var samplesList = new List<List<float[]>>();
                 var timestampsList = new List<List<int[]>>();
-                if (true)//vad
+                var vadDetector = new AliFsmnVadDetector();
+                var vadResult = vadDetector.OfflineDetector(samples.Value.sampleList, _modelBase, _vadModelName, modelAccuracy, threads); // 使用多流模式
+                samplesList = vadResult.Select(x => x.Waveform).ToList();
+                switch (methodType)
                 {
-                    var vadDetector = new AliFsmnVadDetector();
-                    var vadResult = vadDetector.OfflineDetector(samples.Value.sampleList, _modelBase, _vadModelName, modelAccuracy, threads); // 使用多流模式
-                    samplesList = vadResult.Select(x => x.Waveform).ToList();
-                    switch (methodType)
-                    {
-                        case "one":
-                            timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
-                            break;
-                        case "batch":
-                            timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
-                            break;
-                        case "chunk":
-                            timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
-                            break;
-                    }
-                }
-                else
-                {
-                    samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                    case "one":
+                        timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
+                        break;
+                    case "batch":
+                        timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
+                        break;
+                    case "chunk":
+                        timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
+                        break;
                 }
                 SetOfflineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat, timestampsList: timestampsList);
                 SetOfflineRecognizerCallbackForCompleted(_recognizer);
@@ -402,13 +395,11 @@ public partial class ParaformerOfflineAsrVad : ContentPage
         }
 
     }
-
-
     private void ShowResults(string str, bool isAppend = true)
     {
         Dispatcher.Dispatch(
                     new Action(
-                        delegate
+                        async delegate
                         {
                             if (isAppend)
                             {
@@ -418,6 +409,8 @@ public partial class ParaformerOfflineAsrVad : ContentPage
                             {
                                 LblResults.Text = str + "\n";
                             }
+                            await Task.Delay(100);
+                            await ScrollViewLabelResults.ScrollToAsync(0, ScrollViewLabelResults.ContentSize.Height, true);
                         }
                         ));
     }
