@@ -18,13 +18,14 @@ namespace PreProcessUtils
             AudioFileReader audioFileReader = new AudioFileReader(wavFilePath);
             int sampleRate = audioFileReader.WaveFormat.SampleRate;
             int sourceChannels = audioFileReader.WaveFormat.Channels;
+            int bitsPerSample = audioFileReader.WaveFormat.BitsPerSample;
             byte[] datas = new byte[audioFileReader.Length];
             //audioFileReader.Read(datas, 0, datas.Length);
             audioFileReader.ReadExactly(datas, 0, datas.Length);
             duration = audioFileReader.TotalTime;
             float[] wavsdata = new float[datas.Length / sizeof(float)];
             Buffer.BlockCopy(datas, 0, wavsdata, 0, datas.Length);
-            if (sampleRate != 16000)
+            if (sampleRate != 16000 || sourceChannels != 1)
             {
                 wavsdata = Resample(wavsdata, sampleRate, 16000, sourceChannels: sourceChannels);
             }
@@ -273,7 +274,6 @@ namespace PreProcessUtils
 
             return targetData;
         }
-
 
         /// <summary>
         /// 通过文件头特征判断是否为音频文件
