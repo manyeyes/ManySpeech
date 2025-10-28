@@ -16,12 +16,7 @@ public partial class MoonshineOnlineAsr : ContentPage
     //private string _modelName = "moonshine-base-en-onnx";
     private string _modelName = "moonshine-tiny-en-onnx";
     private string _vadModelName = "alifsmnvad-onnx";
-    private string[] _modelNames;
-    // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
-    // hash为空时，仅判断文件是否存在
-    private Dictionary<string, string> _modelFiles = new Dictionary<string, string>()
-    {
-    };
+    private Dictionary<string, Dictionary<string, string>> _models;
     private IRecorder _micCapture;
     private CancellationTokenSource _micCaptureCts = new CancellationTokenSource();
     private OnlineMoonshineAsrRecognizer? _recognizer;
@@ -31,10 +26,16 @@ public partial class MoonshineOnlineAsr : ContentPage
         InitializeComponent();
         CheckModels();
         _micCapture = micCapture;
-        LblTitle.Text = _modelName;
-        _modelNames = new string[] { _modelName, _vadModelName };
+        // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
+        // hash为空时，仅判断文件是否存在
+        _models = new Dictionary<string, Dictionary<string, string>>() {
+            {_modelName,new Dictionary<string, string>()},
+            {_vadModelName,new Dictionary<string, string>()}
+        };
+        LblTitle.Text = string.Join(", ", _models.Keys.ToArray());
     }
 
+    #region check models, download models, delete models
     private async void OnCheckModelsClicked(object sender, EventArgs e)
     {
         BtnCheckModels.IsEnabled = false;
@@ -57,9 +58,9 @@ public partial class MoonshineOnlineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            foreach (var modelName in _modelNames)
+            foreach (var modelName in _models.Keys.ToArray())
             {
-                DownloadModels(modelName);
+                await DownloadModel(modelName);
             }
         });
         BtnDownLoadModels.IsEnabled = true;
@@ -71,7 +72,7 @@ public partial class MoonshineOnlineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(() =>
         {
-            DeleteModels();
+            DeleteModels(_models.Keys.ToArray());
         });
         BtnDeleteModels.IsEnabled = true;
     }
@@ -82,52 +83,77 @@ public partial class MoonshineOnlineAsr : ContentPage
                          new Action(
                              async delegate
                              {
+                                 bool status = true;
                                  ModelStatusLabel.IsVisible = true;
-                                 foreach (var modelName in _modelNames)
+                                 foreach (var modelName in _models.Keys.ToArray())
                                  {
-                                     bool state = downloadHelper.GetDownloadState(_modelFiles, _modelBase, modelName);
+                                     var modelFiles = _models[modelName];
+                                     bool state = downloadHelper.GetDownloadState(modelFiles, _modelBase, modelName);
                                      if (state)
                                      {
-                                         ModelStatusLabel.Text = "model is ready";
-                                         DownloadProgressLabel.IsVisible = false;
-                                         DownloadResultsLabel.Text = "";
+                                         status = status && state;
                                      }
                                      else
                                      {
-                                         ModelStatusLabel.Text = "model not ready";
-                                         DownloadResultsLabel.IsVisible = true;
-                                         DownloadResultsLabel.Text = "";
-                                         bool isDownload = await DisplayAlert("Question?", "Missing model, will it be automatically downloaded?", "Yes", "No");
+                                         status = status && state;
+                                         bool isDownload = await DisplayAlert("Question?", $"Missing model: {modelName}, will it be automatically downloaded?", "Yes", "No");
                                          if (isDownload)
                                          {
-                                             DownloadModels(modelName);
+                                             await DownloadModel(modelName);
                                          }
                                      }
+                                 }
+                                 if (status)
+                                 {
+                                     ModelStatusLabel.Text = "model is ready";
+                                     DownloadProgressLabel.IsVisible = false;
+                                     DownloadResultsLabel.IsVisible = false;
+                                     DownloadResultsLabel.Text = "";
+                                 }
+                                 else
+                                 {
+                                     ModelStatusLabel.Text = "model not ready";
+                                     DownloadResultsLabel.IsVisible = true;
+                                     DownloadResultsLabel.Text = "";
                                  }
                              }));
 
     }
-    private async void DownloadModels(string modelName)
+    private async Task DownloadModel(string modelName)
     {
         Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
                                      DownloadProgressLabel.IsVisible = false;
+                                     DownloadResultsLabel.IsVisible = false;
                                      DownloadResultsLabel.Text = "";
                                  }));
         GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
         await Task.Run(() => gitHelper.ProcessCloneModel(_modelBase, modelName));
     }
 
-    private async void DeleteModels()
+    private async void DeleteModels(string[] modelNames)
     {
         GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
-        foreach (var modelName in _modelNames)
+        var tasks = new List<Task>();
+        foreach (var currentModel in modelNames)
         {
-            await Task.Run(() => gitHelper.DeleteModels(_modelBase, modelName));
+            tasks.Add(Task.Run(() => gitHelper.DeleteModels(_modelBase, currentModel)));
+        }
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (AggregateException ex)
+        {
+            foreach (var innerEx in ex.InnerExceptions)
+            {
+                ShowTips($"Failed to delete model：{innerEx.Message}");
+            }
         }
     }
+    #endregion
 
     private void DownloadDisplay(int progress, DownloadState downloadState, string filename, string msg = "")
     {
