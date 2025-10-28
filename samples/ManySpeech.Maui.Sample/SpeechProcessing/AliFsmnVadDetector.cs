@@ -3,7 +3,7 @@ using ManySpeech.AliFsmnVad.Model;
 
 namespace ManySpeech.Maui.Sample.SpeechProcessing
 {
-    internal partial class AliFsmnVadDetector:IDisposable
+    internal partial class AliFsmnVadDetector : IDisposable
     {
         public bool _disposed = false;
 
@@ -82,7 +82,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             return _detector;
         }
 
-        public SegmentEntity[]? OfflineDetector(List<float[]>? samples,  string? modelBasePath,string modelName = "speech_fsmn_vad_zh-cn-16k-common-onnx", string modelAccuracy = "int8", int threadsNum = 2)
+        public SegmentEntity[]? OfflineDetector(List<float[]>? samples, string? modelBasePath, string modelName = "alifsmnvad-onnx", string modelAccuracy = "int8", int threadsNum = 2)
         {
             SegmentEntity[]? segments = null;
             if (string.IsNullOrEmpty(modelBasePath))
