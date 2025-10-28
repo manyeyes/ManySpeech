@@ -5,7 +5,7 @@ using System.Text;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class ParaformerOfflineAsr : ContentPage
+public partial class ParaformerOfflineAsrVad : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
@@ -14,31 +14,41 @@ public partial class ParaformerOfflineAsr : ContentPage
     // 3.设置 _modelName 值，_modelName = [模型名称]
     //private string _modelName = "paraformer-seaco-large-zh-timestamp-int8-onnx-offline";
     private string _modelName = "paraformer-large-zh-en-timestamp-int8-onnx-offline";
-    // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
-    // hash为空时，仅判断文件是否存在
-    private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
-        {"model.int8.onnx",""},
-        {"am.mvn","" },
-        {"asr.json","" },
-        {"tokens.txt","" }
-    };
+    private string _vadModelName = "alifsmnvad-onnx";
+    private Dictionary<string, Dictionary<string, string>> _models;
     OfflineAliParaformerAsrRecognizer? _recognizer;
-    public ParaformerOfflineAsr()
+    public ParaformerOfflineAsrVad()
     {
         InitializeComponent();
         CheckModels();
-        LblTitle.Text = _modelName;
+        // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
+        // hash为空时，仅判断文件是否存在
+        _models = new Dictionary<string, Dictionary<string, string>>() {
+            {
+                _modelName,new Dictionary<string, string>{
+                    {"model.int8.onnx",""},
+                    {"am.mvn","" },
+                    {"asr.json","" },
+                    {"tokens.txt","" }
+                }
+            },
+            {_vadModelName,new Dictionary<string, string>()}
+        };
+        LblTitle.Text = string.Join(", ", _models.Keys.ToArray());
     }
 
-    #region event
+    #region check models, download models, delete models
     private async void OnCheckModelsClicked(object sender, EventArgs e)
     {
         BtnCheckModels.IsEnabled = false;
+        BtnCheckModels.Text = "Checking...";
+        DownloadResultsLabel.Text = "";
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
             CheckModels();
         });
+        BtnCheckModels.Text = "Check";
         BtnCheckModels.IsEnabled = true;
     }
 
@@ -50,7 +60,10 @@ public partial class ParaformerOfflineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            DownloadModels();
+            foreach (var modelName in _models.Keys.ToArray())
+            {
+                await DownloadModel(modelName);
+            }
         });
         BtnDownLoadModels.IsEnabled = true;
     }
@@ -61,62 +74,88 @@ public partial class ParaformerOfflineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(() =>
         {
-            DeleteModels();
+            DeleteModels(_models.Keys.ToArray());
         });
         BtnDeleteModels.IsEnabled = true;
     }
-    #endregion
-
-    private async void DownloadModels()
-    {
-        DownloadResultsLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.IsVisible = false;
-                                     DownloadResultsLabel.Text = "";
-                                 }));
-        GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
-        await Task.Run(() => gitHelper.ProcessCloneModel(_modelBase, _modelName));
-    }
-
-    private async void DeleteModels()
-    {
-        GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
-        await Task.Run(() => gitHelper.DeleteModels(_modelBase, _modelName));
-    }
-
     private void CheckModels()
     {
         DownloadHelper downloadHelper = new DownloadHelper(_modelBase, this.DownloadDisplay);
-        ModelStatusLabel.Dispatcher.Dispatch(
+        Dispatcher.Dispatch(
                          new Action(
                              async delegate
                              {
+                                 bool status = true;
                                  ModelStatusLabel.IsVisible = true;
-                                 bool state = downloadHelper.GetDownloadState(_modelFiles, _modelBase, _modelName);
-                                 if (state)
+                                 foreach (var modelName in _models.Keys.ToArray())
+                                 {
+                                     var modelFiles = _models[modelName];
+                                     bool state = downloadHelper.GetDownloadState(modelFiles, _modelBase, modelName);
+                                     if (state)
+                                     {
+                                         status = status && state;
+                                     }
+                                     else
+                                     {
+                                         status = status && state;
+                                         bool isDownload = await DisplayAlert("Question?", $"Missing model: {modelName}, will it be automatically downloaded?", "Yes", "No");
+                                         if (isDownload)
+                                         {
+                                             await DownloadModel(modelName);
+                                         }
+                                     }
+                                 }
+                                 if (status)
                                  {
                                      ModelStatusLabel.Text = "model is ready";
                                      DownloadProgressLabel.IsVisible = false;
+                                     DownloadResultsLabel.IsVisible = false;
                                      DownloadResultsLabel.Text = "";
                                  }
                                  else
                                  {
                                      ModelStatusLabel.Text = "model not ready";
-                                     DownloadProgressLabel.IsVisible = false;
-                                     DownloadResultsLabel.Text = "";
                                      DownloadResultsLabel.IsVisible = true;
                                      DownloadResultsLabel.Text = "";
-                                     bool isDownload = await DisplayAlert("Question?", "Missing model, will it be automatically downloaded?", "Yes", "No");
-                                     if (isDownload)
-                                     {
-                                         DownloadModels();
-                                     }
                                  }
                              }));
 
     }
+    private async Task DownloadModel(string modelName)
+    {
+        Dispatcher.Dispatch(
+                             new Action(
+                                 delegate
+                                 {
+                                     DownloadProgressLabel.IsVisible = false;
+                                     DownloadResultsLabel.IsVisible = false;
+                                     DownloadResultsLabel.Text = "";
+                                 }));
+        GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
+        await Task.Run(() => gitHelper.ProcessCloneModel(_modelBase, modelName));
+    }
+
+    private async void DeleteModels(string[] modelNames)
+    {
+        GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
+        var tasks = new List<Task>();
+        foreach (var currentModel in modelNames)
+        {
+            tasks.Add(Task.Run(() => gitHelper.DeleteModels(_modelBase, currentModel)));
+        }
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (AggregateException ex)
+        {
+            foreach (var innerEx in ex.InnerExceptions)
+            {
+                ShowTips($"Failed to delete model：{innerEx.Message}");
+            }
+        }
+    }
+    #endregion
 
     private void DownloadDisplay(int progress, DownloadState downloadState, string filename, string msg = "")
     {
@@ -302,8 +341,8 @@ public partial class ParaformerOfflineAsr : ContentPage
                 return;
             }
             string modelAccuracy = "int8";
-            string methodType = "one";// 文件识别 -method one/batch
-            string outputFormat = "text"; // text/json
+            string methodType = "chunk";// 文件识别 -method one/batch/chunk
+            string outputFormat = "srt"; // text/json/srt
             string recognizerType = "offline";
             int threads = 2;
             if (_recognizer == null)
@@ -328,8 +367,30 @@ public partial class ParaformerOfflineAsr : ContentPage
                     return;
                 }
                 var samplesList = new List<List<float[]>>();
-                samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
-                SetOfflineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
+                var timestampsList = new List<List<int[]>>();
+                if (true)//vad
+                {
+                    var vadDetector = new AliFsmnVadDetector();
+                    var vadResult = vadDetector.OfflineDetector(samples.Value.sampleList, _modelBase, _vadModelName, modelAccuracy, threads); // 使用多流模式
+                    samplesList = vadResult.Select(x => x.Waveform).ToList();
+                    switch (methodType)
+                    {
+                        case "one":
+                            timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
+                            break;
+                        case "batch":
+                            timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
+                            break;
+                        case "chunk":
+                            timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
+                            break;
+                    }
+                }
+                else
+                {
+                    samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                }
+                SetOfflineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat, timestampsList: timestampsList);
                 SetOfflineRecognizerCallbackForCompleted(_recognizer);
                 await _recognizer.RecognizeAsync(
                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
@@ -523,4 +584,3 @@ public partial class ParaformerOfflineAsr : ContentPage
         return flatItems;
     }
 }
-

@@ -164,6 +164,36 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     }
                     // Non batch method
                 }
+                if (streamDecodeMethod == "chunk")
+                {
+                    // Non batch method
+                    Console.WriteLine("Recognition results:\r\n");
+                    try
+                    {
+                        for (int i = 0; i < samplesList.Count; i++)
+                        {                            
+                            foreach (var sample in samplesList[i])
+                            {
+                                OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                                // Modify the logic here to dynamically modify hot words
+                                //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" }); 
+                                stream.AddSamples(sample);
+                                OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                                var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                                var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
+                                results.Add(resultEntity);
+                                RaiseRecognitionResult(resultEntity);
+                            }
+                            
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.InnerException?.InnerException);
+                    }
+                    // Non batch method
+                }
                 if (streamDecodeMethod == "batch")
                 {
                     //2. batch method

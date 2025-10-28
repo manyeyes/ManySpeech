@@ -12,7 +12,7 @@
     Shell.BackgroundColor="BlueViolet" 
     Title="ManySpeech"
     x:Name="SysShell"
-    FlyoutWidth="268"
+    FlyoutWidth="300"
     Padding="4,0,0,0">
     <!-- 在资源中定义自定义样式 -->
     <Shell.ItemTemplate>
@@ -30,7 +30,7 @@
                        Text="{Binding Title}"
                        VerticalOptions="Center"
                        LineBreakMode="WordWrap"
-                       Margin="15,0,0,0"
+                       Margin="5,0,0,0"
                     FontSize="16"/>
             </Grid>
         </DataTemplate>
@@ -57,10 +57,10 @@ Text="ManySpeech" FontSize="Small"/>
     <FlyoutItem Title="firered-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:FireRedOfflineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="k2transducer-offline-asr" Route="MainPage">
+    <FlyoutItem Title="k2-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:K2transducerOfflineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="k2transducer-online-asr" Route="MainPage">
+    <FlyoutItem Title="k2-online-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:K2transducerOnlineAsr}"/>
     </FlyoutItem>
     <FlyoutItem Title="Moonshine-offline-asr" Route="MainPage">
@@ -71,6 +71,9 @@ Text="ManySpeech" FontSize="Small"/>
     </FlyoutItem>
     <FlyoutItem Title="paraformer-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:ParaformerOfflineAsr}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="paraformer-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:ParaformerOfflineAsrVad}"/>
     </FlyoutItem>
     <FlyoutItem Title="paraformer-online-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:ParaformerOnlineAsr}"/>
