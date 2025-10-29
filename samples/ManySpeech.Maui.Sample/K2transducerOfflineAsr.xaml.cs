@@ -7,7 +7,7 @@ using static Microsoft.Maui.ApplicationModel.Permissions;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class K2transducerOfflineAsr : ContentPage
+public partial class K2TransducerOfflineAsr : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
@@ -23,7 +23,7 @@ public partial class K2transducerOfflineAsr : ContentPage
     };
     OfflineK2TransducerAsrRecognizer? _recognizer;
 
-    public K2transducerOfflineAsr()
+    public K2TransducerOfflineAsr()
     {
         InitializeComponent();
         CheckModels();

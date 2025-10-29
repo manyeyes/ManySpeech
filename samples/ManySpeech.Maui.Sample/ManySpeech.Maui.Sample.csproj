@@ -120,6 +120,9 @@
 	  <Compile Update="FireRedOfflineAsr.xaml.cs">
 	    <DependentUpon>FireRedOfflineAsr.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="K2transducerOfflineAsrVad.xaml.cs">
+	    <DependentUpon>K2TransducerOfflineAsrVad.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="MoonshineOfflineAsr.xaml.cs">
 	    <DependentUpon>MoonshineOfflineAsr.xaml</DependentUpon>
 	  </Compile>
@@ -150,7 +153,7 @@
 	    <DependentUpon>K2transducerOfflineAsr.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="K2transducerOnlineAsr.xaml.cs">
-	    <DependentUpon>K2transducerOnlineAsr.xaml</DependentUpon>
+	    <DependentUpon>K2TransducerOnlineAsr.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="SensevoiceOfflineAsr.xaml.cs">
 	    <DependentUpon>SensevoiceOfflineAsr.xaml</DependentUpon>
@@ -169,6 +172,9 @@
 
 	<ItemGroup>
 	  <MauiXaml Update="FireRedOfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="K2TransducerOfflineAsrVad.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="MySplashPage.xaml">
@@ -201,7 +207,7 @@
 	  <MauiXaml Update="K2transducerOfflineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
-	  <MauiXaml Update="K2transducerOnlineAsr.xaml">
+	  <MauiXaml Update="K2TransducerOnlineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="SensevoiceOfflineAsr.xaml">

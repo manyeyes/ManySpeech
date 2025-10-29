@@ -61,10 +61,13 @@ Text="ManySpeech" FontSize="Small"/>
         <ShellContent ContentTemplate="{DataTemplate local:FireRedOfflineAsrVad}"/>
     </FlyoutItem>
     <FlyoutItem Title="k2-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:K2transducerOfflineAsr}"/>
+        <ShellContent ContentTemplate="{DataTemplate local:K2TransducerOfflineAsr}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="k2-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:K2TransducerOfflineAsrVad}"/>
     </FlyoutItem>
     <FlyoutItem Title="k2-online-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:K2transducerOnlineAsr}"/>
+        <ShellContent ContentTemplate="{DataTemplate local:K2TransducerOnlineAsr}"/>
     </FlyoutItem>
     <FlyoutItem Title="Moonshine-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:MoonshineOfflineAsr}"/>
