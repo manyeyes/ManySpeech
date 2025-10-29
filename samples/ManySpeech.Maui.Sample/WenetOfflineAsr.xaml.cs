@@ -303,12 +303,12 @@ public partial class WenetOfflineAsr : ContentPage
                 return;
             }
             string modelAccuracy = "int8";
-            string methodType = "one";// 文件识别 -method one/batch/chunk
+            string methodType = "one";// 文件识别 -method one/batch
             int threads = 2;
             if (_recognizer == null)
             {
                 _recognizer = new OfflineWenetAsrRecognizer();
-                SetOfflineRecognizerCallbackForResult(_recognizer, "offline", "text");
+                SetOfflineRecognizerCallbackForResult(_recognizer, "offline");
                 SetOfflineRecognizerCallbackForCompleted(_recognizer);
             }
             if (_recognizer == null) { return; }
@@ -346,7 +346,7 @@ public partial class WenetOfflineAsr : ContentPage
     {
         Dispatcher.Dispatch(
                     new Action(
-                        delegate
+                        async delegate
                         {
                             if (isAppend)
                             {
@@ -356,6 +356,8 @@ public partial class WenetOfflineAsr : ContentPage
                             {
                                 LblResults.Text = str + "\n";
                             }
+                            await Task.Delay(100);
+                            await ScrollViewLabelResults.ScrollToAsync(0, ScrollViewLabelResults.ContentSize.Height, true);
                         }
                         ));
     }
@@ -425,7 +427,7 @@ public partial class WenetOfflineAsr : ContentPage
     }
 
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineWenetAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
+    private void SetOfflineRecognizerCallbackForResult(OfflineWenetAsrRecognizer recognizer, string? recognizerType)
     {
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
@@ -436,31 +438,9 @@ public partial class WenetOfflineAsr : ContentPage
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
                 StringBuilder r = new StringBuilder();
-                switch (outputFormat)
-                {
-                    case "text":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine(text);
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                    case "json":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine("{");
-                        r.AppendLine($"\"text\": \"{text}\",");
-                        if (result.Tokens.Length > 0)
-                        {
-                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        }
-                        if (result.Timestamps.Length > 0)
-                        {
-                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        }
-                        r.AppendLine("}");
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                }
+                r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                r.AppendLine(text);
+                ShowResults($"{r.ToString()}", true);
             }
             i++;
         };

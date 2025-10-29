@@ -188,7 +188,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             {
                 Text = nativeResult.Text,
                 Tokens = nativeResult.Segments?.Select(x => x.Text).ToArray() ?? Array.Empty<string>(),
-                Timestamps = PreProcessUtils.PreloadHelper.CorrectTimestamps(nativeResult.Segments?.Select(x => new[] { (int)TimeSpan.FromSeconds((double)x.Start).TotalMilliseconds, (int)TimeSpan.FromSeconds((double)x.End).TotalMilliseconds }).ToArray() ?? Array.Empty<int[]>()),
+                Timestamps = nativeResult.Segments?.Select(x => new[] { (int)TimeSpan.FromSeconds((double)x.Start).TotalMilliseconds, (int)TimeSpan.FromSeconds((double)x.End).TotalMilliseconds }).ToArray() ?? Array.Empty<int[]>(),
                 Languages = nativeResult.Segments?.Select(x => x.Language).ToArray() ?? Array.Empty<string>(),
                 Index = index,
                 ProcessingTimeMs = processingTimeMs

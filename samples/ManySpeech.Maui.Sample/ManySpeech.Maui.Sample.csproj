@@ -126,6 +126,9 @@
 	  <Compile Update="MoonshineOnlineAsr.xaml.cs">
 	    <DependentUpon>MoonshineOnlineAsr.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="FireRedOfflineAsrVad.xaml.cs">
+	    <DependentUpon>FireRedOfflineAsrVad.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="Properties\Resources.Designer.cs">
 	    <DesignTime>True</DesignTime>
 	    <AutoGen>True</AutoGen>
@@ -175,6 +178,9 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="MoonshineOnlineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="FireRedOfflineAsrVad.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="ParaformerOfflineAsrVad.xaml">

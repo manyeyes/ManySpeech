@@ -341,8 +341,8 @@ public partial class ParaformerOfflineAsrVad : ContentPage
                 return;
             }
             string modelAccuracy = "int8";
-            string methodType = "chunk";// 文件识别 -method one/batch/chunk
-            string outputFormat = "srt"; // text/json/srt
+            string methodType = "chunk";
+            string outputFormat = "srt"; // txt/srt
             string recognizerType = "offline";
             int threads = 2;
             if (_recognizer == null)
@@ -371,18 +371,7 @@ public partial class ParaformerOfflineAsrVad : ContentPage
                 var vadDetector = new AliFsmnVadDetector();
                 var vadResult = vadDetector.OfflineDetector(samples.Value.sampleList, _modelBase, _vadModelName, modelAccuracy, threads); // 使用多流模式
                 samplesList = vadResult.Select(x => x.Waveform).ToList();
-                switch (methodType)
-                {
-                    case "one":
-                        timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
-                        break;
-                    case "batch":
-                        timestampsList = vadResult.Select(x => new List<int[]> { new int[] { x.Segment.First()[0], x.Segment.Last()[1] } }).ToList();
-                        break;
-                    case "chunk":
-                        timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
-                        break;
-                }
+                timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
                 SetOfflineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat, timestampsList: timestampsList);
                 SetOfflineRecognizerCallbackForCompleted(_recognizer);
                 await _recognizer.RecognizeAsync(
@@ -480,10 +469,10 @@ public partial class ParaformerOfflineAsrVad : ContentPage
     }
 
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineAliParaformerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text", int startIndex = 0, List<List<int[]>> timestampsList = null)
+    private void SetOfflineRecognizerCallbackForResult(OfflineAliParaformerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "txt", int startIndex = 0, List<List<int[]>> timestampsList = null)
     {
         List<int> orderIndexList = timestampsList != null ? new int[timestampsList.Count].ToList() : null;
-        var timestamps = timestampsList != null ? Convert(timestampsList, orderIndexList).ToList() : null;
+        var timestamps = timestampsList != null ? ConvertHelper.Convert(timestampsList, orderIndexList).ToList() : null;
         int i = startIndex;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
@@ -495,26 +484,10 @@ public partial class ParaformerOfflineAsrVad : ContentPage
                 StringBuilder r = new StringBuilder();
                 switch (outputFormat)
                 {
-                    case "text":
+                    case "txt":
                         r.Clear();
                         r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
                         r.AppendLine(text);
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                    case "json":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine("{");
-                        r.AppendLine($"\"text\": \"{text}\",");
-                        if (result.Tokens.Length > 0)
-                        {
-                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        }
-                        if (result.Timestamps.Length > 0)
-                        {
-                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        }
-                        r.AppendLine("}");
                         ShowResults($"{r.ToString()}", true);
                         break;
                     case "srt":
@@ -557,23 +530,4 @@ public partial class ParaformerOfflineAsrVad : ContentPage
         };
     }
     #endregion
-
-    public IEnumerable<(int outerIndex, int innerIndex, int[] timestamp)>? Convert(List<List<int[]>> nestedList, List<int> orderIndexList)
-    {
-        if (nestedList == null) return null;
-        if (orderIndexList.Count == 0 || orderIndexList == null)
-        {
-            orderIndexList = new int[nestedList.Count].ToList();
-        }
-        // 扁平化处理：为每个 int [] 添加对应的外层索引（从 1 开始）
-        var flatItems = nestedList
-        .SelectMany((innerList, outerIndex) =>
-        innerList.Select((arr, innerIndex) => (
-            outerIndex: outerIndex + 1, // 外层索引从 1 开始
-            innerIndex: innerIndex + 1 + orderIndexList[outerIndex], // 内层索引从 1 开始
-             timestamp: arr
-        ))
-        );
-        return flatItems;
-    }
 }
