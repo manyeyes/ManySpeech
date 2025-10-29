@@ -57,6 +57,9 @@ Text="ManySpeech" FontSize="Small"/>
     <FlyoutItem Title="firered-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:FireRedOfflineAsr}"/>
     </FlyoutItem>
+    <FlyoutItem Title="firered-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:FireRedOfflineAsrVad}"/>
+    </FlyoutItem>
     <FlyoutItem Title="k2-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:K2transducerOfflineAsr}"/>
     </FlyoutItem>
