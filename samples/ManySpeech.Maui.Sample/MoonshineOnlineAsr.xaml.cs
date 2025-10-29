@@ -285,13 +285,12 @@ public partial class MoonshineOnlineAsr : ContentPage
                 await _micCapture.StartCapture();
 
                 string recognizerType = "online";
-                string outputFormat = "text";
                 string modelAccuracy = "int8";
                 int threads = 2;
                 if (_recognizer == null)
                 {
                     _recognizer = new OnlineMoonshineAsrRecognizer();
-                    SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
+                    SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType);
                 }
                 while (!_micCaptureCts.Token.IsCancellationRequested)
                 {
@@ -413,14 +412,13 @@ public partial class MoonshineOnlineAsr : ContentPage
 
 
             string recognizerType = "online";
-            string outputFormat = "text";
             string modelAccuracy = "int8";
             int threads = 2;
-            string methodType = "chunk"; // one/batch/chunk
+            string methodType = "chunk"; // one/batch
             if (_recognizer == null)
             {
                 _recognizer = new OnlineMoonshineAsrRecognizer();
-                SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat);
+                SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType);
             }
             TimeSpan totalDuration = TimeSpan.Zero;
             int tailLength = 18;
@@ -458,7 +456,7 @@ public partial class MoonshineOnlineAsr : ContentPage
     {
         Dispatcher.Dispatch(
                     new Action(
-                        delegate
+                        async delegate
                         {
                             if (isAppend)
                             {
@@ -468,6 +466,8 @@ public partial class MoonshineOnlineAsr : ContentPage
                             {
                                 LblResults.Text = str + "\n";
                             }
+                            await Task.Delay(100);
+                            await ScrollViewLabelResults.ScrollToAsync(0, ScrollViewLabelResults.ContentSize.Height, true);
                         }
                         ));
     }
@@ -551,7 +551,7 @@ public partial class MoonshineOnlineAsr : ContentPage
     }
     #region callback  
 
-    private async void SetOnlineRecognizerCallbackForResult(OnlineMoonshineAsrRecognizer recognizer, string? recognizerType = "online", string outputFormat = "text")
+    private async void SetOnlineRecognizerCallbackForResult(OnlineMoonshineAsrRecognizer recognizer, string? recognizerType = "online")
     {
         if (recognizer == null)
         {
@@ -566,29 +566,8 @@ public partial class MoonshineOnlineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                _results[resultIndex] = text;
                 StringBuilder r = new StringBuilder();
-                switch (outputFormat)
-                {
-                    case "text":
-                        _results[resultIndex] = text;
-                        break;
-                    case "json":
-                        r.Clear();
-                        r.AppendLine("{");
-                        r.AppendLine($"\"text\": \"{text}\",");
-                        if (result.Tokens.Length > 0)
-                        {
-                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        }
-                        if (result.Timestamps.Length > 0)
-                        {
-                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        }
-                        r.AppendLine("}");
-                        _results[resultIndex] = r.ToString();
-                        break;
-                }
-                r.Clear();
                 foreach (var item in _results)
                 {
                     r.AppendLine($"[{recognizerType} Stream {item.Key}]");

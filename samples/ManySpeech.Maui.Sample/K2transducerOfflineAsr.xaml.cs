@@ -302,13 +302,11 @@ public partial class K2transducerOfflineAsr : ContentPage
                 return;
             }
             string modelAccuracy = "int8";
-            string methodType = "one";// 文件识别 -method one/batch/chunk
+            string methodType = "one";// 文件识别 -method one/batch
             int threads = 2;
             if (_recognizer == null)
             {
                 _recognizer = new OfflineK2TransducerAsrRecognizer();
-                SetOfflineRecognizerCallbackForResult(_recognizer, "offline", "text");
-                SetOfflineRecognizerCallbackForCompleted(_recognizer);
             }
             if (_recognizer == null) { return; }
             ShowResults("Speech recognition in progress, please wait ...");
@@ -329,6 +327,8 @@ public partial class K2transducerOfflineAsr : ContentPage
                 }
                 var samplesList = new List<List<float[]>>();
                 samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                SetOfflineRecognizerCallbackForResult(_recognizer, "offline");
+                SetOfflineRecognizerCallbackForCompleted(_recognizer);
                 await _recognizer.RecognizeAsync(
                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
             }
@@ -339,13 +339,11 @@ public partial class K2transducerOfflineAsr : ContentPage
         }
 
     }
-
-
     private void ShowResults(string str, bool isAppend = true)
     {
         Dispatcher.Dispatch(
                     new Action(
-                        delegate
+                        async delegate
                         {
                             if (isAppend)
                             {
@@ -355,6 +353,8 @@ public partial class K2transducerOfflineAsr : ContentPage
                             {
                                 LblResults.Text = str + "\n";
                             }
+                            await Task.Delay(100);
+                            await ScrollViewLabelResults.ScrollToAsync(0, ScrollViewLabelResults.ContentSize.Height, true);
                         }
                         ));
     }
@@ -424,7 +424,7 @@ public partial class K2transducerOfflineAsr : ContentPage
     }
 
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineK2TransducerAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
+    private void SetOfflineRecognizerCallbackForResult(OfflineK2TransducerAsrRecognizer recognizer, string? recognizerType)
     {
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
@@ -435,31 +435,9 @@ public partial class K2transducerOfflineAsr : ContentPage
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
                 StringBuilder r = new StringBuilder();
-                switch (outputFormat)
-                {
-                    case "text":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine(text);
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                    case "json":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine("{");
-                        r.AppendLine($"\"text\": \"{text}\",");
-                        if (result.Tokens.Length > 0)
-                        {
-                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        }
-                        if (result.Timestamps.Length > 0)
-                        {
-                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        }
-                        r.AppendLine("}");
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                }
+                r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                r.AppendLine(text);
+                ShowResults($"{r.ToString()}", true);
             }
             i++;
         };

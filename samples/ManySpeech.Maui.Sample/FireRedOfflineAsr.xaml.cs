@@ -303,13 +303,11 @@ public partial class FireRedOfflineAsr : ContentPage
                 return;
             }
             string modelAccuracy = "int8";
-            string methodType = "one";// 文件识别 -method one/batch/chunk
+            string methodType = "one";// 文件识别 -method one/batch
             int threads = 2;
             if (_recognizer == null)
             {
                 _recognizer = new OfflineFireRedAsrRecognizer();
-                SetOfflineRecognizerCallbackForResult(_recognizer, "offline", "text");
-                SetOfflineRecognizerCallbackForCompleted(_recognizer);
             }
             if (_recognizer == null) { return; }
             ShowResults("Speech recognition in progress, please wait ...");
@@ -330,6 +328,8 @@ public partial class FireRedOfflineAsr : ContentPage
                 }
                 var samplesList = new List<List<float[]>>();
                 samplesList = samples.Value.sampleList.Select(x => new List<float[]>() { x }).ToList();
+                SetOfflineRecognizerCallbackForResult(_recognizer, "offline");
+                SetOfflineRecognizerCallbackForCompleted(_recognizer);
                 await _recognizer.RecognizeAsync(
                            samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
             }
@@ -345,7 +345,7 @@ public partial class FireRedOfflineAsr : ContentPage
     {
         Dispatcher.Dispatch(
                     new Action(
-                        delegate
+                        async delegate
                         {
                             if (isAppend)
                             {
@@ -355,6 +355,8 @@ public partial class FireRedOfflineAsr : ContentPage
                             {
                                 LblResults.Text = str + "\n";
                             }
+                            await Task.Delay(100);
+                            await ScrollViewLabelResults.ScrollToAsync(0, ScrollViewLabelResults.ContentSize.Height, true);
                         }
                         ));
     }
@@ -424,7 +426,7 @@ public partial class FireRedOfflineAsr : ContentPage
     }
 
     #region callback
-    private void SetOfflineRecognizerCallbackForResult(OfflineFireRedAsrRecognizer recognizer, string? recognizerType, string outputFormat = "text")
+    private void SetOfflineRecognizerCallbackForResult(OfflineFireRedAsrRecognizer recognizer, string? recognizerType)
     {
         int i = 0;
         recognizer.ResetRecognitionResultHandlers();
@@ -435,31 +437,9 @@ public partial class FireRedOfflineAsr : ContentPage
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
                 StringBuilder r = new StringBuilder();
-                switch (outputFormat)
-                {
-                    case "text":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine(text);
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                    case "json":
-                        r.Clear();
-                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
-                        r.AppendLine("{");
-                        r.AppendLine($"\"text\": \"{text}\",");
-                        if (result.Tokens.Length > 0)
-                        {
-                            r.AppendLine($"\"tokens\":[{string.Join(",", result.Tokens.Select(x => $"\"{x}\"").ToArray())}],");
-                        }
-                        if (result.Timestamps.Length > 0)
-                        {
-                            r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
-                        }
-                        r.AppendLine("}");
-                        ShowResults($"{r.ToString()}", true);
-                        break;
-                }
+                r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                r.AppendLine(text);
+                ShowResults($"{r.ToString()}", true);
             }
             i++;
         };
