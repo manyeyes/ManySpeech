@@ -102,8 +102,8 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             {
                 modelBasePath = applicationBase;
             }
-            TranscribeRecognizer? TranscribeRecognizer = InitTranscribeRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
-            if (TranscribeRecognizer == null)
+            TranscribeRecognizer? transcribeRecognizer = InitTranscribeRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            if (transcribeRecognizer == null)
             {
                 throw new InvalidOperationException("Failed to initialize recognizer");
             }
@@ -121,16 +121,44 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     {
                         for (int i = 0; i < samplesList.Count; i++)
                         {
-                            TranscribeStream stream = TranscribeRecognizer.CreateTranscribeStream();
+                            TranscribeStream stream = transcribeRecognizer.CreateTranscribeStream();
                             foreach (var sample in samplesList[i])
                             {
                                 stream.AddSamples(sample);
                             }
-                            TranscribeRecognizerResultEntity nativeResult = TranscribeRecognizer.GetResult(stream);
+                            TranscribeRecognizerResultEntity nativeResult = transcribeRecognizer.GetResult(stream);
                             var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
                             var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
                             results.Add(resultEntity);
                             RaiseRecognitionResult(resultEntity);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine(ex.Message);
+                        Console.WriteLine(ex.InnerException?.InnerException);
+                    }
+                    // Non batch method
+                }
+                if (streamDecodeMethod == "chunk")
+                {
+                    // Non batch method
+                    Console.WriteLine("Recognition results:\r\n");
+                    try
+                    {
+                        for (int i = 0; i < samplesList.Count; i++)
+                        {
+                            foreach (var sample in samplesList[i])
+                            {
+                                TranscribeStream stream = transcribeRecognizer.CreateTranscribeStream();
+                                stream.AddSamples(sample);
+                                TranscribeRecognizerResultEntity nativeResult = transcribeRecognizer.GetResult(stream);
+                                var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
+                                var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
+                                results.Add(resultEntity);
+                                RaiseRecognitionResult(resultEntity);
+                            }
+
                         }
                     }
                     catch (Exception ex)
@@ -150,14 +178,14 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         List<TranscribeStream> streams = new List<TranscribeStream>();
                         foreach (var sampleGroup in samplesList)
                         {
-                            var stream = TranscribeRecognizer.CreateTranscribeStream();
+                            var stream = transcribeRecognizer.CreateTranscribeStream();
                             foreach (var sample in sampleGroup)
                             {
                                 stream.AddSamples(sample);
                             }
                             streams.Add(stream);
                         }
-                        var nativeResults = TranscribeRecognizer.GetResults(streams);
+                        var nativeResults = transcribeRecognizer.GetResults(streams);
                         for (int i = 0; i < nativeResults.Count; i++)
                         {
                             var resultEntity = ConvertToResultEntity(nativeResults[i], i, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
