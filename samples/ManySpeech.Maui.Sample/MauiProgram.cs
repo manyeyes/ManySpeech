@@ -27,7 +27,7 @@ namespace ManySpeech.Maui.Sample
 #else
             builder.Services.AddSingleton<AudioInOut.Base.IRecorder, WindowsWaveInRecorder>(provider => new WindowsWaveInRecorder(200));   
 #endif
-            builder.Services.AddTransient<K2transducerOnlineAsr>();
+            builder.Services.AddTransient<K2TransducerOnlineAsr>();
             builder.Services.AddTransient<ParaformerOnlineAsr>(); 
             builder.Services.AddTransient<WenetOnlineAsr>();
             builder.Services.AddTransient<MoonshineOnlineAsr>();

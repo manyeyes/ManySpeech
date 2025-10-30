@@ -1,36 +1,36 @@
-﻿using AudioInOut.Base;
-using ManySpeech.Maui.Sample.SpeechProcessing;
+﻿using ManySpeech.Maui.Sample.SpeechProcessing;
 using ManySpeech.Maui.Sample.Utils;
 using PreProcessUtils;
 using System.Text;
 
 namespace ManySpeech.Maui.Sample;
 
-public partial class K2TransducerOnlineAsr : ContentPage
+public partial class MoonshineOfflineAsrVad : ContentPage
 {
     private string _modelBase = Path.Combine(SysConf.AppDataPath, "AllModels");
     // 如何使用其他模型
     // 1.打开 https://modelscope.cn/profile/manyeyes?tab=model 页面
-    // 2.搜索 sensevoice, paraformer onnx 离线模型（非流式模型）
+    // 2.搜索 moonshine offline onnx 离线模型（非流式模型）
     // 3.设置 _modelName 值，_modelName = [模型名称]
-    private string _modelName = "k2transducer-zipformer-ctc-small-zh-onnx-online-20250401";
-    // 需要检查的文件 <文件名, hash>
-    private Dictionary<string, string> _modelFiles = new Dictionary<string, string>() {
-        {"model.int8.onnx",""},
-        {"tokens.txt","" }
-    };
-    private IRecorder _micCapture;
-    private CancellationTokenSource _micCaptureCts = new CancellationTokenSource();
-    private OnlineK2TransducerAsrRecognizer? _recognizer;
-
-    public K2TransducerOnlineAsr(IRecorder micCapture)
+    //private string _modelName = "moonshine-base-en-onnx";
+    private string _modelName = "moonshine-tiny-en-onnx";
+    private string _vadModelName = "alifsmnvad-onnx";
+    private Dictionary<string, Dictionary<string, string>> _models;
+    OfflineMoonshineAsrRecognizer? _recognizer;
+    public MoonshineOfflineAsrVad()
     {
         InitializeComponent();
         CheckModels();
-        _micCapture = micCapture; 
-        LblTitle.Text = _modelName;
+        // 如需强制先行检查文件，可填_modelFiles <文件名, hash>
+        // hash为空时，仅判断文件是否存在
+        _models = new Dictionary<string, Dictionary<string, string>>() {
+            {_modelName,new Dictionary<string, string>()},
+            {_vadModelName,new Dictionary<string, string>()}
+        };
+        LblTitle.Text = string.Join(", ", _models.Keys.ToArray());
     }
 
+    #region check models, download models, delete models
     private async void OnCheckModelsClicked(object sender, EventArgs e)
     {
         BtnCheckModels.IsEnabled = false;
@@ -53,7 +53,10 @@ public partial class K2TransducerOnlineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            DownloadModels();
+            foreach (var modelName in _models.Keys.ToArray())
+            {
+                await DownloadModel(modelName);
+            }
         });
         BtnDownLoadModels.IsEnabled = true;
     }
@@ -64,7 +67,7 @@ public partial class K2TransducerOnlineAsr : ContentPage
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(() =>
         {
-            DeleteModels();
+            DeleteModels(_models.Keys.ToArray());
         });
         BtnDeleteModels.IsEnabled = true;
     }
@@ -75,12 +78,31 @@ public partial class K2TransducerOnlineAsr : ContentPage
                          new Action(
                              async delegate
                              {
+                                 bool status = true;
                                  ModelStatusLabel.IsVisible = true;
-                                 bool state = downloadHelper.GetDownloadState(_modelFiles, _modelBase, _modelName);
-                                 if (state)
+                                 foreach (var modelName in _models.Keys.ToArray())
+                                 {
+                                     var modelFiles = _models[modelName];
+                                     bool state = downloadHelper.GetDownloadState(modelFiles, _modelBase, modelName);
+                                     if (state)
+                                     {
+                                         status = status && state;
+                                     }
+                                     else
+                                     {
+                                         status = status && state;
+                                         bool isDownload = await DisplayAlert("Question?", $"Missing model: {modelName}, will it be automatically downloaded?", "Yes", "No");
+                                         if (isDownload)
+                                         {
+                                             await DownloadModel(modelName);
+                                         }
+                                     }
+                                 }
+                                 if (status)
                                  {
                                      ModelStatusLabel.Text = "model is ready";
                                      DownloadProgressLabel.IsVisible = false;
+                                     DownloadResultsLabel.IsVisible = false;
                                      DownloadResultsLabel.Text = "";
                                  }
                                  else
@@ -88,33 +110,45 @@ public partial class K2TransducerOnlineAsr : ContentPage
                                      ModelStatusLabel.Text = "model not ready";
                                      DownloadResultsLabel.IsVisible = true;
                                      DownloadResultsLabel.Text = "";
-                                     bool isDownload = await DisplayAlert("Question?", "Missing model, will it be automatically downloaded?", "Yes", "No");
-                                     if (isDownload)
-                                     {
-                                         DownloadModels();
-                                     }
                                  }
                              }));
 
     }
-    private async void DownloadModels()
+    private async Task DownloadModel(string modelName)
     {
         Dispatcher.Dispatch(
                              new Action(
                                  delegate
                                  {
                                      DownloadProgressLabel.IsVisible = false;
+                                     DownloadResultsLabel.IsVisible = false;
                                      DownloadResultsLabel.Text = "";
                                  }));
         GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
-        await Task.Run(() => gitHelper.ProcessCloneModel(_modelBase, _modelName));
+        await Task.Run(() => gitHelper.ProcessCloneModel(_modelBase, modelName));
     }
 
-    private async void DeleteModels()
+    private async void DeleteModels(string[] modelNames)
     {
         GitHelper gitHelper = new GitHelper(this.DownloadDisplay);
-        await Task.Run(() => gitHelper.DeleteModels(_modelBase, _modelName));
+        var tasks = new List<Task>();
+        foreach (var currentModel in modelNames)
+        {
+            tasks.Add(Task.Run(() => gitHelper.DeleteModels(_modelBase, currentModel)));
+        }
+        try
+        {
+            await Task.WhenAll(tasks);
+        }
+        catch (AggregateException ex)
+        {
+            foreach (var innerEx in ex.InnerExceptions)
+            {
+                ShowTips($"Failed to delete model：{innerEx.Message}");
+            }
+        }
     }
+    #endregion
 
     private void DownloadDisplay(int progress, DownloadState downloadState, string filename, string msg = "")
     {
@@ -228,112 +262,33 @@ public partial class K2TransducerOnlineAsr : ContentPage
         }
     }
 
-    private async void OnBtnRecognitionMicStartClicked(object sender, EventArgs e)
-    {
-        ResetComponent();
-        BtnRecognitionMicStart.IsEnabled = false;
-        TaskFactory taskFactory = new TaskFactory();
-        await taskFactory.StartNew(async () =>
-        {
-            // 麦克风识别，参数: -method chunk
-            if (_micCapture == null)
-            {
-                return;
-            }
-            try
-            {
-                _micCaptureCts = new CancellationTokenSource();
-                await _micCapture.StartCapture();
-
-                string recognizerType = "online";
-                string modelAccuracy = "int8";
-                int threads = 2;
-                if (_recognizer == null)
-                {
-                    _recognizer = new OnlineK2TransducerAsrRecognizer();
-                    SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType);
-                }
-                while (!_micCaptureCts.Token.IsCancellationRequested)
-                {
-                    var micChunk = await _micCapture.GetNextMicChunkAsync(_micCaptureCts.Token);
-                    if (micChunk == null) continue;
-                    if (micChunk != null)
-                    {
-                        await _recognizer.RecognizeAsync(
-                        micChunk, _modelBase, _modelName, modelAccuracy, "chunk", threads);
-                    }
-                }
-                ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition completed");
-            }
-            catch (OperationCanceledException)
-            {
-                ShowTips($"[{DateTime.Now:HH:mm:ss}] Real-time recognition canceled by user");
-            }
-            finally
-            {
-                if (_recognizer != null)
-                {
-                    _recognizer.Dispose();
-                    _recognizer = null;
-                }
-            }
-
-        });
-        BtnRecognitionMicStart.IsEnabled = false;
-        BtnRecognitionMicStart.Background = new SolidColorBrush(Colors.Gray);
-        BtnRecognitionMicStart.TextColor = Colors.WhiteSmoke;
-    }
-
-    private async void OnBtnRecognitionMicStopClicked(object sender, EventArgs e)
-    {
-        TaskFactory taskFactory = new TaskFactory();
-        await taskFactory.StartNew(() =>
-        {
-            _micCapture.StopCapture();
-            _micCaptureCts.Cancel();
-        });
-        this.BtnRecognitionMicStart.IsEnabled = true;
-        BtnRecognitionMicStart.Background = default;
-        BtnRecognitionMicStart.TextColor = default;
-    }
-
-    private async void OnBtnRecognitionClearClicked(object sender, EventArgs e)
-    {
-        ClearLogs();
-        ClearResults();
-    }
-
     private async void OnBtnRecognitionExampleClicked(object sender, EventArgs e)
     {
         BtnRecognitionExample.IsEnabled = false;
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
-            await RecognizerFilesByOnline();
+            await RecognizerFilesByOffline();
         });
         BtnRecognitionExample.IsEnabled = true;
     }
 
     private async void OnBtnRecognitionFilesClicked(object sender, EventArgs e)
     {
-        ResetComponent();
         var customFileType = new FilePickerFileType(
                 new Dictionary<DevicePlatform, IEnumerable<string>>
                 {
                     { DevicePlatform.iOS, new[] { "public.my.comic.extension" } }, // UTType values
-                    { DevicePlatform.Android, new[] { "audio/*" } }, // MIME type  audio/x-wav
-                    { DevicePlatform.WinUI, new[] { ".wav", ".mp3", ".wma", ".ape", ".flac", ".ogg", ".acc",".aac", "aif","aifc","aiff","als","au","awb","es","esl","imy", "audio", ".mp4", "mpg","mpeg"," avi"," rm"," rmvb"," mov"," wmv"," asf", "asx","wvx","mpe","mpa","gdf","3gp","flv","vob","mkv","swf" } }, // file extension
+                    { DevicePlatform.Android, new[] { "audio/x-wav" } }, // MIME type
+                    { DevicePlatform.WinUI, new[] { ".wav", ".mp3" } }, // file extension
                     { DevicePlatform.Tizen, new[] { "*/*" } },
-                    { DevicePlatform.macOS, new[] { ".wav", ".mp3", ".mp4", ".acc" } }, // UTType values
+                    { DevicePlatform.macOS, new[] { "cbr", "cbz" } }, // UTType values
                 });
-
         PickOptions options = new()
         {
             PickerTitle = "Please select a comic file",
             FileTypes = customFileType,
         };
-
-
         TaskFactory taskFactory = new TaskFactory();
         await taskFactory.StartNew(async () =>
         {
@@ -343,11 +298,15 @@ public partial class K2TransducerOnlineAsr : ContentPage
                 string fullpath = fileResult.FullPath;
                 List<string> fullpaths = new List<string>();
                 fullpaths.Add(fullpath);
-                await RecognizerFilesByOnline(fullpaths);
+                RecognizerFilesByOffline(fullpaths);
             }
         });
     }
-
+    private async void OnBtnRecognitionClearClicked(object sender, EventArgs e)
+    {
+        ClearLogs();
+        ClearResults();
+    }
     public async Task<FileResult> PickAndShow(PickOptions options)
     {
         try
@@ -358,63 +317,67 @@ public partial class K2TransducerOnlineAsr : ContentPage
         catch (Exception ex)
         {
             // The user canceled or something went wrong
+            ShowResults("The user canceled or something went wrong:" + ex.ToString());
         }
 
         return null;
     }
 
-    private async Task RecognizerFilesByOnline(List<string>? fullpaths = null)
+    public async Task RecognizerFilesByOffline(List<string>? fullpaths = null)
     {
         try
         {
-            // 文件识别 -method one/batch/chunk
             string[] files = !fullpaths?.Any() ?? true ? SampleHelper.GetPaths(_modelBase, _modelName) : fullpaths.ToArray();
-            if (files.Length == 0) throw new Exception("No input files found");
-
-            
-            string recognizerType = "online";
-            string outputFormat = "text";
+            if (files.Length == 0)
+            {
+                ShowResults("No input files found");
+                return;
+            }
             string modelAccuracy = "int8";
+            string methodType = "chunk";
+            string outputFormat = "srt"; // txt/srt
+            string recognizerType = "offline";
             int threads = 2;
-            string methodType = "chunk"; // one/batch/chunk
             if (_recognizer == null)
             {
-                _recognizer = new OnlineK2TransducerAsrRecognizer();
-                SetOnlineRecognizerCallbackForResult(_recognizer, recognizerType);
+                _recognizer = new OfflineMoonshineAsrRecognizer();
             }
+            if (_recognizer == null) { return; }
+            ShowResults("Speech recognition in progress, please wait ...");
             TimeSpan totalDuration = TimeSpan.Zero;
             int tailLength = 6;
-            var chunkSamples = SampleHelper.GetChunkSampleFormFile(files, ref totalDuration, chunkSize: 3200, tailLength: tailLength);
-            if (!chunkSamples.HasValue)
+            var samples = SampleHelper.GetSampleFormFile(files, ref totalDuration);
+            if (!samples.HasValue)
             {
                 ShowResults("Failed to read audio files");
                 return;
             }
-            if (methodType == "chunk")
-            {
-                foreach (var streamSamples in chunkSamples.Value.samplesList)
-                {
-                    foreach (var sampleChunk in streamSamples)
-                    {
-                        var chunk = new List<List<float[]>> { new List<float[]> { sampleChunk } };
-                        await _recognizer.RecognizeAsync(
-                            chunk, _modelBase, _modelName, modelAccuracy, methodType, threads);
-                    }
-                }
-            }
             else
             {
+                if (samples.Value.sampleList.Count == 0)
+                {
+                    ShowResults("No media file is read!");
+                    return;
+                }
+                var samplesList = new List<List<float[]>>();
+                var timestampsList = new List<List<int[]>>();
+                var vadDetector = new AliFsmnVadDetector();
+                var vadResult = vadDetector.OfflineDetector(samples.Value.sampleList, _modelBase, _vadModelName, modelAccuracy, threads); // 使用多流模式
+                samplesList = vadResult.Select(x => x.Waveform).ToList();
+                timestampsList = vadResult.Select(x => x.Segment.Select(y => new int[] { y[0], y[1] }).ToList()).ToList();
+                SetOfflineRecognizerCallbackForResult(_recognizer, recognizerType, outputFormat, timestampsList: timestampsList);
+                SetOfflineRecognizerCallbackForCompleted(_recognizer);
                 await _recognizer.RecognizeAsync(
-                            chunkSamples.Value.samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
+                           samplesList, _modelBase, _modelName, modelAccuracy, methodType, threads);
             }
         }
         catch (Exception ex)
         {
             ShowTips(ex.Message);
         }
-    }
 
-    private async void ShowResults(string str, bool isAppend = true)
+    }
+    private void ShowResults(string str, bool isAppend = true)
     {
         Dispatcher.Dispatch(
                     new Action(
@@ -469,57 +432,41 @@ public partial class K2TransducerOnlineAsr : ContentPage
     }
     private void ShowTips(string str)
     {
-        Dispatcher.Dispatch(
+        this.Dispatcher.Dispatch(
                     new Action(
                         async delegate
                         {
                             await DisplayAlert("Tips", str, "close");
                         }));
     }
-
     private async void OnShowLogsClicked(object sender, EventArgs e)
     {
     }
-    private void OnEditAsrResultsClicked(object sender, EventArgs e)
+    private void OnEditResultsClicked(object sender, EventArgs e)
     {
         EditorResults.Text = LblResults.Text;
         EditorResults.IsVisible = true;
         EditorResults.HeightRequest = LblResults.Height;
         LblResults.IsVisible = false;
-        BtnEditAsrResults.IsVisible = false;
-        BtnEditedAsrResults.IsVisible = true;
+        BtnEditResults.IsVisible = false;
+        BtnEditedResults.IsVisible = true;
     }
 
-    private void OnEditedAsrResultsClicked(object sender, EventArgs e)
+    private void OnEditedResultsClicked(object sender, EventArgs e)
     {
         LblResults.Text = EditorResults.Text;
         EditorResults.IsVisible = false;
         LblResults.IsVisible = true;
-        BtnEditAsrResults.IsVisible = true;
-        BtnEditedAsrResults.IsVisible = false;
+        BtnEditResults.IsVisible = true;
+        BtnEditedResults.IsVisible = false;
     }
 
-    private void ResetComponent()
+    #region callback
+    private void SetOfflineRecognizerCallbackForResult(OfflineMoonshineAsrRecognizer recognizer, string? recognizerType, string outputFormat = "txt", int startIndex = 0, List<List<int[]>> timestampsList = null)
     {
-        ClearResults();
-        ClearLogs();
-        LblResults.Text = "";
-        EditorResults.Text = "";
-        EditorResults.IsVisible = false;
-        LblResults.IsVisible = true;
-        BtnEditAsrResults.IsVisible = true;
-        BtnEditedAsrResults.IsVisible = false;
-        SetOnlineRecognizerCallbackForResult(_recognizer);
-    }
-    #region callback    
-    private async void SetOnlineRecognizerCallbackForResult(OnlineK2TransducerAsrRecognizer recognizer, string? recognizerType = "online")
-    {
-        if (recognizer == null)
-        {
-            return;
-        }
-        SortedDictionary<int, string> _results = new SortedDictionary<int, string>();
-        int i = 0;
+        List<int> orderIndexList = timestampsList != null ? new int[timestampsList.Count].ToList() : null;
+        var timestamps = timestampsList != null ? ConvertHelper.Convert(timestampsList, orderIndexList).ToList() : null;
+        int i = startIndex;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
         {
@@ -527,19 +474,42 @@ public partial class K2TransducerOnlineAsr : ContentPage
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
-                _results[resultIndex] = text;
                 StringBuilder r = new StringBuilder();
-                foreach (var item in _results)
+                switch (outputFormat)
                 {
-                    r.AppendLine($"[{recognizerType} Stream {item.Key}]");
-                    r.AppendLine(item.Value);
+                    case "txt":
+                        r.Clear();
+                        r.AppendLine($"[{recognizerType} Stream {resultIndex}]");
+                        r.AppendLine(text);
+                        ShowResults($"{r.ToString()}", true);
+                        break;
+                    case "srt":
+                        r.Clear();
+                        if (timestamps != null && timestamps.Count > i - startIndex)
+                        {
+                            var outerIndex = timestamps[i - startIndex].outerIndex;
+                            var innerIndex = timestamps[i - startIndex].innerIndex;
+                            var timestamp = timestamps[i - startIndex].timestamp;
+                            r.AppendLine(resultIndex.ToString());
+                            r.AppendLine($"{TimeSpan.FromMilliseconds(timestamp[0]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')} -> {TimeSpan.FromMilliseconds(timestamp[1]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')}");
+                        }
+                        else
+                        {
+                            r.AppendLine(resultIndex.ToString());
+                            if (result.Timestamps.Count() > 0)
+                            {
+                                r.AppendLine($"{TimeSpan.FromMilliseconds(result.Timestamps.First()[0]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')}->{TimeSpan.FromMilliseconds(result.Timestamps.Last()[1]).ToString(@"hh\:mm\:ss\.fff").Replace('.', ',')}");
+                            }
+                        }
+                        r.AppendLine(text);
+                        ShowResults($"{r.ToString()}", true);
+                        break;
                 }
-                ShowResults($"{r.ToString()}", false);
             }
             i++;
         };
     }
-    private void SetOnlineRecognizerCallbackForCompleted(OnlineK2TransducerAsrRecognizer recognizer)
+    private void SetOfflineRecognizerCallbackForCompleted(OfflineMoonshineAsrRecognizer recognizer)
     {
         recognizer.ResetRecognitionCompletedHandlers();
         recognizer.OnRecognitionCompleted += (totalTime, totalDuration, processedCount, sample) =>
@@ -549,10 +519,8 @@ public partial class K2TransducerOnlineAsr : ContentPage
             r.AppendLine(string.Format("Recognition elapsed milliseconds:{0}", elapsedMilliseconds.ToString()));
             r.AppendLine(string.Format("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString()));
             r.AppendLine(string.Format("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString()));
-            ShowResults($"{r.ToString()}");
+            ShowResults($"{r.ToString()}", true);
         };
     }
-
     #endregion
 }
-
