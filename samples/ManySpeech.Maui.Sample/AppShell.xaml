@@ -72,6 +72,9 @@ Text="ManySpeech" FontSize="Small"/>
     <FlyoutItem Title="Moonshine-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:MoonshineOfflineAsr}"/>
     </FlyoutItem>
+    <FlyoutItem Title="Moonshine-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:MoonshineOfflineAsrVad}"/>
+    </FlyoutItem>
     <FlyoutItem Title="Moonshine-online-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:MoonshineOnlineAsr}"/>
     </FlyoutItem>
@@ -87,13 +90,22 @@ Text="ManySpeech" FontSize="Small"/>
     <FlyoutItem Title="sensevoice-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:SensevoiceOfflineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="wenet-asr-offline" Route="MainPage">
+    <FlyoutItem Title="sensevoice-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:SensevoiceOfflineAsrVad}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="wenet-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:WenetOfflineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="wenet-asr-online" Route="MainPage">
+    <FlyoutItem Title="wenet-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:WenetOfflineAsrVad}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="wenet-online-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:WenetOnlineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="whisper-asr-offline" Route="MainPage">
+    <FlyoutItem Title="whisper-offline-asr" Route="MainPage">
         <ShellContent ContentTemplate="{DataTemplate local:WhisperOfflineAsr}"/>
+    </FlyoutItem>
+    <FlyoutItem Title="whisper-offline-asr-vad" Route="MainPage">
+        <ShellContent ContentTemplate="{DataTemplate local:WhisperOfflineAsrVad}"/>
     </FlyoutItem>
 </Shell>
