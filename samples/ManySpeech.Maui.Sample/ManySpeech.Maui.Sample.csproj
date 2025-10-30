@@ -120,7 +120,10 @@
 	  <Compile Update="FireRedOfflineAsr.xaml.cs">
 	    <DependentUpon>FireRedOfflineAsr.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="K2transducerOfflineAsrVad.xaml.cs">
+	  <Compile Update="MoonshineOfflineAsrVad.xaml.cs">
+	    <DependentUpon>MoonshineOfflineAsrVad.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="K2TransducerOfflineAsrVad.xaml.cs">
 	    <DependentUpon>K2TransducerOfflineAsrVad.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="MoonshineOfflineAsr.xaml.cs">
@@ -131,6 +134,15 @@
 	  </Compile>
 	  <Compile Update="FireRedOfflineAsrVad.xaml.cs">
 	    <DependentUpon>FireRedOfflineAsrVad.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="WhisperOfflineAsrVad.xaml.cs">
+	    <DependentUpon>WhisperOfflineAsrVad.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="WenetOfflineAsrVad.xaml.cs">
+	    <DependentUpon>WenetOfflineAsrVad.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="SensevoiceOfflineAsrVad.xaml.cs">
+	    <DependentUpon>SensevoiceOfflineAsrVad.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="Properties\Resources.Designer.cs">
 	    <DesignTime>True</DesignTime>
@@ -149,10 +161,10 @@
 	  <Compile Update="ParaformerOnlineAsr.xaml.cs">
 	    <DependentUpon>ParaformerOnlineAsr.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="K2transducerOfflineAsr.xaml.cs">
-	    <DependentUpon>K2transducerOfflineAsr.xaml</DependentUpon>
+	  <Compile Update="K2TransducerOfflineAsr.xaml.cs">
+	    <DependentUpon>K2TransducerOfflineAsr.xaml</DependentUpon>
 	  </Compile>
-	  <Compile Update="K2transducerOnlineAsr.xaml.cs">
+	  <Compile Update="K2TransducerOnlineAsr.xaml.cs">
 	    <DependentUpon>K2TransducerOnlineAsr.xaml</DependentUpon>
 	  </Compile>
 	  <Compile Update="SensevoiceOfflineAsr.xaml.cs">
@@ -174,6 +186,9 @@
 	  <MauiXaml Update="FireRedOfflineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
+	  <MauiXaml Update="MoonshineOfflineAsrVad.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
 	  <MauiXaml Update="K2TransducerOfflineAsrVad.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
@@ -187,6 +202,15 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="FireRedOfflineAsrVad.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="WhisperOfflineAsrVad.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="WenetOfflineAsrVad.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="SensevoiceOfflineAsrVad.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="ParaformerOfflineAsrVad.xaml">
