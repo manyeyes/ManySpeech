@@ -1,56 +1,63 @@
 ﻿// See https://github.com/manyeyes for more information
-// Copyright (c)  2025 by manyeyes
+// Copyright (c) 2025 by manyeyes
 using ManySpeech.AudioSep.Model;
 using SpeechFeatures;
 
 namespace ManySpeech.AudioSep
 {
     /// <summary>
-    /// WavFrontend
+    /// Handles audio frontend processing to extract filter bank features
     /// </summary>
-    internal class WavFrontend
+    internal class WavFrontend : IDisposable
     {
-        private FrontendConfEntity _frontendConfEntity;
-        private OnlineFbank _onlineFbank;
-        private const double EPS = 1e-6; // 定义 EPS 常量，用于数值稳定性
+        private readonly FrontendConfEntity _frontendConfig;
+        private readonly OnlineFbank _onlineFbank;
+        private const double EPS = 1e-6; // Constant for numerical stability
 
-        public WavFrontend(FrontendConfEntity frontendConfEntity)
+        /// <summary>
+        /// Initializes a new instance of the WavFrontend class
+        /// </summary>
+        /// <param name="frontendConfig">Configuration for frontend processing</param>
+        public WavFrontend(FrontendConfEntity frontendConfig)
         {
-            _frontendConfEntity = frontendConfEntity;
+            _frontendConfig = frontendConfig;
             _onlineFbank = new OnlineFbank(
-                dither: _frontendConfEntity.dither,
-                snip_edges: _frontendConfEntity.snip_edges,
-                window_type: _frontendConfEntity.window,
-                sample_rate: _frontendConfEntity.fs,
-                num_bins: _frontendConfEntity.n_mels,
-                frame_shift: _frontendConfEntity.frame_shift,
-                frame_length: _frontendConfEntity.frame_length
-                );
+                dither: _frontendConfig.dither,
+                snip_edges: _frontendConfig.snip_edges,
+                window_type: _frontendConfig.window,
+                sample_rate: _frontendConfig.fs,
+                num_bins: _frontendConfig.n_mels,
+                frame_shift: _frontendConfig.frame_shift,
+                frame_length: _frontendConfig.frame_length
+            );
         }
 
+        /// <summary>
+        /// Extracts filter bank features from audio samples
+        /// </summary>
+        /// <param name="samples">Input audio samples</param>
+        /// <returns>Extracted filter bank bank features as float array</returns>
         public float[] GetFbank(float[] samples)
         {
-            float sample_rate = _frontendConfEntity.fs;
-            float[] fbanks = _onlineFbank.GetFbank(samples);
-            return fbanks;
+            return _onlineFbank.GetFbank(samples);
         }
 
-        
+        /// <summary>
+        /// Releases all resources used by the WavFrontend instance
+        /// </summary>
+        /// <param name="disposing">True if called from managed code, false if from finalizer</param>
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
-                if (_onlineFbank != null)
-                {
-                    _onlineFbank.Dispose();
-                }
-                if (_frontendConfEntity != null)
-                {
-                    _frontendConfEntity = null;
-                }
+                _onlineFbank?.Dispose();
+                // FrontendConfEntity is a POCO and doesn't need explicit nulling
             }
         }
 
+        /// <summary>
+        /// Releases the WavFrontend instance and releases all resources
+        /// </summary>
         public void Dispose()
         {
             Dispose(disposing: true);

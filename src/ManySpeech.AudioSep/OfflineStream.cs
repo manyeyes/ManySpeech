@@ -8,30 +8,29 @@ namespace ManySpeech.AudioSep
 {
     /// <summary>
     /// Represents an offline audio stream processor that handles audio sample accumulation,
-    /// decoding chunks management, and resource disposal.
+    /// decoded chunk management, and resource disposal.
     /// </summary>
     public class OfflineStream : IDisposable
     {
         #region Private Fields
         private bool _disposed;
         private string _audioId = string.Empty;
-        private List<ModelOutputEntity> _modelOutputEntities;
+        private List<ModelOutputEntity> _modelOutputEntities = new List<ModelOutputEntity>();
         private FrontendConfEntity _frontendConfEntity;
         private WavFrontend _wavFrontend;
         private ModelInputEntity _modelInputEntity;
-        private CustomMetadata _customMetadata;
+        private CustomMetadata _customMetadata = new CustomMetadata();
         private List<long> _tokens = new List<long>();
         private List<int> _timestamps = new List<int>();
-        private List<float[]> _states = new List<float[]>();
-        private static readonly object _syncLock = new object(); // Thread synchronization lock
-        private int _offset = 0;
+        private static readonly object _syncLock = new object(); // For thread-safe operations
+        private int _offset;
         private int _channels = 1;
         private int _sampleRate = 16000;
         #endregion
 
         #region Constructor
         /// <summary>
-        /// Initializes a new instance of the OfflineStream class.
+        /// Initializes a new instance of the <see cref="OfflineStream"/> class.
         /// </summary>
         /// <param name="mvnFilePath">Path to the mean-variance normalization file.</param>
         /// <param name="asrProj">Speech separation project instance providing configuration.</param>
@@ -65,7 +64,7 @@ namespace ManySpeech.AudioSep
         public string AudioId
         {
             get => _audioId;
-            set => _audioId = value;
+            set => _audioId = value ?? string.Empty;
         }
 
         /// <summary>
@@ -74,7 +73,7 @@ namespace ManySpeech.AudioSep
         public List<ModelOutputEntity> ModelOutputEntities
         {
             get => _modelOutputEntities;
-            set => _modelOutputEntities = value;
+            set => _modelOutputEntities = value ?? new List<ModelOutputEntity>();
         }
 
         /// <summary>
@@ -83,7 +82,7 @@ namespace ManySpeech.AudioSep
         public int Channels
         {
             get => _channels;
-            set => _channels = value;
+            set => _channels = value > 0 ? value : 1;
         }
 
         /// <summary>
@@ -92,7 +91,14 @@ namespace ManySpeech.AudioSep
         public List<long> Tokens
         {
             get => _tokens;
-            set => _tokens = value;
+            set
+            {
+                if (value != null)
+                {
+                    _tokens.Clear();
+                    _tokens.AddRange(value);
+                }
+            }
         }
 
         /// <summary>
@@ -101,16 +107,14 @@ namespace ManySpeech.AudioSep
         public List<int> Timestamps
         {
             get => _timestamps;
-            set => _timestamps = value;
-        }
-
-        /// <summary>
-        /// Gets or sets the list of states maintained during processing.
-        /// </summary>
-        public List<float[]> States
-        {
-            get => _states;
-            set => _states = value;
+            set
+            {
+                if (value != null)
+                {
+                    _timestamps.Clear();
+                    _timestamps.AddRange(value);
+                }
+            }
         }
 
         /// <summary>
@@ -119,7 +123,7 @@ namespace ManySpeech.AudioSep
         public int Offset
         {
             get => _offset;
-            set => _offset = value;
+            set => _offset = value >= 0 ? value : 0;
         }
 
         /// <summary>
@@ -128,24 +132,29 @@ namespace ManySpeech.AudioSep
         public int SampleRate
         {
             get => _sampleRate;
-            set => _sampleRate = value;
+            set => _sampleRate = value > 0 ? value : 16000;
         }
         #endregion
 
         #region Public Methods
         /// <summary>
-        /// Adds audio samples to the stream, appending to existing data in thread-safe manner.
+        /// Adds audio samples to the stream in a thread-safe manner, appending to existing data.
         /// </summary>
-        /// <param name="samples">Array of audio samples to add.</param>
+        /// <param name="samples">Array of audio samples to add. Must not be null.</param>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="samples"/> is null.</exception>
         public void AddSamples(float[] samples)
         {
+            if (samples == null)
+                throw new ArgumentNullException(nameof(samples), "Audio samples cannot be null.");
+
             lock (_syncLock)
             {
                 int currentLength = _modelInputEntity.SpeechLength;
-                float[] newSamples = new float[currentLength + samples.Length];
+                int newLength = currentLength + samples.Length;
+                float[] newSamples = new float[newLength];
 
                 // Copy existing data if available
-                if (currentLength > 0)
+                if (currentLength > 0 && _modelInputEntity.Speech != null)
                 {
                     Array.Copy(_modelInputEntity.Speech, 0, newSamples, 0, currentLength);
                 }
@@ -155,24 +164,30 @@ namespace ManySpeech.AudioSep
 
                 // Update input entity
                 _modelInputEntity.Speech = newSamples;
-                _modelInputEntity.SpeechLength = newSamples.Length;
+                _modelInputEntity.SpeechLength = newLength;
             }
         }
 
         /// <summary>
-        /// Retrieves the current chunk of audio data ready for decoding in thread-safe manner.
+        /// Retrieves the current chunk of audio data ready for decoding in a thread-safe manner.
         /// </summary>
         /// <returns>Array of audio samples, or null if no data exists.</returns>
         public float[]? GetDecodeChunk()
         {
             lock (_syncLock)
             {
-                return _modelInputEntity.Speech;
+                // Return a copy to prevent external modification of internal data
+                if (_modelInputEntity.Speech == null)
+                    return null;
+
+                float[] chunkCopy = new float[_modelInputEntity.SpeechLength];
+                Array.Copy(_modelInputEntity.Speech, chunkCopy, _modelInputEntity.SpeechLength);
+                return chunkCopy;
             }
         }
 
         /// <summary>
-        /// Clears the decoded chunk data in thread-safe manner.
+        /// Clears the decoded chunk data in a thread-safe manner.
         /// </summary>
         public void RemoveDecodedChunk()
         {
@@ -184,7 +199,7 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// Removes all accumulated audio samples in thread-safe manner.
+        /// Removes all accumulated audio samples in a thread-safe manner.
         /// </summary>
         public void RemoveSamples()
         {
@@ -198,7 +213,7 @@ namespace ManySpeech.AudioSep
 
         #region IDisposable Implementation
         /// <summary>
-        /// Releases the unmanaged resources used by the OfflineStream and optionally releases managed resources.
+        /// Releases the unmanaged resources used by the <see cref="OfflineStream"/> and optionally releases managed resources.
         /// </summary>
         /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected virtual void Dispose(bool disposing)
@@ -208,20 +223,20 @@ namespace ManySpeech.AudioSep
                 if (disposing)
                 {
                     // Dispose managed resources
-                    _modelOutputEntities?.Clear();
-                    _modelOutputEntities = null;
+                    _modelOutputEntities.Clear();
                     _tokens.Clear();
                     _timestamps.Clear();
-                    _states.Clear();
+
+                    _modelInputEntity.Speech = null;
+                    _modelInputEntity.SpeechLength = 0;
                 }
 
-                // Mark as disposed
                 _disposed = true;
             }
         }
 
         /// <summary>
-        /// Releases all resources used by the OfflineStream.
+        /// Releases all resources used by the <see cref="OfflineStream"/>.
         /// </summary>
         public void Dispose()
         {
@@ -230,7 +245,7 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// Finalizer for OfflineStream, ensuring unmanaged resources are released.
+        /// Finalizer for <see cref="OfflineStream"/>, ensuring unmanaged resources are released.
         /// </summary>
         ~OfflineStream()
         {

@@ -33,7 +33,7 @@ namespace ManySpeech.AudioSep
         {
             _modelSession = sepModel.ModelSession;
             _customMetadata = sepModel.CustomMetadata;
-            _featureDim = sepModel.FeatureDim;
+            _featureDim = sepModel.FeatureDimension;
             _sampleRate = sepModel.SampleRate;
             _channels = sepModel.Channels;
             _chunkLength = sepModel.ChunkLength;
@@ -349,19 +349,19 @@ namespace ManySpeech.AudioSep
                 float[] leftChannel = splitResult.Value.left;
                 float[] rightChannel = splitResult.Value.right;
 
-                STFTArgs args = new STFTArgs();
-                args.WinLen = F * 2 - 1;
-                args.FftLen = F * 2 - 1;
-                args.WinType = "hanning";
-                args.WinInc = 1024;
+                StftParameters args = new StftParameters();
+                args.WindowLength = F * 2 - 1;
+                args.FftLength = F * 2 - 1;
+                args.WindowType = "hanning";
+                args.WindowIncrement = 1024;
 
                 try
                 {
                     // Perform STFT on audio
-                    Complex[,,] stftComplexLeft = AudioProcessing.Stft(leftChannel, args, normalized: false);
+                    Complex[,,] stftComplexLeft = AudioProcessing.ComputeStft(leftChannel, args, normalized: false);
                     float[,,] spectrumLeft = ConvertComplexToSTFTFormat(stftComplexLeft);
 
-                    Complex[,,] stftComplexRight = AudioProcessing.Stft(rightChannel, args, normalized: false);
+                    Complex[,,] stftComplexRight = AudioProcessing.ComputeStft(rightChannel, args, normalized: false);
                     float[,,] spectrumRight = ConvertComplexToSTFTFormat(stftComplexRight);
 
                     float[,,] stft = MergeSpectrums(spectrumLeft, spectrumRight);
@@ -396,14 +396,14 @@ namespace ManySpeech.AudioSep
 
                             var spec0 = To3DArray(channels.channel0);
                             Complex[,,] spectrumX0 = ConvertSTFTFormatToComplex(spec0);
-                            float[] output0 = AudioProcessing.Istft(spectrumX0, args, samples.Length, normalized: false);
+                            float[] output0 = AudioProcessing.ComputeIstft(spectrumX0, args, samples.Length, normalized: false);
 
                             float[] left = new float[(int)(samples.Length - tailLen - sampleRate * 0.5f) / 2];
                             Array.Copy(output0, 0, left, 0, left.Length);
 
                             var spec1 = To3DArray(channels.channel1);
                             Complex[,,] spectrumX1 = ConvertSTFTFormatToComplex(spec1);
-                            float[] output1 = AudioProcessing.Istft(spectrumX1, args, samples.Length, normalized: false);
+                            float[] output1 = AudioProcessing.ComputeIstft(spectrumX1, args, samples.Length, normalized: false);
 
                             float[] right = new float[(int)(samples.Length - tailLen - sampleRate * 0.5f) / 2];
                             Array.Copy(output1, 0, right, 0, right.Length);
@@ -440,14 +440,14 @@ namespace ManySpeech.AudioSep
             long[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
             float[] samples = PadHelper.PadSequence(modelInputs);
 
-            STFTArgs args = new STFTArgs();
-            args.WinLen = 4096;
-            args.FftLen = 4096;
-            args.WinType = "hanning";
-            args.WinInc = 1024;
+            StftParameters args = new StftParameters();
+            args.WindowLength = 4096;
+            args.FftLength = 4096;
+            args.WindowType = "hanning";
+            args.WindowIncrement = 1024;
 
             // Perform STFT on audio
-            Complex[,,] stftComplex = AudioProcessing.Stft(samples, args, normalized: false, padMode: "constant");
+            Complex[,,] stftComplex = AudioProcessing.ComputeStft(samples, args, normalized: false, paddingMode: "constant");
             float[,,] spectrum = ConvertComplexToSTFTFormat(stftComplex);
             float[,,] stft = MergeSpectrums(spectrum, spectrum);
 
@@ -481,7 +481,7 @@ namespace ManySpeech.AudioSep
                         var spec = To3DArray(channels.channel0);
 
                         Complex[,,] spectrumX = ConvertSTFTFormatToComplex(spec);
-                        float[] output = AudioProcessing.Istft(spectrumX, args, samples.Length, normalized: false);
+                        float[] output = AudioProcessing.ComputeIstft(spectrumX, args, samples.Length, normalized: false);
 
                         modelOutputEntities.Add(new ModelOutputEntity
                         {

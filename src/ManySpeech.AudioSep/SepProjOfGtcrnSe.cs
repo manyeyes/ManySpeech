@@ -44,7 +44,7 @@ namespace ManySpeech.AudioSep
         {
             _modelSession = sepModel?.ModelSession ?? throw new ArgumentNullException(nameof(sepModel), "Separation model cannot be null");
             _customMetadata = sepModel.CustomMetadata;
-            _featureDim = sepModel.FeatureDim;
+            _featureDim = sepModel.FeatureDimension;
             _sampleRate = sepModel.SampleRate;
             _channels = sepModel.Channels;
             _chunkLength = sepModel.ChunkLength;
@@ -176,7 +176,7 @@ namespace ManySpeech.AudioSep
 
                 // Process STFT and model inference
                 var stftArgs = CreateStftArgs();
-                Complex[,,] stftComplex = AudioProcessing.Stft(samples, stftArgs, normalized: false);
+                Complex[,,] stftComplex = AudioProcessing.ComputeStft(samples, stftArgs, normalized: false);
                 float[,,] spectrum = ConvertComplexToSTFTFormat(stftComplex);
                 float[] flattenedSpectrum = spectrum.Cast<float>().ToArray();
 
@@ -210,14 +210,14 @@ namespace ManySpeech.AudioSep
         /// Creates STFT configuration arguments
         /// </summary>
         /// <returns>STFT configuration object</returns>
-        private Utils.STFTArgs CreateStftArgs()
+        private Utils.StftParameters CreateStftArgs()
         {
-            return new Utils.STFTArgs
+            return new Utils.StftParameters
             {
-                WinLen = StftWinLen,
-                FftLen = StftFftLen,
-                WinType = StftWinType,
-                WinInc = StftWinInc
+                WindowLength = StftWinLen,
+                FftLength = StftFftLen,
+                WindowType = StftWinType,
+                WindowIncrement = StftWinInc
             };
         }
 
@@ -263,13 +263,13 @@ namespace ManySpeech.AudioSep
         /// <returns>List of model output entities</returns>
         private List<ModelOutputEntity> ProcessInferenceOutput(
             Tensor<float> outputTensor,
-            Utils.STFTArgs stftArgs,
+            Utils.StftParameters stftArgs,
             float[] originalSamples,
             ModelInputEntity inputEntity)
         {
             float[,,] outputSpectrum = To3DArray(outputTensor);
             Complex[,,] complexSpectrum = ConvertSTFTFormatToComplex(outputSpectrum);
-            float[] rawOutput = AudioProcessing.Istft(complexSpectrum, stftArgs, originalSamples.Length, normalized: false);
+            float[] rawOutput = AudioProcessing.ComputeIstft(complexSpectrum, stftArgs, originalSamples.Length, normalized: false);
             float[] trimmedOutput = TrimAudio(rawOutput, inputEntity.SampleRate, inputEntity.Channels);
 
             return new List<ModelOutputEntity>

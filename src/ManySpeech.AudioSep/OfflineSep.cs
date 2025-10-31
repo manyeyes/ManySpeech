@@ -1,202 +1,272 @@
 ﻿// See https://github.com/manyeyes for more information
-// Copyright (c)  2025 by manyeyes
+// Copyright (c) 2025 by manyeyes
 using ManySpeech.AudioSep.Model;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace ManySpeech.AudioSep
 {
     /// <summary>
-    /// offline recognizer package
-    /// Copyright (c)  2025 by manyeyes
+    /// Offline audio separation processor that handles model loading, stream management,
+    /// and audio separation operations.
     /// </summary>
     public class OfflineSep : IDisposable
     {
         private bool _disposed;
+        private string[] _tokens = Array.Empty<string>();
+        private string _mvnFilePath = string.Empty;
+        private readonly ISepProj _sepProj;
 
-        private string[] _tokens;
-        private string _mvnFilePath;
-        private ISepProj _sepProj;
-
-        public OfflineSep(string modelFilePath,string generatorFilePath="", string configFilePath = "", int threadsNum = 1)
+        /// <summary>
+        /// Initializes a new instance of the <see cref="OfflineSep"/> class.
+        /// </summary>
+        /// <param name="modelFilePath">Path to the main separation model file.</param>
+        /// <param name="generatorFilePath">Path to the generator model file (optional).</param>
+        /// <param name="configFilePath">Path to the configuration file (optional).</param>
+        /// <param name="threadsNum">Number of threads to use for inference.</param>
+        /// <exception cref="ArgumentException">Thrown when the model type is unsupported.</exception>
+        public OfflineSep(string modelFilePath, string generatorFilePath = "", string configFilePath = "", int threadsNum = 1)
         {
-            SepModel sepModel = new SepModel(modelFilePath:modelFilePath, generatorFilePath: generatorFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
-            switch (sepModel.ConfEntity?.model.model_type.ToLower())
+            var sepModel = new SepModel(modelFilePath, generatorFilePath, configFilePath, threadsNum);
+            var modelType = sepModel.ConfEntity?.model?.model_type?.ToLowerInvariant();
+
+            _sepProj = modelType switch
             {
-                case "gtcrnse":
-                    _sepProj = new SepProjOfGtcrnSe(sepModel);
-                    break;
-                case "spleeter":
-                    _sepProj = new SepProjOfSpleeter(sepModel);
-                    break;
-                case "uvr":
-                    _sepProj = new SepProjOfUvr(sepModel);
-                    break;
-            }
+                "gtcrnse" => new SepProjOfGtcrnSe(sepModel),
+                "spleeter" => new SepProjOfSpleeter(sepModel),
+                "uvr" => new SepProjOfUvr(sepModel),
+                _ => throw new ArgumentException($"Unsupported model type: {modelType}")
+            };
         }
 
+        /// <summary>
+        /// Creates a new offline stream for processing audio.
+        /// </summary>
+        /// <returns>A new <see cref="OfflineStream"/> instance.</returns>
         public OfflineStream CreateOfflineStream()
         {
-            OfflineStream onlineStream = new OfflineStream(_mvnFilePath, _sepProj);
-            return onlineStream;
+            return new OfflineStream(_mvnFilePath, _sepProj);
         }
+
+        /// <summary>
+        /// Gets separation results for a single offline stream.
+        /// </summary>
+        /// <param name="stream">The offline stream to process.</param>
+        /// <returns>Separation results contained in an <see cref="OfflineSepResultEntity"/>.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="stream"/> is null.</exception>
         public OfflineSepResultEntity GetResult(OfflineStream stream)
         {
-            List<OfflineStream> streams = new List<OfflineStream>();
-            streams.Add(stream);
-            OfflineSepResultEntity offlineSepResultEntity = GetResults(streams)[0];
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream));
 
-            return offlineSepResultEntity;
+            var streams = new List<OfflineStream> { stream };
+            return GetResults(streams)[0];
         }
+
+        /// <summary>
+        /// Gets separation results for multiple offline streams.
+        /// </summary>
+        /// <param name="streams">List of offline streams to process.</param>
+        /// <returns>List of separation results, one for each stream.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="streams"/> is null.</exception>
         public List<OfflineSepResultEntity> GetResults(List<OfflineStream> streams)
         {
-            this.Forward(streams);
-            List<OfflineSepResultEntity> offlineRecognizerResultEntities = this.DecodeMulti(streams);
-            return offlineRecognizerResultEntities;
+            if (streams == null)
+                throw new ArgumentNullException(nameof(streams));
+
+            Forward(streams);
+            return DecodeMulti(streams);
         }
 
+        /// <summary>
+        /// Processes audio data through the separation model.
+        /// </summary>
+        /// <param name="streams">List of streams containing audio data to process.</param>
         private void Forward(List<OfflineStream> streams)
         {
             if (streams.Count == 0)
-            {
                 return;
-            }
-            List<OfflineStream> streamsWorking = new List<OfflineStream>();
-            List<ModelInputEntity> modelInputs = new List<ModelInputEntity>();
-            List<OfflineStream> streamsTemp = new List<OfflineStream>();
-            foreach (OfflineStream stream in streams)
+
+            var workingStreams = new List<OfflineStream>();
+            var modelInputs = new List<ModelInputEntity>();
+            var streamsToRemove = new List<OfflineStream>();
+
+            // Prepare model inputs from valid streams
+            foreach (var stream in streams)
             {
-                ModelInputEntity modelInputEntity = new ModelInputEntity();
-                modelInputEntity.SampleRate = stream.SampleRate;
-                modelInputEntity.Channels = stream.Channels;
-                modelInputEntity.Speech = stream.GetDecodeChunk();
-                if (modelInputEntity.Speech == null)
+                var input = new ModelInputEntity
                 {
-                    streamsTemp.Add(stream);
+                    SampleRate = stream.SampleRate,
+                    Channels = stream.Channels,
+                    Speech = stream.GetDecodeChunk()
+                };
+
+                if (input.Speech == null)
+                {
+                    streamsToRemove.Add(stream);
                     continue;
                 }
-                modelInputEntity.SpeechLength = modelInputEntity.Speech.Length;
-                modelInputs.Add(modelInputEntity);
-                streamsWorking.Add(stream);
+
+                input.SpeechLength = input.Speech.Length;
+                modelInputs.Add(input);
+                workingStreams.Add(stream);
             }
-            if (modelInputs.Count == 0)
-            {
-                return;
-            }
-            foreach (OfflineStream stream in streamsTemp)
+
+            // Remove streams with no valid input
+            foreach (var stream in streamsToRemove)
             {
                 streams.Remove(stream);
             }
+
+            if (modelInputs.Count == 0)
+                return;
+
             try
             {
-                int batchSize = modelInputs.Count;
-                List<ModelOutputEntity> modelOutputEntity = _sepProj.ModelProj(modelInputs);
-                List<ModelOutputEntity> generatorOutputEntity = _sepProj.GeneratorProj(modelOutputEntity[0]);
-                if (generatorOutputEntity != null)
+                // Run model inference
+                var modelOutputs = _sepProj.ModelProj(modelInputs);
+                var generatorOutputs = _sepProj.GeneratorProj(modelOutputs[0]);
+                var finalOutputs = generatorOutputs ?? modelOutputs;
+
+                // Associate results with their respective streams
+                for (int i = 0; i < workingStreams.Count; i++)
                 {
-                    modelOutputEntity = generatorOutputEntity;
-                }
-                List<List<float[]>> next_statesList = new List<List<float[]>>();
-                int streamIndex = 0;
-                foreach (OfflineStream stream in streamsWorking)
-                {
-                    if (stream.ModelOutputEntities == null)
-                    {
-                        stream.ModelOutputEntities = new List<ModelOutputEntity>();
-                    }
-                    stream.ModelOutputEntities.AddRange(modelOutputEntity);
+                    var stream = workingStreams[i];
+                    stream.ModelOutputEntities ??= new List<ModelOutputEntity>();
+                    stream.ModelOutputEntities.AddRange(finalOutputs);
                     stream.RemoveDecodedChunk();
-                    streamIndex++;
                 }
             }
             catch (Exception ex)
             {
-                //
+                // Log exception (implement proper logging in production)
+                Console.WriteLine($"Error during model inference: {ex.Message}");
             }
-
         }
 
-        public static float[] FlattenList(List<float[]> list)
+        /// <summary>
+        /// Flattens a list of float arrays into a single contiguous float array.
+        /// </summary>
+        /// <param name="arrays">List of float arrays to flatten.</param>
+        /// <returns>Flattened float array.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when <paramref name="arrays"/> is null.</exception>
+        public static float[] FlattenList(List<float[]> arrays)
         {
-            int totalElements = list.Sum(array => array.Length);
-            float[] result = new float[totalElements];
+            if (arrays == null)
+                throw new ArgumentNullException(nameof(arrays));
 
+            int totalLength = arrays.Sum(arr => arr.Length);
+            var result = new float[totalLength];
             int offset = 0;
-            foreach (float[] array in list)
+
+            foreach (var array in arrays)
             {
-                array.CopyTo(result, offset);
+                Array.Copy(array, 0, result, offset, array.Length);
                 offset += array.Length;
             }
 
             return result;
         }
 
+        /// <summary>
+        /// Decodes model outputs into separation results for multiple streams.
+        /// </summary>
+        /// <param name="streams">List of streams with model outputs to decode.</param>
+        /// <returns>List of separation results.</returns>
         private List<OfflineSepResultEntity> DecodeMulti(List<OfflineStream> streams)
         {
-            List<OfflineSepResultEntity> offlineRecognizerResultEntities = new List<OfflineSepResultEntity>();
-#pragma warning disable CS8602 // 解引用可能出现空引用。
+            var results = new List<OfflineSepResultEntity>();
+
             try
             {
                 foreach (var stream in streams)
                 {
-                    OfflineSepResultEntity offlineSepResultEntity = new OfflineSepResultEntity();
-                    //string text_result = "";
-                    string lastToken = "";
-                    int[] lastTimestamp = null;
-                    foreach (var stemName in stream.ModelOutputEntities.Select(x=>x.StemName).Distinct())
+                    var result = new OfflineSepResultEntity
                     {
-                        if (!offlineSepResultEntity.Stems.ContainsKey(stemName))
-                        {
-                            List<float[]?> sampleList = stream.ModelOutputEntities.Where(x => x.StemName == stemName).Select(x => x.StemContents).ToList();
-                            offlineSepResultEntity.Stems.Add(stemName, FlattenList(sampleList));
-                        }
+                        AudioId = stream.AudioId,
+                        Channels = stream.Channels,
+                        SampleRate = stream.SampleRate,
+                        Stems = new Dictionary<string, float[]>()
+                    };
 
-                        //offlineSepResultEntity.Stems.Add(result.StemName, result.StemContents);
+                    if (stream.ModelOutputEntities == null || !stream.ModelOutputEntities.Any())
+                    {
+                        results.Add(result);
+                        continue;
                     }
-                    offlineSepResultEntity.AudioId = stream.AudioId;
-                    offlineSepResultEntity.Channels = stream.Channels;
-                    offlineSepResultEntity.SampleRate = stream.SampleRate;
 
-                    offlineRecognizerResultEntities.Add(offlineSepResultEntity);
+                    // Group outputs by stem name and flatten
+                    var stemGroups = stream.ModelOutputEntities
+                        .GroupBy(output => output.StemName)
+                        .Where(group => !string.IsNullOrEmpty(group.Key));
+
+                    foreach (var group in stemGroups)
+                    {
+                        var stemData = group.Select(output => output.StemContents)
+                                           .Where(data => data != null)
+                                           .ToList();
+
+                        if (stemData.Count > 0)
+                        {
+                            result.Stems[group.Key] = FlattenList(stemData);
+                        }
+                    }
+
+                    results.Add(result);
                 }
             }
             catch (Exception ex)
             {
-
+                // Log exception (implement proper logging in production)
+                Console.WriteLine($"Error during decoding: {ex.Message}");
             }
-#pragma warning restore CS8602 // 解引用可能出现空引用。
 
-            return offlineRecognizerResultEntities;
+            return results;
         }
 
-        public void DisposeOfflineStream(OfflineStream offlineStream)
+        /// <summary>
+        /// Disposes of an offline stream and releases its resources.
+        /// </summary>
+        /// <param name="stream">The stream to dispose.</param>
+        public void DisposeOfflineStream(OfflineStream stream)
         {
-            if (offlineStream != null)
-            {
-                offlineStream.Dispose();
-            }
+            stream?.Dispose();
         }
+
+        /// <summary>
+        /// Releases the unmanaged resources used by the <see cref="OfflineSep"/> and optionally releases managed resources.
+        /// </summary>
+        /// <param name="disposing">true to release both managed and unmanaged resources; false to release only unmanaged resources.</param>
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    if (_sepProj != null)
-                    {
-                        _sepProj.Dispose();
-                    }
+                    // Dispose managed resources
+                    _sepProj?.Dispose();
                 }
+
                 _disposed = true;
             }
         }
 
+        /// <summary>
+        /// Releases all resources used by the <see cref="OfflineSep"/>.
+        /// </summary>
         public void Dispose()
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        /// <summary>
+        /// Finalizer for <see cref="OfflineSep"/>.
+        /// </summary>
         ~OfflineSep()
         {
-            Dispose(_disposed);
+            Dispose(disposing: false);
         }
     }
 }

@@ -49,7 +49,7 @@ namespace ManySpeech.AudioSep
         {
             _modelSession = sepModel?.ModelSession ?? throw new ArgumentNullException(nameof(sepModel), "Separation model cannot be null");
             _customMetadata = sepModel.CustomMetadata;
-            _featureDim = sepModel.FeatureDim > 0 ? sepModel.FeatureDim : FeatureDimDefault;
+            _featureDim = sepModel.FeatureDimension > 0 ? sepModel.FeatureDimension : FeatureDimDefault;
             _sampleRate = sepModel.SampleRate > 0 ? sepModel.SampleRate : SampleRateDefault;
             _channels = sepModel.Channels > 0 ? sepModel.Channels : ChannelsDefault;
             _chunkLength = sepModel.ChunkLength;
@@ -336,14 +336,14 @@ namespace ManySpeech.AudioSep
         /// Creates STFT configuration arguments
         /// </summary>
         /// <returns>STFT configuration object</returns>
-        private STFTArgs CreateStftArgs()
+        private StftParameters CreateStftArgs()
         {
-            return new STFTArgs
+            return new StftParameters
             {
-                WinLen = StftWinLen,
-                FftLen = StftFftLen,
-                WinType = StftWinType,
-                WinInc = StftWinInc
+                WindowLength = StftWinLen,
+                FftLength = StftFftLen,
+                WindowType = StftWinType,
+                WindowIncrement = StftWinInc
             };
         }
 
@@ -351,11 +351,11 @@ namespace ManySpeech.AudioSep
         /// Processes stereo channels through STFT and prepares model inputs
         /// </summary>
         private (float[] stftInput, float[] magInput) ProcessDualChannelStft(
-            float[] leftChannel, float[] rightChannel, STFTArgs stftArgs)
+            float[] leftChannel, float[] rightChannel, StftParameters stftArgs)
         {
             // Compute STFT for both channels
-            Complex[,,] stftLeft = AudioProcessing.Stft(leftChannel, stftArgs, normalized: false, padMode: "constant");
-            Complex[,,] stftRight = AudioProcessing.Stft(rightChannel, stftArgs, normalized: false, padMode: "constant");
+            Complex[,,] stftLeft = AudioProcessing.ComputeStft(leftChannel, stftArgs, normalized: false, paddingMode: "constant");
+            Complex[,,] stftRight = AudioProcessing.ComputeStft(rightChannel, stftArgs, normalized: false, paddingMode: "constant");
 
             // Convert to STFT format and merge
             float[,,] spectrumLeft = ConvertComplexToSTFTFormat(stftLeft);
@@ -373,9 +373,9 @@ namespace ManySpeech.AudioSep
         /// Processes mono channel as dual identical channels for stereo model input
         /// </summary>
         private (float[] stftInput, float[] magInput) ProcessMonoAsDualChannelStft(
-            float[] monoChannel, STFTArgs stftArgs)
+            float[] monoChannel, StftParameters stftArgs)
         {
-            Complex[,,] stftComplex = AudioProcessing.Stft(monoChannel, stftArgs, normalized: false, padMode: "constant");
+            Complex[,,] stftComplex = AudioProcessing.ComputeStft(monoChannel, stftArgs, normalized: false, paddingMode: "constant");
             float[,,] spectrum = ConvertComplexToSTFTFormat(stftComplex);
 
             // Merge with itself to simulate stereo input
@@ -427,7 +427,7 @@ namespace ManySpeech.AudioSep
         /// </summary>
         private IEnumerable<ModelOutputEntity> ProcessInferenceResults(
             IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results,
-            STFTArgs stftArgs, float[] originalSamples, int sampleRate)
+            StftParameters stftArgs, float[] originalSamples, int sampleRate)
         {
             foreach (var result in results)
             {
@@ -437,13 +437,13 @@ namespace ManySpeech.AudioSep
                 // Process left channel
                 float[,,] spec0 = To3DArray(channel0);
                 Complex[,,] spectrum0 = ConvertSTFTFormatToComplex(spec0);
-                float[] output0 = AudioProcessing.Istft(spectrum0, stftArgs, originalSamples.Length, normalized: false);
+                float[] output0 = AudioProcessing.ComputeIstft(spectrum0, stftArgs, originalSamples.Length, normalized: false);
                 float[] trimmedLeft = TrimAudio(output0, sampleRate, 0.5f);
 
                 // Process right channel
                 float[,,] spec1 = To3DArray(channel1);
                 Complex[,,] spectrum1 = ConvertSTFTFormatToComplex(spec1);
-                float[] output1 = AudioProcessing.Istft(spectrum1, stftArgs, originalSamples.Length, normalized: false);
+                float[] output1 = AudioProcessing.ComputeIstft(spectrum1, stftArgs, originalSamples.Length, normalized: false);
                 float[] trimmedRight = TrimAudio(output1, sampleRate, 0.5f);
 
                 // Merge to stereo
@@ -464,7 +464,7 @@ namespace ManySpeech.AudioSep
         /// </summary>
         private List<ModelOutputEntity> ProcessMonoInferenceResults(
             IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results,
-            STFTArgs stftArgs, float[] originalSamples, int sampleRate)
+            StftParameters stftArgs, float[] originalSamples, int sampleRate)
         {
             var outputs = new List<ModelOutputEntity>();
 
@@ -475,7 +475,7 @@ namespace ManySpeech.AudioSep
 
                 float[,,] spec = To3DArray(channel0);
                 Complex[,,] spectrum = ConvertSTFTFormatToComplex(spec);
-                float[] output = AudioProcessing.Istft(spectrum, stftArgs, originalSamples.Length, normalized: false);
+                float[] output = AudioProcessing.ComputeIstft(spectrum, stftArgs, originalSamples.Length, normalized: false);
 
                 outputs.Add(new ModelOutputEntity
                 {
