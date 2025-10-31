@@ -21,32 +21,14 @@ namespace ManySpeech.AudioSep
             SepModel sepModel = new SepModel(modelFilePath:modelFilePath, generatorFilePath: generatorFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
             switch (sepModel.ConfEntity?.model.model_type.ToLower())
             {
-                case "frcrnse":
-                    _sepProj = new SepProjOfFrcrnSe(sepModel);
-                    break;
-                case "frcrnsev2":
-                    _sepProj = new SepProjOfFrcrnSe2(sepModel);
-                    break;
                 case "gtcrnse":
                     _sepProj = new SepProjOfGtcrnSe(sepModel);
                     break;
-                case "mossformer2se":
-                    _sepProj = new SepProjOfMossformer2Se(sepModel);
-                    break;
-                case "mossformer2ss":
-                    _sepProj = new SepProjOfMossformer2Ss(sepModel);
-                    break;
-                case "mossformer2sr":
-                    _sepProj = new SepProjOfMossformer2Sr(sepModel);//test
-                    break;
                 case "spleeter":
-                    _sepProj = new SepProjOfSpleeter(sepModel);//test
+                    _sepProj = new SepProjOfSpleeter(sepModel);
                     break;
                 case "uvr":
-                    _sepProj = new SepProjOfUvr(sepModel);//test
-                    break;
-                case "zipenhancerse":
-                    _sepProj = new SepProjOfZipEnhancerSe(sepModel);//test
+                    _sepProj = new SepProjOfUvr(sepModel);
                     break;
             }
         }

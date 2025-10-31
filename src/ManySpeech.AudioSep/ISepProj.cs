@@ -40,13 +40,6 @@ namespace ManySpeech.AudioSep
             get;
             set;
         }
-        //int Required_cache_size
-        //{
-        //    get;
-        //    set;
-        //}
-        List<float[]> stack_states(List<List<float[]>> statesList);
-        List<List<float[]>> unstack_states(List<float[]> states);
         List<ModelOutputEntity> ModelProj(List<ModelInputEntity> modelInputs, List<float[]>? statesList=null, int offset=0);
         List<ModelOutputEntity> GeneratorProj(ModelOutputEntity modelOutputEntity, int batchSize = 1);
         void Dispose();

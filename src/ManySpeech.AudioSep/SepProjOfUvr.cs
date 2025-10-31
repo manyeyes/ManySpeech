@@ -3,13 +3,16 @@ using ManySpeech.AudioSep.Utils;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 
 namespace ManySpeech.AudioSep
 {
     internal class SepProjOfUvr : ISepProj, IDisposable
     {
+        #region Private Fields
         private bool _disposed;
         private InferenceSession _modelSession;
         private CustomMetadata _customMetadata;
@@ -18,8 +21,14 @@ namespace ManySpeech.AudioSep
         private int _channels = 1;
         private int _chunkLength = 0;
         private int _shiftLength = 0;
+        #endregion
+
+        #region Constants
         private const int F = 2048;
         private const int T = 512;
+        #endregion
+
+        #region Constructor
         public SepProjOfUvr(SepModel sepModel)
         {
             _modelSession = sepModel.ModelSession;
@@ -30,83 +39,135 @@ namespace ManySpeech.AudioSep
             _chunkLength = sepModel.ChunkLength;
             _shiftLength = sepModel.ShiftLength;
         }
-        public InferenceSession ModelSession { get => _modelSession; set => _modelSession = value; }
-        public CustomMetadata CustomMetadata { get => _customMetadata; set => _customMetadata = value; }
-        public int ChunkLength { get => _chunkLength; set => _chunkLength = value; }
-        public int ShiftLength { get => _shiftLength; set => _shiftLength = value; }
-        public int FeatureDim { get => _featureDim; set => _featureDim = value; }
-        public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
-        public int Channels { get => _channels; set => _channels = value; }
+        #endregion
 
-        public List<float[]> stack_states(List<List<float[]>> statesList)
+        #region Public Properties
+        public InferenceSession ModelSession
+        {
+            get => _modelSession;
+            set => _modelSession = value;
+        }
+
+        public CustomMetadata CustomMetadata
+        {
+            get => _customMetadata;
+            set => _customMetadata = value;
+        }
+
+        public int ChunkLength
+        {
+            get => _chunkLength;
+            set => _chunkLength = value;
+        }
+
+        public int ShiftLength
+        {
+            get => _shiftLength;
+            set => _shiftLength = value;
+        }
+
+        public int FeatureDim
+        {
+            get => _featureDim;
+            set => _featureDim = value;
+        }
+
+        public int SampleRate
+        {
+            get => _sampleRate;
+            set => _sampleRate = value;
+        }
+
+        public int Channels
+        {
+            get => _channels;
+            set => _channels = value;
+        }
+        #endregion
+
+        #region State Handling Methods
+        /// <summary>
+        /// Stacks a list of state lists into a single state list
+        /// </summary>
+        /// <param name="statesList">List of state lists to stack</param>
+        /// <returns>Stacked state list</returns>
+        public List<float[]> StackStates(List<List<float[]>> statesList)
         {
             List<float[]> states = new List<float[]>();
             states = statesList[0];
             return states;
         }
-        public List<List<float[]>> unstack_states(List<float[]> states)
+
+        /// <summary>
+        /// Unstacks a single state list into a list of state lists
+        /// </summary>
+        /// <param name="states">State list to unstack</param>
+        /// <returns>Unstacked list of state lists</returns>
+        public List<List<float[]>> UnstackStates(List<float[]> states)
         {
             List<List<float[]>> statesList = new List<List<float[]>>();
-            Debug.Assert(states.Count % 2 == 0, "when stack_states, state_list[0] is 2x");
+            Debug.Assert(states.Count % 2 == 0, "When stacking states, state_list[0] should have even count");
             statesList.Add(states);
             return statesList;
         }
+        #endregion
 
+        #region Spectrogram Conversion Methods
         /// <summary>
         /// Converts a Complex[961, 1, 1808] array to float[961, 1808, 2] STFT format
         /// </summary>
-        /// <param name="complexSpectrogram">Input complex spectrogram with shape [freq_bins, 1, time_frames]</param>
+        /// <param name="complexArray">Input complex spectrogram with shape [freq_bins, 1, time_frames]</param>
         /// <returns>STFT format array with shape [freq_bins, time_frames, 2]</returns>
         public static float[,,] ConvertComplexToSTFTFormat(Complex[,,] complexArray)
         {
-            int n_freq = complexArray.GetLength(0);  // 961 (频率bin)
-            int n_channels = complexArray.GetLength(1); // 1 (单通道)
-            int n_frames = complexArray.GetLength(2); // 1808 (时间帧)
+            int freqBins = complexArray.GetLength(0);   // 961 (frequency bins)
+            int channels = complexArray.GetLength(1);   // 1 (single channel)
+            int timeFrames = complexArray.GetLength(2); // 1808 (time frames)
 
-            // 目标形状: [n_freq, n_frames, 2] (实部+虚部)
-            float[,,] floatArray = new float[n_freq, n_frames, 2];
+            // Target shape: [freqBins, timeFrames, 2] (real part + imaginary part)
+            float[,,] floatArray = new float[freqBins, timeFrames, 2];
 
-            for (int f = 0; f < n_freq; f++)
+            for (int f = 0; f < freqBins; f++)
             {
-                for (int t = 0; t < n_frames; t++)
+                for (int t = 0; t < timeFrames; t++)
                 {
-                    // 提取实部和虚部
-                    floatArray[f, t, 0] = (float)complexArray[f, 0, t].Real; // 实部
-                    floatArray[f, t, 1] = (float)complexArray[f, 0, t].Imaginary; // 虚部
+                    // Extract real and imaginary parts
+                    floatArray[f, t, 0] = (float)complexArray[f, 0, t].Real;      // Real part
+                    floatArray[f, t, 1] = (float)complexArray[f, 0, t].Imaginary; // Imaginary part
                 }
             }
             return floatArray;
         }
 
         /// <summary>
-        /// 将 float[F, T, 2] 格式的 STFT 转换为 Complex[F, 1, T] 格式的复数频谱
+        /// Converts float[F, T, 2] STFT format to Complex[F, 1, T] complex spectrogram
         /// </summary>
-        /// <param name="stftFormat">输入的 STFT 数据，格式为 [频率, 时间, 实虚部]</param>
-        /// <returns>复数频谱，格式为 [频率, 1, 时间]</returns>
+        /// <param name="stftFormat">Input STFT data with shape [frequency, time, real/imaginary]</param>
+        /// <returns>Complex spectrogram with shape [frequency, 1, time]</returns>
         public static Complex[,,] ConvertSTFTFormatToComplex(float[,,] stftFormat)
         {
-            int freqBins = stftFormat.GetLength(0);     // 频率点数 (F)
-            int timeFrames = stftFormat.GetLength(1);   // 时间帧数 (T)
+            int freqBins = stftFormat.GetLength(0);     // Number of frequency bins (F)
+            int timeFrames = stftFormat.GetLength(1);   // Number of time frames (T)
 
-            // 验证输入维度
+            // Validate input dimensions
             if (freqBins != F || stftFormat.GetLength(2) != 2)
             {
-                throw new ArgumentException("输入数组必须是 [F, 时间帧数, 2] 格式");
+                throw new ArgumentException("Input array must be in [F, time_frames, 2] format");
             }
 
-            // 创建目标复数数组 [F, 1, T]
+            // Create target complex array [F, 1, T]
             Complex[,,] complexSpectrogram = new Complex[freqBins, 1, timeFrames];
 
-            // 遍历每个频率点和时间帧
+            // Iterate through each frequency bin and time frame
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    // 获取实部和虚部
+                    // Get real and imaginary parts
                     float real = stftFormat[f, t, 0];
                     float imag = stftFormat[f, t, 1];
 
-                    // 创建复数并存储到输出数组中
+                    // Create complex number and store in output array
                     complexSpectrogram[f, 0, t] = new Complex(real, imag);
                 }
             }
@@ -115,36 +176,30 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 将 float[F, T, 2] 格式的 STFT 转换为 Complex[F, 2, T] 格式的复数频谱
+        /// Converts float[F, T, 2] STFT format to Complex[F, 2, T] complex spectrogram
         /// </summary>
-        /// <param name="stftFormat">输入的 STFT 数据，格式为 [频率, 时间, 实虚部]</param>
-        /// <returns>复数频谱，格式为 [频率, 2通道, 时间]</returns>
+        /// <param name="stftFormat">Input STFT data with shape [frequency, time, real/imaginary]</param>
+        /// <returns>Complex spectrogram with shape [frequency, 2 channels, time]</returns>
         public static Complex[,,] ConvertSTFTFormatToComplex2(float[,,] stftFormat)
         {
-            int freqBins = stftFormat.GetLength(0);     // 频率点数 (F)
-            int timeFrames = stftFormat.GetLength(1);   // 时间帧数 (T)
+            int freqBins = stftFormat.GetLength(0);     // Number of frequency bins (F)
+            int timeFrames = stftFormat.GetLength(1);   // Number of time frames (T)
 
-            // 验证输入维度
-            //if (freqBins != F || stftFormat.GetLength(2) != 2)
-            //{
-            //    throw new ArgumentException("输入数组必须是 [F, 时间帧数, 2] 格式");
-            //}
-
-            // 创建目标复数数组 [F, 2, T]
+            // Create target complex array [F, 2, T]
             Complex[,,] complexSpectrogram = new Complex[freqBins, 2, timeFrames];
 
-            // 遍历每个频率点和时间帧
+            // Iterate through each frequency bin and time frame
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    // 获取实部和虚部
+                    // Get real and imaginary parts
                     float real = stftFormat[f, t, 0];
                     float imag = stftFormat[f, t, 1];
 
-                    // 存储到复数数组中，第二维对应通道
+                    // Store in complex array, second dimension corresponds to channels
                     complexSpectrogram[f, 0, t] = new Complex(real, imag);
-                    complexSpectrogram[f, 1, t] = new Complex(real, imag); // 复制到第二个通道
+                    complexSpectrogram[f, 1, t] = new Complex(real, imag); // Copy to second channel
                 }
             }
 
@@ -152,61 +207,69 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 将float32[batch_size,4,F,T]格式的数据转换为复数频谱表示，按批次返回List<float[,,]>
-        /// 其中每个float[,,]的形状为[F, T, 2]，对应[频率, 时间, 实虚部]
+        /// Converts float32[batch_size,4,F,T] data to complex spectrogram representation, 
+        /// returns List<float[,,]> by batch where each float[,,] has shape [F, T, 2] 
+        /// corresponding to [frequency, time, real/imaginary]
         /// </summary>
-        /// <param name="input">输入数据，格式为[batch_size, 4, F, T]</param>
-        /// <returns>复数频谱列表，每个元素格式为[F, T, 2]</returns>
+        /// <param name="input">Input data with shape [batch_size, 4, F, T]</param>
+        /// <returns>List of complex spectrograms, each with shape [F, T, 2]</returns>
         public static List<float[,,]> ConvertBatchSpectrums(float[,,,] input)
         {
             int batchSize = input.GetLength(0);
             int freqBins = input.GetLength(2);    // F
             int timeFrames = input.GetLength(3);  // T
 
-            // 验证输入维度
+            // Validate input dimensions
             if (input.GetLength(1) != 4)
             {
-                throw new ArgumentException("输入数组的第2个维度必须是4，表示两个通道的实部和虚部");
+                throw new ArgumentException("The second dimension of input array must be 4, representing real/imaginary parts of two channels");
             }
 
-            // 初始化结果列表
+            // Initialize result list
             List<float[,,]> result = new List<float[,,]>(batchSize);
 
-            // 处理每个批次样本
+            // Process each batch sample
             for (int b = 0; b < batchSize; b++)
             {
-                // 创建新的三维数组 [F, T, 2]
+                // Create new 3D array [F, T, 2]
                 float[,,] complexSpectrum = new float[freqBins, timeFrames, 2];
 
-                // 遍历每个频率和时间点
+                // Iterate through each frequency and time point
                 for (int f = 0; f < freqBins; f++)
                 {
                     for (int t = 0; t < timeFrames; t++)
                     {
-                        // 从输入的4个通道中提取数据
-                        // 假设通道顺序为：左声道实部、左声道虚部、右声道实部、右声道虚部
-                        float leftReal = input[b, 0, f, t];   // 左声道实部
-                        float leftImag = input[b, 1, f, t];   // 左声道虚部
-                        float rightReal = input[b, 2, f, t];  // 右声道实部
-                        float rightImag = input[b, 3, f, t];  // 右声道虚部
+                        // Extract data from 4 channels
+                        // Assuming channel order: left real, left imaginary, right real, right imaginary
+                        float leftReal = input[b, 0, f, t];   // Left channel real part
+                        float leftImag = input[b, 1, f, t];   // Left channel imaginary part
+                        float rightReal = input[b, 2, f, t];  // Right channel real part
+                        float rightImag = input[b, 3, f, t];  // Right channel imaginary part
 
-                        // 合并左右声道（取平均值）
+                        // Merge left and right channels (take average)
                         float realPart = (leftReal + rightReal) / 2.0f;
                         float imagPart = (leftImag + rightImag) / 2.0f;
 
-                        // 存入结果数组 [频率, 时间, 实虚部]
-                        complexSpectrum[f, t, 0] = realPart;   // 实部
-                        complexSpectrum[f, t, 1] = imagPart;   // 虚部
+                        // Store in result array [frequency, time, real/imaginary]
+                        complexSpectrum[f, t, 0] = realPart;   // Real part
+                        complexSpectrum[f, t, 1] = imagPart;   // Imaginary part
                     }
                 }
 
-                // 添加到结果列表
+                // Add to result list
                 result.Add(complexSpectrum);
             }
 
             return result;
         }
+        #endregion
 
+        #region Audio Channel Processing
+        /// <summary>
+        /// Splits stereo audio sample into mono left and right channels
+        /// </summary>
+        /// <param name="sample">Stereo audio sample array</param>
+        /// <returns>Tuple containing left and right channels, or null if input is invalid</returns>
         public static (float[] left, float[] right)? SplitStereoToMono(float[] sample)
         {
             if (sample == null || sample.Length % 2 != 0)
@@ -219,9 +282,6 @@ namespace ManySpeech.AudioSep
             float[] leftChannel = new float[channelLength];
             float[] rightChannel = new float[channelLength];
 
-            //Array.Copy(sample, 0, leftChannel, 0, channelLength);
-            //Array.Copy(sample, channelLength, rightChannel, 0, channelLength);
-
             for (int n = 0; n < channelLength; n++)
             {
                 leftChannel[n] = sample[n * 2];
@@ -231,72 +291,85 @@ namespace ManySpeech.AudioSep
             return (leftChannel, rightChannel);
         }
 
+        /// <summary>
+        /// Merges mono left and right channels into stereo audio
+        /// </summary>
+        /// <param name="leftChannel">Left mono channel</param>
+        /// <param name="rightChannel">Right mono channel</param>
+        /// <returns>Merged stereo audio array, or null if input is invalid</returns>
         public static float[]? MergeMonoToStereo(float[] leftChannel, float[] rightChannel)
         {
-            // 验证输入有效性
+            // Validate input
             if (leftChannel == null || rightChannel == null)
             {
-                Console.WriteLine("错误: 左右声道数据不能为空");
+                Console.WriteLine("Error: Left or right channel data cannot be null");
                 return null;
             }
 
             if (leftChannel.Length != rightChannel.Length)
             {
-                Console.WriteLine($"错误: 左右声道样本数不一致（左: {leftChannel.Length}, 右: {rightChannel.Length}）");
+                Console.WriteLine($"Error: Mismatched channel lengths (left: {leftChannel.Length}, right: {rightChannel.Length})");
                 return null;
             }
 
             int stereoLength = leftChannel.Length * 2;
             float[] stereoSamples = new float[stereoLength];
 
-            // 合并左右声道数据
+            // Merge left and right channel data
             for (int i = 0; i < leftChannel.Length; i++)
             {
-                stereoSamples[i * 2] = leftChannel[i];         // 左声道数据放在偶数索引位置
-                stereoSamples[i * 2 + 1] = rightChannel[i];    // 右声道数据放在奇数索引位置
+                stereoSamples[i * 2] = leftChannel[i];         // Left channel at even indices
+                stereoSamples[i * 2 + 1] = rightChannel[i];    // Right channel at odd indices
             }
 
             return stereoSamples;
         }
+        #endregion
 
+        #region Model Projection Methods
+        /// <summary>
+        /// Performs model projection for audio separation
+        /// </summary>
+        /// <param name="modelInputs">List of model input entities</param>
+        /// <param name="statesList">List of states (optional)</param>
+        /// <param name="offset">Offset value (optional)</param>
+        /// <returns>List of model output entities</returns>
         public List<ModelOutputEntity> ModelProj(List<ModelInputEntity> modelInputs, List<float[]> statesList = null, int offset = 0)
         {
-            //int F = 2048;// F; 
-            int batchSize = modelInputs.Count;//535374-441000
+            int batchSize = modelInputs.Count;
             int chunkSize = ((T - 1) * 1024 + F * 2 - 1) * 2;
             int tailLen = chunkSize - modelInputs[0].Speech.Length;
-            Int64[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
+            long[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
             float[] samples = PadHelper.PadSequence(modelInputs, tailLen: tailLen);
             List<ModelOutputEntity> modelOutputEntities = new List<ModelOutputEntity>();
-            /////////////////////////////
+
             var splitResult = SplitStereoToMono(samples);
             if (splitResult.HasValue)
             {
                 float[] leftChannel = splitResult.Value.left;
                 float[] rightChannel = splitResult.Value.right;
 
-                ///////////////////////////
-                Utils.STFTArgs args = new Utils.STFTArgs();
-                args.win_len = F * 2 - 1;
-                args.fft_len = F * 2 - 1;
-                args.win_type = "hanning";
-                args.win_inc = 1024;
+                STFTArgs args = new STFTArgs();
+                args.WinLen = F * 2 - 1;
+                args.FftLen = F * 2 - 1;
+                args.WinType = "hanning";
+                args.WinInc = 1024;
+
                 try
                 {
-                    // 对音频进行 STFT 变换
+                    // Perform STFT on audio
                     Complex[,,] stftComplexLeft = AudioProcessing.Stft(leftChannel, args, normalized: false);
                     float[,,] spectrumLeft = ConvertComplexToSTFTFormat(stftComplexLeft);
+
                     Complex[,,] stftComplexRight = AudioProcessing.Stft(rightChannel, args, normalized: false);
                     float[,,] spectrumRight = ConvertComplexToSTFTFormat(stftComplexRight);
+
                     float[,,] stft = MergeSpectrums(spectrumLeft, spectrumRight);
-                    //float[,,] mag = ProcessSTFTAndComputeMagnitude(stft, 1024);
-                    //stft = CropSTFTFrequencies(stft, 1024);
                     float[] input = stft.Cast<float>().ToArray();
-                    //float[] input_mag = mag.Cast<float>().ToArray();
+
                     var inputMeta = _modelSession.InputMetadata;
                     var container = new List<NamedOnnxValue>();
-                    var inputNames = new List<string>();
-                    var inputValues = new List<FixedBufferOnnxValue>();
+
                     foreach (var name in inputMeta.Keys)
                     {
                         if (name == "input")
@@ -307,72 +380,82 @@ namespace ManySpeech.AudioSep
                         }
                     }
 
-                    IDisposableReadOnlyCollection<DisposableNamedOnnxValue> encoderResults = null;
-                    encoderResults = _modelSession.Run(container);
+                    IDisposableReadOnlyCollection<DisposableNamedOnnxValue> encoderResults = _modelSession.Run(container);
 
                     if (encoderResults != null)
                     {
-                        var encoderResultsArray = encoderResults.ToArray();
-                        foreach (var encoderResult in encoderResultsArray)
+                        foreach (var encoderResult in encoderResults)
                         {
                             string name = encoderResult.Name;
                             var outputTensor = encoderResult.AsTensor<float>();
 
                             var tensorList = ConvertTensorToList(outputTensor);
-                            //Complex[,,] spectrumX = ConvertSTFTFormatToComplex(tensorList[0]);
-                            //float[] output = AudioProcessing.Istft(spectrumX, args, samples.Length, normalized: false);
                             int sampleRate = modelInputs[0].SampleRate;
+
                             (Tensor<float> channel0, Tensor<float> channel1) channels = SplitStereoSTFT(tensorList[0]);
+
                             var spec0 = To3DArray(channels.channel0);
                             Complex[,,] spectrumX0 = ConvertSTFTFormatToComplex(spec0);
                             float[] output0 = AudioProcessing.Istft(spectrumX0, args, samples.Length, normalized: false);
+
                             float[] left = new float[(int)(samples.Length - tailLen - sampleRate * 0.5f) / 2];
                             Array.Copy(output0, 0, left, 0, left.Length);
+
                             var spec1 = To3DArray(channels.channel1);
                             Complex[,,] spectrumX1 = ConvertSTFTFormatToComplex(spec1);
                             float[] output1 = AudioProcessing.Istft(spectrumX1, args, samples.Length, normalized: false);
+
                             float[] right = new float[(int)(samples.Length - tailLen - sampleRate * 0.5f) / 2];
                             Array.Copy(output1, 0, right, 0, right.Length);
-                            float[] output = MergeMonoToStereo(left, right);
-                            ModelOutputEntity modelOutput = new ModelOutputEntity();
-                            modelOutput.StemName = name;
-                            modelOutput.StemContents = output;
-                            modelOutputEntities.Add(modelOutput);
-                        }
 
+                            float[] output = MergeMonoToStereo(left, right);
+
+                            modelOutputEntities.Add(new ModelOutputEntity
+                            {
+                                StemName = name,
+                                StemContents = output
+                            });
+                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    //
+                    Debug.WriteLine($"Error in ModelProj: {ex.Message}");
                 }
             }
+
             return modelOutputEntities;
         }
 
+        /// <summary>
+        /// Performs mono model projection for audio separation
+        /// </summary>
+        /// <param name="modelInputs">List of model input entities</param>
+        /// <param name="statesList">List of states (optional)</param>
+        /// <param name="offset">Offset value (optional)</param>
+        /// <returns>List of model output entities</returns>
         public List<ModelOutputEntity> ModelProj_mono(List<ModelInputEntity> modelInputs, List<float[]> statesList = null, int offset = 0)
         {
             int batchSize = modelInputs.Count;
-            Int64[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
+            long[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
             float[] samples = PadHelper.PadSequence(modelInputs);
-            Utils.STFTArgs args = new Utils.STFTArgs();
-            args.win_len = 4096;
-            args.fft_len = 4096;
-            args.win_type = "hanning";
-            args.win_inc = 1024;
-            // 对音频进行 STFT 变换
-            Complex[,,] stftComplex = AudioProcessing.Stft(samples, args, normalized: false, pad_mode: "constant");
+
+            STFTArgs args = new STFTArgs();
+            args.WinLen = 4096;
+            args.FftLen = 4096;
+            args.WinType = "hanning";
+            args.WinInc = 1024;
+
+            // Perform STFT on audio
+            Complex[,,] stftComplex = AudioProcessing.Stft(samples, args, normalized: false, padMode: "constant");
             float[,,] spectrum = ConvertComplexToSTFTFormat(stftComplex);
             float[,,] stft = MergeSpectrums(spectrum, spectrum);
-            //float[,,] mag = ProcessSTFTAndComputeMagnitude(stft, 1024);
-            //stft = CropSTFTFrequencies(stft, 1024);
+
             float[] input = stft.Cast<float>().ToArray();
-            //float[] input_mag = mag.Cast<float>().ToArray();
             var inputMeta = _modelSession.InputMetadata;
             List<ModelOutputEntity> modelOutputEntities = new List<ModelOutputEntity>();
             var container = new List<NamedOnnxValue>();
-            var inputNames = new List<string>();
-            var inputValues = new List<FixedBufferOnnxValue>();
+
             foreach (var name in inputMeta.Keys)
             {
                 if (name == "input")
@@ -381,50 +464,60 @@ namespace ManySpeech.AudioSep
                     var tensor = new DenseTensor<float>(input, dim, false);
                     container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
                 }
-                //if (name == "input_mag")
-                //{
-                //    int[] dim = new int[] { 2, 1024, input_mag.Length / 2 / 1024 };
-                //    var tensor = new DenseTensor<float>(input_mag, dim, false);
-                //    container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
-                //}
             }
+
             try
             {
-                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> encoderResults = null;
-                encoderResults = _modelSession.Run(container);
+                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> encoderResults = _modelSession.Run(container);
 
                 if (encoderResults != null)
                 {
-                    var encoderResultsArray = encoderResults.ToArray();
-                    foreach (var encoderResult in encoderResultsArray)
+                    foreach (var encoderResult in encoderResults)
                     {
                         string name = encoderResult.Name;
                         var outputTensor = encoderResult.AsTensor<float>();
+
                         (Tensor<float> channel0, Tensor<float> channel1) channels = SplitStereoSTFT(outputTensor);
                         var spec = To3DArray(channels.channel0);
-                        //Complex[,,] spectrumX1 = ConvertSTFTFormatToComplex2_2(spec);
+
                         Complex[,,] spectrumX = ConvertSTFTFormatToComplex(spec);
                         float[] output = AudioProcessing.Istft(spectrumX, args, samples.Length, normalized: false);
-                        ModelOutputEntity modelOutput = new ModelOutputEntity();
-                        modelOutput.StemName = name;
-                        modelOutput.StemContents = output;
-                        modelOutputEntities.Add(modelOutput);
-                    }
 
+                        modelOutputEntities.Add(new ModelOutputEntity
+                        {
+                            StemName = name,
+                            StemContents = output
+                        });
+                    }
                 }
             }
             catch (Exception ex)
             {
-                //
+                Debug.WriteLine($"Error in ModelProj_mono: {ex.Message}");
             }
+
             return modelOutputEntities;
         }
 
+        /// <summary>
+        /// Generator projection (not implemented)
+        /// </summary>
+        /// <param name="modelOutputEntity">Model output entity</param>
+        /// <param name="batchSize">Batch size</param>
+        /// <returns>Null</returns>
         public List<ModelOutputEntity> GeneratorProj(ModelOutputEntity modelOutputEntity, int batchSize = 1)
         {
             return null;
         }
+        #endregion
 
+        #region Tensor/Array Utilities
+        /// <summary>
+        /// Converts a 3D Tensor to a 3D float array
+        /// </summary>
+        /// <param name="tensor">Input 3D tensor</param>
+        /// <returns>3D float array with the same dimensions</returns>
+        /// <exception cref="ArgumentException">Thrown if tensor is not 3-dimensional</exception>
         public float[,,] To3DArray(Tensor<float> tensor)
         {
             if (tensor.Rank != 3)
@@ -433,7 +526,7 @@ namespace ManySpeech.AudioSep
             var dimensions = tensor.Dimensions;
             float[,,] result = new float[dimensions[0], dimensions[1], dimensions[2]];
 
-            // 通用索引访问
+            // Universal index access
             var indices = new int[3];
             for (indices[0] = 0; indices[0] < dimensions[0]; indices[0]++)
             {
@@ -450,11 +543,12 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 将float32[batch_size,4,F,T]格式的Tensor转换为List<Tensor<float>>
-        /// 其中每个Tensor的形状为[F, T, 4]，对应[频率, 时间, 通道]
+        /// Converts a float32[batch_size,4,F,T] Tensor to List<Tensor<float>> 
+        /// where each Tensor has shape [F, T, 4] corresponding to [frequency, time, channel]
         /// </summary>
-        /// <param name="tensor">输入的Tensor，格式为[batch_size, 4, F, T]</param>
-        /// <returns>复数频谱列表，每个元素格式为[F, T, 4]的Tensor</returns>
+        /// <param name="tensor">Input Tensor with shape [batch_size, 4, F, T]</param>
+        /// <returns>List of complex spectrograms, each as a [F, T, 4] Tensor</returns>
+        /// <exception cref="ArgumentException">Thrown if tensor is not 4-dimensional</exception>
         public List<Tensor<float>> ConvertTensorToList(Tensor<float> tensor)
         {
             if (tensor.Rank != 4)
@@ -465,64 +559,70 @@ namespace ManySpeech.AudioSep
             int freqBins = tensor.Dimensions[2];     // F
             int timeFrames = tensor.Dimensions[3];   // T
 
-            // 初始化结果列表
+            // Initialize result list
             List<Tensor<float>> result = new List<Tensor<float>>(batchSize);
 
-            // 处理每个批次样本
+            // Process each batch sample
             for (int b = 0; b < batchSize; b++)
             {
-                // 创建新的三维Tensor [F, T, 4]
+                // Create new 3D Tensor [F, T, 4]
                 var sampleTensor = new DenseTensor<float>(new int[] { freqBins, timeFrames, channels });
 
-                // 通用索引访问
+                // Universal index access
                 var indices = new int[4];
-                indices[0] = b; // 设置批次索引
+                indices[0] = b; // Set batch index
 
                 for (int f = 0; f < freqBins; f++)
                 {
-                    indices[2] = f; // 设置频率索引
+                    indices[2] = f; // Set frequency index
 
                     for (int t = 0; t < timeFrames; t++)
                     {
-                        indices[3] = t; // 设置时间索引
+                        indices[3] = t; // Set time index
 
                         for (int c = 0; c < channels; c++)
                         {
-                            indices[1] = c; // 设置通道索引
+                            indices[1] = c; // Set channel index
 
-                            // 从输入Tensor中获取值并赋值到新的Tensor
+                            // Get value from input Tensor and assign to new Tensor
                             sampleTensor[f, t, c] = tensor[indices];
                         }
                     }
                 }
 
-                // 添加到结果列表
+                // Add to result list
                 result.Add(sampleTensor);
             }
 
             return result;
         }
 
+        /// <summary>
+        /// Converts a float[,,] array to a Complex[,] array
+        /// </summary>
+        /// <param name="floatArray">Input 3D float array</param>
+        /// <returns>2D complex array</returns>
+        /// <exception cref="ArgumentException">Thrown if input has invalid dimensions</exception>
         public static Complex[,] ConvertToComplex(float[,,] floatArray)
         {
-            // 检查输入数组的维度
+            // Check input array dimensions
             if (floatArray.Rank != 3 || floatArray.GetLength(0) != 1)
             {
-                throw new ArgumentException("输入数组必须是三维数组，且第一维长度为1。");
+                throw new ArgumentException("Input array must be 3-dimensional with first dimension length 1.");
             }
 
             int rows = floatArray.GetLength(1);
             int cols = floatArray.GetLength(2);
 
-            // 创建目标复数数组
+            // Create target complex array
             Complex[,] complexArray = new Complex[rows, cols];
 
-            // 遍历并转换每个元素
+            // Iterate and convert each element
             for (int i = 0; i < rows; i++)
             {
                 for (int j = 0; j < cols; j++)
                 {
-                    // 从输入数组获取实部，虚部设为0
+                    // Get real part from input array, set imaginary part to 0
                     float real = floatArray[0, i, j];
                     complexArray[i, j] = new Complex(real, 0);
                 }
@@ -532,66 +632,66 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 将两个float[,,]频谱合并为一个float[,,]（交错实部和虚部）
+        /// Merges two float[,,] spectrograms into one float[,,] (interleaving real and imaginary parts)
         /// </summary>
-        /// <param name="spectrum1">第一个频谱，形状为[F, T, 2]</param>
-        /// <param name="spectrum2">第二个频谱，形状为[F, T, 2]</param>
-        /// <returns>合并后的三维数组，形状为[4, F, T]</returns>
+        /// <param name="spectrum1">First spectrogram with shape [F, T, 2]</param>
+        /// <param name="spectrum2">Second spectrogram with shape [F, T, 2]</param>
+        /// <returns>Merged 3D array with shape [4, F, T]</returns>
         public static float[,,] MergeSpectrums(float[,,] spectrum1, float[,,] spectrum2)
         {
-            // 验证输入数组维度
+            // Validate input array dimensions
             if (spectrum1.Rank != 3 || spectrum2.Rank != 3)
-                throw new ArgumentException("输入数组必须是三维数组");
+                throw new ArgumentException("Input arrays must be 3-dimensional");
 
-            // 获取数组维度（假设两个数组维度相同）
+            // Get array dimensions (assuming both arrays have the same dimensions)
             int freqBins = spectrum1.GetLength(0);    // F
             int timeFrames = spectrum1.GetLength(1);  // T
             int complexParts = spectrum1.GetLength(2); // 2
 
-            // 验证输入数组维度是否匹配
+            // Validate input array dimensions match
             if (spectrum2.GetLength(0) != freqBins ||
                 spectrum2.GetLength(1) != timeFrames ||
                 spectrum2.GetLength(2) != complexParts)
             {
-                throw new ArgumentException("两个输入数组的维度必须匹配");
+                throw new ArgumentException("The two input arrays must have matching dimensions");
             }
 
-            // 创建新的三维数组 [4, F, T]
+            // Create new 3D array [4, F, T]
             float[,,] mergedSpectrum = new float[4, freqBins, timeFrames];
 
-            // 复制第一个频谱的实部到通道0
+            // Copy real parts of first spectrum to channel 0
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    mergedSpectrum[0, f, t] = spectrum1[f, t, 0]; // 实部
+                    mergedSpectrum[0, f, t] = spectrum1[f, t, 0]; // Real part
                 }
             }
 
-            // 复制第一个频谱的虚部到通道1
+            // Copy imaginary parts of first spectrum to channel 1
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    mergedSpectrum[1, f, t] = spectrum1[f, t, 1]; // 虚部
+                    mergedSpectrum[1, f, t] = spectrum1[f, t, 1]; // Imaginary part
                 }
             }
 
-            // 复制第二个频谱的实部到通道2
+            // Copy real parts of second spectrum to channel 2
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    mergedSpectrum[2, f, t] = spectrum2[f, t, 0]; // 实部
+                    mergedSpectrum[2, f, t] = spectrum2[f, t, 0]; // Real part
                 }
             }
 
-            // 复制第二个频谱的虚部到通道3
+            // Copy imaginary parts of second spectrum to channel 3
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    mergedSpectrum[3, f, t] = spectrum2[f, t, 1]; // 虚部
+                    mergedSpectrum[3, f, t] = spectrum2[f, t, 1]; // Imaginary part
                 }
             }
 
@@ -599,28 +699,28 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 裁剪STFT频谱的频率范围
-        /// 等效于Python中的: stft = stft[:, :self.F, :, :]
+        /// Crops the frequency range of STFT spectrogram
+        /// Equivalent to Python: stft = stft[:, :self.F, :, :]
         /// </summary>
-        /// <param name="stft">输入的STFT频谱，四维数组[通道数, 频率, 时间, 实虚部]</param>
-        /// <param name="maxFreq">要保留的最大频率索引（包含）</param>
-        /// <returns>裁剪后的STFT频谱，四维数组[通道数, maxFreq, 时间, 实虚部]</returns>
+        /// <param name="stft">Input STFT spectrogram, 4D array [channels, frequency, time, real/imaginary]</param>
+        /// <param name="maxFreq">Maximum frequency index to keep (inclusive)</param>
+        /// <returns>Cropped STFT spectrogram, 4D array [channels, maxFreq, time, real/imaginary]</returns>
         public static float[,,,] CropSTFTFrequencies(float[,,,] stft, int maxFreq)
         {
-            // 获取输入维度
+            // Get input dimensions
             int numChannels = stft.GetLength(0);
             int originalFreqBins = stft.GetLength(1);
             int timeFrames = stft.GetLength(2);
-            int complexParts = stft.GetLength(3); // 通常为2（实部和虚部）
+            int complexParts = stft.GetLength(3); // Usually 2 (real and imaginary parts)
 
-            // 确保maxFreq不超过原始频率范围
+            // Ensure maxFreq does not exceed original frequency range
             if (maxFreq >= originalFreqBins)
-                throw new ArgumentException($"maxFreq({maxFreq})必须小于原始频率范围({originalFreqBins})");
+                throw new ArgumentException($"maxFreq({maxFreq}) must be less than original frequency range({originalFreqBins})");
 
-            // 创建裁剪后的数组 [通道数, maxFreq, 时间, 实虚部]
+            // Create cropped array [channels, maxFreq, time, real/imaginary]
             float[,,,] croppedStft = new float[numChannels, maxFreq, timeFrames, complexParts];
 
-            // 复制数据（仅保留前maxFreq个频率点）
+            // Copy data (keep only first maxFreq frequency bins)
             for (int ch = 0; ch < numChannels; ch++)
             {
                 for (int f = 0; f < maxFreq; f++)
@@ -639,42 +739,42 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 处理STFT频谱并计算幅度谱
-        /// 等效于Python中的:
+        /// Processes STFT spectrogram and computes magnitude spectrum
+        /// Equivalent to Python:
         /// stft = stft[:, :self.F, :, :]
         /// real = stft[:, :, :, 0]
         /// im = stft[:, :, :, 1]
         /// mag = torch.sqrt(real ** 2 + im ** 2)
         /// </summary>
-        /// <param name="stft">输入的STFT频谱，四维数组[通道数, 频率, 时间, 实虚部]</param>
-        /// <param name="maxFreq">要保留的最大频率索引（对应Python中的self.F）</param>
-        /// <returns>幅度谱，三维数组[通道数, 频率, 时间]</returns>
+        /// <param name="stft">Input STFT spectrogram, 4D array [channels, frequency, time, real/imaginary]</param>
+        /// <param name="maxFreq">Maximum frequency index to keep (corresponds to self.F in Python)</param>
+        /// <returns>Magnitude spectrum, 3D array [channels, frequency, time]</returns>
         public static float[,,] ProcessSTFTAndComputeMagnitude(float[,,,] stft, int maxFreq)
         {
-            // 获取输入维度
+            // Get input dimensions
             int numChannels = stft.GetLength(0);
             int originalFreqBins = stft.GetLength(1);
             int timeFrames = stft.GetLength(2);
 
-            // 确保maxFreq不超过原始频率范围
+            // Ensure maxFreq does not exceed original frequency range
             if (maxFreq > originalFreqBins)
-                throw new ArgumentException($"maxFreq({maxFreq})超过原始频率范围({originalFreqBins})");
+                throw new ArgumentException($"maxFreq({maxFreq}) exceeds original frequency range({originalFreqBins})");
 
-            // 创建输出幅度谱数组 [通道数, maxFreq, 时间]
+            // Create output magnitude spectrum array [channels, maxFreq, time]
             float[,,] magnitude = new float[numChannels, maxFreq, timeFrames];
 
-            // 处理STFT并计算幅度谱
+            // Process STFT and compute magnitude spectrum
             for (int ch = 0; ch < numChannels; ch++)
             {
                 for (int f = 0; f < maxFreq; f++)
                 {
                     for (int t = 0; t < timeFrames; t++)
                     {
-                        // 获取实部和虚部
+                        // Get real and imaginary parts
                         float real = stft[ch, f, t, 0];
                         float imag = stft[ch, f, t, 1];
 
-                        // 计算幅度：sqrt(real² + imag²)
+                        // Compute magnitude: sqrt(real² + imag²)
                         magnitude[ch, f, t] = (float)Math.Sqrt(real * real + imag * imag);
                     }
                 }
@@ -682,39 +782,40 @@ namespace ManySpeech.AudioSep
 
             return magnitude;
         }
+
         /// <summary>
-        /// 将三维数组float[F,T,4]拆分为两个三维数组float[F,T,2]
-        /// 对应左声道和右声道的复数频谱（实部和虚部）
+        /// Splits a 3D float array [F,T,4] into two 3D float arrays [F,T,2]
+        /// Corresponding to left and right channels' complex spectrograms (real and imaginary parts)
         /// </summary>
-        /// <param name="inputArray">输入的三维数组[F,T,4]</param>
-        /// <returns>包含两个三维数组的元组，分别表示左声道和右声道</returns>
+        /// <param name="inputArray">Input 3D array [F,T,4]</param>
+        /// <returns>Tuple containing two 3D arrays, representing left and right channels</returns>
         public static (float[,,] channel0, float[,,] channel1) SplitStereoSTFT(float[,,] inputArray)
         {
-            // 验证输入维度
+            // Validate input dimensions
             if (inputArray.Rank != 3 ||
                 inputArray.GetLength(0) != F ||
                 inputArray.GetLength(1) != T ||
                 inputArray.GetLength(2) != 4)
             {
-                throw new ArgumentException("输入数组必须是[F,T,4]格式的三维数组");
+                throw new ArgumentException("Input array must be a 3D array in [F,T,4] format");
             }
 
-            // 创建两个三维数组，每个表示一个声道的复数频谱
+            // Create two 3D arrays, each representing one channel's complex spectrogram
             float[,,] leftChannel = new float[F, T, 2];
             float[,,] rightChannel = new float[F, T, 2];
 
-            // 复制数据
+            // Copy data
             for (int f = 0; f < F; f++)
             {
                 for (int t = 0; t < T; t++)
                 {
-                    // 从输入数组的第0和第1通道复制到左声道数组的第0和第1通道（实部和虚部）
-                    leftChannel[f, t, 0] = inputArray[f, t, 0];  // 左声道实部
-                    leftChannel[f, t, 1] = inputArray[f, t, 1];  // 左声道虚部
+                    // Copy from input array's channels 0 and 1 to left channel's real and imaginary parts
+                    leftChannel[f, t, 0] = inputArray[f, t, 0];  // Left channel real part
+                    leftChannel[f, t, 1] = inputArray[f, t, 1];  // Left channel imaginary part
 
-                    // 从输入数组的第2和第3通道复制到右声道数组的第0和第1通道（实部和虚部）
-                    rightChannel[f, t, 0] = inputArray[f, t, 2];  // 右声道实部
-                    rightChannel[f, t, 1] = inputArray[f, t, 3];  // 右声道虚部
+                    // Copy from input array's channels 2 and 3 to right channel's real and imaginary parts
+                    rightChannel[f, t, 0] = inputArray[f, t, 2];  // Right channel real part
+                    rightChannel[f, t, 1] = inputArray[f, t, 3];  // Right channel imaginary part
                 }
             }
 
@@ -722,57 +823,57 @@ namespace ManySpeech.AudioSep
         }
 
         /// <summary>
-        /// 将三维Tensor<float>[F,T,4]拆分为两个三维Tensor<float>[F,T,2]
-        /// 对应左声道和右声道的复数频谱（实部和虚部）
+        /// Splits a 3D Tensor<float>[F,T,4] into two 3D Tensor<float>[F,T,2]
+        /// Corresponding to left and right channels' complex spectrograms (real and imaginary parts)
         /// </summary>
-        /// <param name="inputTensor">输入的三维Tensor[F,T,4]</param>
-        /// <returns>包含两个三维Tensor的元组，分别表示左声道和右声道</returns>
+        /// <param name="inputTensor">Input 3D Tensor [F,T,4]</param>
+        /// <returns>Tuple containing two 3D Tensors, representing left and right channels</returns>
         public static (Tensor<float> leftChannel, Tensor<float> rightChannel) SplitStereoSTFT(Tensor<float> inputTensor)
         {
-            // 验证输入维度
+            // Validate input dimensions
             if (inputTensor.Dimensions.Length != 3 ||
                 inputTensor.Dimensions[0] != F ||
                 inputTensor.Dimensions[1] != T ||
                 inputTensor.Dimensions[2] != 4)
             {
-                throw new ArgumentException("输入Tensor必须是[F,T,4]格式的三维张量");
+                throw new ArgumentException("Input Tensor must be a 3D tensor in [F,T,4] format");
             }
 
-            // 创建两个三维Tensor，每个表示一个声道的复数频谱
+            // Create two 3D Tensors, each representing one channel's complex spectrogram
             var leftChannel = new DenseTensor<float>(new int[] { F, T, 2 });
             var rightChannel = new DenseTensor<float>(new int[] { F, T, 2 });
 
-            // 复制数据
+            // Copy data
             for (int f = 0; f < F; f++)
             {
                 for (int t = 0; t < T; t++)
                 {
-                    // 从输入Tensor的第0和第1通道复制到左声道Tensor的第0和第1通道（实部和虚部）
-                    leftChannel[f, t, 0] = inputTensor[f, t, 0];  // 左声道实部
-                    leftChannel[f, t, 1] = inputTensor[f, t, 1];  // 左声道虚部
+                    // Copy from input Tensor's channels 0 and 1 to left channel's real and imaginary parts
+                    leftChannel[f, t, 0] = inputTensor[f, t, 0];  // Left channel real part
+                    leftChannel[f, t, 1] = inputTensor[f, t, 1];  // Left channel imaginary part
 
-                    // 从输入Tensor的第2和第3通道复制到右声道Tensor的第0和第1通道（实部和虚部）
-                    rightChannel[f, t, 0] = inputTensor[f, t, 2];  // 右声道实部
-                    rightChannel[f, t, 1] = inputTensor[f, t, 3];  // 右声道虚部
+                    // Copy from input Tensor's channels 2 and 3 to right channel's real and imaginary parts
+                    rightChannel[f, t, 0] = inputTensor[f, t, 2];  // Right channel real part
+                    rightChannel[f, t, 1] = inputTensor[f, t, 3];  // Right channel imaginary part
                 }
             }
 
             return (leftChannel, rightChannel);
         }
+        #endregion
 
-
-
+        #region IDisposable Implementation
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    if (_modelSession != null)
-                    {
-                        _modelSession = null;
-                    }
+                    // Dispose managed resources
+                    _modelSession?.Dispose();
+                    _modelSession = null;
                 }
+
                 _disposed = true;
             }
         }
@@ -782,9 +883,11 @@ namespace ManySpeech.AudioSep
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
         ~SepProjOfUvr()
         {
-            Dispose(_disposed);
+            Dispose(disposing: false);
         }
+        #endregion
     }
 }

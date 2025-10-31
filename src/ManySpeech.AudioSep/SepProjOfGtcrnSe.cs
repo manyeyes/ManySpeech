@@ -3,24 +3,46 @@ using ManySpeech.AudioSep.Utils;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Numerics;
 
 namespace ManySpeech.AudioSep
 {
+    /// <summary>
+    /// GT-CRN-SE speech separation implementation
+    /// </summary>
     internal class SepProjOfGtcrnSe : ISepProj, IDisposable
     {
+        #region Constants
+        private const int StftWinLen = 512;       // STFT window length
+        private const int StftFftLen = 512;       // FFT length
+        private const string StftWinType = "hanning";  // STFT window type
+        private const int StftWinInc = 256;       // STFT window increment
+        private const float TrimDuration = 0.1f;  // Audio tail trimming duration (seconds)
+        #endregion
+
+        #region Private Fields
         private bool _disposed;
         private InferenceSession _modelSession;
         private CustomMetadata _customMetadata;
         private int _featureDim = 80;
         private int _sampleRate = 16000;
         private int _channels = 1;
-        private int _chunkLength = 0;
-        private int _shiftLength = 0;
+        private int _chunkLength;
+        private int _shiftLength;
+        #endregion
+
+        #region Constructor
+        /// <summary>
+        /// Initializes a new instance of the SepProjOfGtcrnSe class
+        /// </summary>
+        /// <param name="sepModel">Separation model wrapper</param>
+        /// <exception cref="ArgumentNullException">Thrown when sepModel is null</exception>
         public SepProjOfGtcrnSe(SepModel sepModel)
         {
-            _modelSession = sepModel.ModelSession;
+            _modelSession = sepModel?.ModelSession ?? throw new ArgumentNullException(nameof(sepModel), "Separation model cannot be null");
             _customMetadata = sepModel.CustomMetadata;
             _featureDim = sepModel.FeatureDim;
             _sampleRate = sepModel.SampleRate;
@@ -28,213 +50,336 @@ namespace ManySpeech.AudioSep
             _chunkLength = sepModel.ChunkLength;
             _shiftLength = sepModel.ShiftLength;
         }
-        public InferenceSession ModelSession { get => _modelSession; set => _modelSession = value; }
+        #endregion
+
+        #region Public Properties
+        public InferenceSession ModelSession
+        {
+            get => _modelSession;
+            set => _modelSession = value ?? throw new ArgumentNullException(nameof(value), "Model session cannot be null");
+        }
+
         public CustomMetadata CustomMetadata { get => _customMetadata; set => _customMetadata = value; }
         public int ChunkLength { get => _chunkLength; set => _chunkLength = value; }
         public int ShiftLength { get => _shiftLength; set => _shiftLength = value; }
         public int FeatureDim { get => _featureDim; set => _featureDim = value; }
         public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
         public int Channels { get => _channels; set => _channels = value; }
+        #endregion
 
-        public List<float[]> stack_states(List<List<float[]>> statesList)
+        #region State Handling Methods
+        /// <summary>
+        /// Stacks a list of state lists into a single state list
+        /// </summary>
+        /// <param name="statesList">List of state lists to stack</param>
+        /// <returns>Stacked state array</returns>
+        /// <exception cref="ArgumentNullException">Thrown when statesList is null or empty</exception>
+        public List<float[]> StackStates(List<List<float[]>> statesList)
         {
-            List<float[]> states = new List<float[]>();
-            states = statesList[0];
-            return states;
-        }
-        public List<List<float[]>> unstack_states(List<float[]> states)
-        {
-            List<List<float[]>> statesList = new List<List<float[]>>();
-            Debug.Assert(states.Count % 2 == 0, "when stack_states, state_list[0] is 2x");
-            statesList.Add(states);
-            return statesList;
+            if (statesList == null || statesList.Count == 0)
+                throw new ArgumentNullException(nameof(statesList), "States list collection cannot be null or empty");
+
+            return statesList[0];
         }
 
         /// <summary>
-        /// Converts a Complex[961, 1, 1808] array to float[961, 1808, 2] STFT format
+        /// Unstacks a single state list into a list of state lists
         /// </summary>
-        /// <param name="complexSpectrogram">Input complex spectrogram with shape [freq_bins, 1, time_frames]</param>
+        /// <param name="states">State array to unstack</param>
+        /// <returns>Unstacked list of state lists</returns>
+        /// <exception cref="ArgumentNullException">Thrown when states is null</exception>
+        public List<List<float[]>> UnstackStates(List<float[]> states)
+        {
+            if (states == null)
+                throw new ArgumentNullException(nameof(states), "States array cannot be null");
+
+            Debug.Assert(states.Count % 2 == 0, "When stacking states, state_list[0] length must be even");
+            return new List<List<float[]>> { states };
+        }
+        #endregion
+
+        #region Spectrogram Conversion Methods
+        /// <summary>
+        /// Converts a complex spectrogram array to STFT format (real + imaginary parts)
+        /// </summary>
+        /// <param name="complexArray">Input complex spectrogram with shape [freq_bins, 1, time_frames]</param>
         /// <returns>STFT format array with shape [freq_bins, time_frames, 2]</returns>
         public static float[,,] ConvertComplexToSTFTFormat(Complex[,,] complexArray)
         {
-            int n_freq = complexArray.GetLength(0);  // 961 (频率bin)
-            int n_channels = complexArray.GetLength(1); // 1 (单通道)
-            int n_frames = complexArray.GetLength(2); // 1808 (时间帧)
+            int freqBins = complexArray.GetLength(0);    // Frequency bins (e.g., 961)
+            int timeFrames = complexArray.GetLength(2);  // Time frames (e.g., 1808)
 
-            // 目标形状: [n_freq, n_frames, 2] (实部+虚部)
-            float[,,] floatArray = new float[n_freq, n_frames, 2];
+            // Target shape: [freq_bins, time_frames, 2] (real part + imaginary part)
+            float[,,] stftArray = new float[freqBins, timeFrames, 2];
 
-            for (int f = 0; f < n_freq; f++)
-            {
-                for (int t = 0; t < n_frames; t++)
-                {
-                    // 提取实部和虚部
-                    floatArray[f, t, 0] = (float)complexArray[f, 0, t].Real; // 实部
-                    floatArray[f, t, 1] = (float)complexArray[f, 0, t].Imaginary; // 虚部
-                }
-            }
-            return floatArray;
-        }
-
-        /// <summary>
-        /// Converts back from float[257,609,2] STFT format to Complex[257,1,609]
-        /// </summary>
-        /// <param name="stftFormat">STFT format array with shape [1, 2*freq_bins, time_frames]</param>
-        /// <returns>Complex spectrogram with shape [freq_bins, 1, time_frames]</returns>
-        public static Complex[,,] ConvertSTFTFormatToComplex(float[,,] stftFormat)
-        {
-            int freqBins = stftFormat.GetLength(0);     // 频率 bins (257)
-            int timeFrames = stftFormat.GetLength(1);   // 时间帧 (609)
-
-            // 创建目标复数数组，中间维度为1
-            Complex[,,] complexSpectrogram = new Complex[freqBins, 1, timeFrames];
-
-            // 遍历每个频率和时间点
             for (int f = 0; f < freqBins; f++)
             {
                 for (int t = 0; t < timeFrames; t++)
                 {
-                    // 从最后一维提取实部和虚部
-                    float real = stftFormat[f, t, 0];    // 实部
-                    float imag = stftFormat[f, t, 1];    // 虚部
+                    stftArray[f, t, 0] = (float)complexArray[f, 0, t].Real;      // Real part
+                    stftArray[f, t, 1] = (float)complexArray[f, 0, t].Imaginary; // Imaginary part
+                }
+            }
 
-                    // 创建复数，注意中间维度索引为0
+            return stftArray;
+        }
+
+        /// <summary>
+        /// Converts back from STFT format to complex spectrogram
+        /// </summary>
+        /// <param name="stftFormat">STFT format array with shape [freq_bins, time_frames, 2]</param>
+        /// <returns>Complex spectrogram with shape [freq_bins, 1, time_frames]</returns>
+        public static Complex[,,] ConvertSTFTFormatToComplex(float[,,] stftFormat)
+        {
+            int freqBins = stftFormat.GetLength(0);    // Frequency bins (e.g., 257)
+            int timeFrames = stftFormat.GetLength(1);  // Time frames (e.g., 609)
+
+            // Create target complex array with middle dimension as 1
+            Complex[,,] complexSpectrogram = new Complex[freqBins, 1, timeFrames];
+
+            // Iterate through each frequency and time point
+            for (int f = 0; f < freqBins; f++)
+            {
+                for (int t = 0; t < timeFrames; t++)
+                {
+                    float real = stftFormat[f, t, 0];   // Real part from last dimension
+                    float imag = stftFormat[f, t, 1];   // Imaginary part from last dimension
+
+                    // Create complex number (middle dimension index is 0)
                     complexSpectrogram[f, 0, t] = new Complex(real, imag);
                 }
             }
 
             return complexSpectrogram;
         }
+        #endregion
 
+        #region Model Processing Methods
+        /// <summary>
+        /// Performs model separation projection
+        /// </summary>
+        /// <param name="modelInputs">List of model input entities</param>
+        /// <param name="statesList">List of states (optional)</param>
+        /// <param name="offset">Offset value (optional)</param>
+        /// <returns>List of separated audio output entities</returns>
+        /// <exception cref="ArgumentNullException">Thrown when modelInputs is null or empty</exception>
         public List<ModelOutputEntity> ModelProj(List<ModelInputEntity> modelInputs, List<float[]> statesList = null, int offset = 0)
         {
-            int batchSize = modelInputs.Count;
-            Int64[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
-            float[] samples = PadHelper.PadSequence(modelInputs);
-            //samples = samples.Select(x => x / 32768f).ToArray();
-            Utils.STFTArgs args = new Utils.STFTArgs();
-            args.win_len = 512;
-            args.fft_len = 512;
-            args.win_type = "hanning";
-            args.win_inc = 256;
-            // 对音频进行 STFT 变换
-            Complex[,,] stftComplex = AudioProcessing.Stft(samples, args, normalized: false);
-            float[,,] spectrum = ConvertComplexToSTFTFormat(stftComplex);
-            float[] padSequence = spectrum.Cast<float>().ToArray();
-            var inputMeta = _modelSession.InputMetadata;
-            List<ModelOutputEntity> modelOutputEntities = new List<ModelOutputEntity>();
-            var container = new List<NamedOnnxValue>();
-            var inputNames = new List<string>();
-            var inputValues = new List<FixedBufferOnnxValue>();
-            foreach (var name in inputMeta.Keys)
-            {
-                if (name == "input")
-                {
-                    int[] dim = new int[] { batchSize, 257, padSequence.Length / batchSize / 257 / 2, 2 };
-                    var tensor = new DenseTensor<float>(padSequence, dim, false);
-                    container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
-                }
-            }
+            if (modelInputs == null || modelInputs.Count == 0)
+                throw new ArgumentNullException(nameof(modelInputs), "Model input list cannot be null or empty");
+
             try
             {
-                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> encoderResults = null;
-                encoderResults = _modelSession.Run(container);
+                int batchSize = modelInputs.Count;
+                long[] inputLengths = modelInputs.Select(x => (long)x.SpeechLength / 80).ToArray();
+                float[] samples = PadHelper.PadSequence(modelInputs);
 
-                if (encoderResults != null)
-                {
-                    var encoderResultsArray = encoderResults.ToArray();
-                    var outputTensor = encoderResultsArray[0].AsTensor<float>();
+                // Process STFT and model inference
+                var stftArgs = CreateStftArgs();
+                Complex[,,] stftComplex = AudioProcessing.Stft(samples, stftArgs, normalized: false);
+                float[,,] spectrum = ConvertComplexToSTFTFormat(stftComplex);
+                float[] flattenedSpectrum = spectrum.Cast<float>().ToArray();
 
-                    var spec = To3DArray(outputTensor);
-                    Complex[,,] spectrumX = ConvertSTFTFormatToComplex(spec);
-                    float[] output0 = AudioProcessing.Istft(spectrumX, args, samples.Length, normalized: false);
+                Tensor<float> outputTensor = RunInference(flattenedSpectrum, batchSize);
+                if (outputTensor == null)
+                    return new List<ModelOutputEntity>();
 
-                    // 去掉额外增加的尾部采样
-                    int sampleRate = modelInputs[0].SampleRate;
-                    int channels = modelInputs[0].Channels;
-                    float[] output = new float[(int)(samples.Length - sampleRate * channels * 0.1f) / channels];
-                    Array.Copy(output0, 0, output, 0, output.Length);
-
-                    ModelOutputEntity modelOutput = new ModelOutputEntity();
-                    modelOutput.StemName = "vocals";
-                    modelOutput.StemContents = output;
-                    modelOutputEntities.Add(modelOutput);
-                }
+                return ProcessInferenceOutput(outputTensor, stftArgs, samples, modelInputs[0]);
             }
             catch (Exception ex)
             {
-                //
+                Debug.WriteLine($"Model projection failed: {ex.Message}\nStack trace: {ex.StackTrace}");
+                throw; // Re-throw to prevent silent failure
             }
-            return modelOutputEntities;
         }
 
+        /// <summary>
+        /// Generator projection (not implemented)
+        /// </summary>
+        /// <param name="modelOutputEntity">Model output entity</param>
+        /// <param name="batchSize">Batch size</param>
+        /// <returns>Empty list</returns>
         public List<ModelOutputEntity> GeneratorProj(ModelOutputEntity modelOutputEntity, int batchSize = 1)
         {
-            return null;
+            return new List<ModelOutputEntity>();
+        }
+        #endregion
+
+        #region Private Helper Methods
+        /// <summary>
+        /// Creates STFT configuration arguments
+        /// </summary>
+        /// <returns>STFT configuration object</returns>
+        private Utils.STFTArgs CreateStftArgs()
+        {
+            return new Utils.STFTArgs
+            {
+                WinLen = StftWinLen,
+                FftLen = StftFftLen,
+                WinType = StftWinType,
+                WinInc = StftWinInc
+            };
         }
 
+        /// <summary>
+        /// Runs ONNX model inference
+        /// </summary>
+        /// <param name="inputData">Flattened input spectrum data</param>
+        /// <param name="batchSize">Batch size</param>
+        /// <returns>Inference output tensor</returns>
+        /// <exception cref="InvalidOperationException">Thrown when model session is uninitialized</exception>
+        private Tensor<float> RunInference(float[] inputData, int batchSize)
+        {
+            if (_modelSession == null)
+                throw new InvalidOperationException("Model session is not initialized");
+
+            var inputMeta = _modelSession.InputMetadata;
+            var inputContainer = new List<NamedOnnxValue>();
+
+            foreach (var inputName in inputMeta.Keys)
+            {
+                if (inputName == "input")
+                {
+                    int frameCount = inputData.Length / batchSize / 257 / 2;
+                    int[] tensorShape = { batchSize, 257, frameCount, 2 };
+                    var inputTensor = new DenseTensor<float>(inputData, tensorShape, false);
+                    inputContainer.Add(NamedOnnxValue.CreateFromTensor(inputName, inputTensor));
+                }
+            }
+
+            using (var inferenceResults = _modelSession.Run(inputContainer))
+            {
+                return inferenceResults?.FirstOrDefault()?.AsTensor<float>();
+            }
+        }
+
+        /// <summary>
+        /// Processes inference output to generate final audio
+        /// </summary>
+        /// <param name="outputTensor">Inference output tensor</param>
+        /// <param name="stftArgs">STFT configuration</param>
+        /// <param name="originalSamples">Original input samples</param>
+        /// <param name="inputEntity">First input entity for metadata</param>
+        /// <returns>List of model output entities</returns>
+        private List<ModelOutputEntity> ProcessInferenceOutput(
+            Tensor<float> outputTensor,
+            Utils.STFTArgs stftArgs,
+            float[] originalSamples,
+            ModelInputEntity inputEntity)
+        {
+            float[,,] outputSpectrum = To3DArray(outputTensor);
+            Complex[,,] complexSpectrum = ConvertSTFTFormatToComplex(outputSpectrum);
+            float[] rawOutput = AudioProcessing.Istft(complexSpectrum, stftArgs, originalSamples.Length, normalized: false);
+            float[] trimmedOutput = TrimAudio(rawOutput, inputEntity.SampleRate, inputEntity.Channels);
+
+            return new List<ModelOutputEntity>
+            {
+                new ModelOutputEntity
+                {
+                    StemName = "vocals",
+                    StemContents = trimmedOutput
+                }
+            };
+        }
+
+        /// <summary>
+        /// Trims excess samples from audio tail
+        /// </summary>
+        /// <param name="audio">Audio data to trim</param>
+        /// <param name="sampleRate">Sample rate of audio</param>
+        /// <param name="channels">Number of audio channels</param>
+        /// <returns>Trimmed audio data</returns>
+        private float[] TrimAudio(float[] audio, int sampleRate, int channels)
+        {
+            int trimSampleCount = (int)(sampleRate * channels * TrimDuration);
+            int outputLength = Math.Max(0, audio.Length - trimSampleCount);
+
+            float[] trimmed = new float[outputLength];
+            Array.Copy(audio, 0, trimmed, 0, outputLength);
+
+            return trimmed;
+        }
+
+        /// <summary>
+        /// Converts a tensor to a 3D float array
+        /// </summary>
+        /// <param name="tensor">Input tensor (3D or 4D)</param>
+        /// <returns>3D float array</returns>
+        /// <exception cref="ArgumentException">Thrown when tensor is not 3D or 4D, or 4D tensor's first dimension is not 1</exception>
         public float[,,] To3DArray(Tensor<float> tensor)
         {
             int[] dimensions = tensor.Dimensions.ToArray();
 
-            // 检查是否为3维或4维
+            // Validate tensor rank
             if (tensor.Rank != 3 && tensor.Rank != 4)
                 throw new ArgumentException("Tensor must be 3-dimensional or 4-dimensional");
 
-            // 处理4维Tensor（假设第一维为1）
+            // Handle 4D tensor (assume first dimension is 1)
             if (tensor.Rank == 4)
             {
                 if (dimensions[0] != 1)
                     throw new ArgumentException("4-dimensional tensor must have first dimension equal to 1");
 
-                dimensions = new int[] { dimensions[1], dimensions[2], dimensions[3] };
+                dimensions = new[] { dimensions[1], dimensions[2], dimensions[3] };
             }
 
             float[,,] result = new float[dimensions[0], dimensions[1], dimensions[2]];
+            int[] indices = new int[tensor.Rank];
 
-            // 通用索引访问
-            var indices = new int[tensor.Rank];
+            // Populate 3D array from tensor
             for (indices[0] = 0; indices[0] < dimensions[0]; indices[0]++)
             {
                 for (indices[1] = 0; indices[1] < dimensions[1]; indices[1]++)
                 {
                     for (indices[2] = 0; indices[2] < dimensions[2]; indices[2]++)
                     {
-                        // 对于4维Tensor，固定第一维为0
-                        result[indices[0], indices[1], indices[2]] =
-                            tensor.Rank == 3
-                                ? tensor[indices[0], indices[1], indices[2]]
-                                : tensor[0, indices[0], indices[1], indices[2]];
+                        result[indices[0], indices[1], indices[2]] = tensor.Rank == 3
+                            ? tensor[indices[0], indices[1], indices[2]]
+                            : tensor[0, indices[0], indices[1], indices[2]];
                     }
                 }
             }
 
             return result;
         }
+        #endregion
 
+        #region IDisposable Implementation
+        /// <summary>
+        /// Releases resources used by the instance
+        /// </summary>
+        /// <param name="disposing">True to release managed resources</param>
         protected virtual void Dispose(bool disposing)
         {
             if (!_disposed)
             {
                 if (disposing)
                 {
-                    if (_modelSession != null)
-                    {
-                        _modelSession = null;
-                    }
+                    // Release managed resources
+                    _modelSession?.Dispose();
+                    _modelSession = null;
                 }
+
                 _disposed = true;
             }
         }
 
+        /// <summary>
+        /// Finalizer (releases unmanaged resources)
+        /// </summary>
+        ~SepProjOfGtcrnSe()
+        {
+            Dispose(disposing: false);
+        }
+
+        /// <summary>
+        /// Releases all resources used by the instance
+        /// </summary>
         public void Dispose()
         {
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-        ~SepProjOfGtcrnSe()
-        {
-            Dispose(_disposed);
-        }
+        #endregion
     }
 }

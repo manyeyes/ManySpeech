@@ -1,81 +1,92 @@
 ﻿using Microsoft.ML.OnnxRuntime.Tensors;
+using System;
 using System.Numerics;
 
 namespace ManySpeech.AudioSep.Utils
 {
+    /// <summary>
+    /// Configuration arguments for Short-Time Fourier Transform (STFT)
+    /// </summary>
     public class STFTArgs
     {
-        public string win_type { get; set; }
-        public int win_len { get; set; }
-        public int win_inc { get; set; }
-        public int fft_len { get; set; }
+        public string WinType { get; set; }
+        public int WinLen { get; set; }
+        public int WinInc { get; set; }
+        public int FftLen { get; set; }
     }
 
+    /// <summary>
+    /// Configuration arguments for Mel spectrogram generation
+    /// </summary>
     public class MelArgs
     {
-        public int n_fft { get; set; } = 1024;
-        public int num_mels { get; set; } = 80;
-        public int hop_size { get; set; } = 256;
-        public int win_size { get; set; } = 1024;
-        public int sampling_rate { get; set; } = 48000;
-        public int fmin { get; set; } = 0;
-        public int fmax { get; set; } = 8000;
-        public bool center { get; set; } = false;
+        public int NFFT { get; set; } = 1024;
+        public int NumMels { get; set; } = 80;
+        public int HopSize { get; set; } = 256;
+        public int WinSize { get; set; } = 1024;
+        public int SamplingRate { get; set; } = 48000;
+        public int Fmin { get; set; } = 0;
+        public int Fmax { get; set; } = 8000;
+        public bool Center { get; set; } = false;
     }
-    public class AudioProcessing
+
+    /// <summary>
+    /// Provides audio processing utilities including STFT, ISTFT, window functions, and spectrum manipulations
+    /// </summary>
+    public static class AudioProcessing
     {
-        public static float[,] MelSpec(float[] y, MelArgs args)
+        #region STFT Operations
+        /// <summary>
+        /// Computes the Short-Time Fourier Transform (STFT)
+        /// </summary>
+        /// <param name="x">Input audio signal</param>
+        /// <param name="args">STFT configuration parameters</param>
+        /// <param name="center">Whether to center the signal</param>
+        /// <param name="periodic">Whether the window is periodic</param>
+        /// <param name="onesided">Whether to return one-sided spectrum</param>
+        /// <param name="normalized">Whether to normalize the STFT</param>
+        /// <param name="padMode">Padding mode for signal extension</param>
+        /// <returns>3D array of complex STFT coefficients with shape [freq_bins, channels, time_frames]</returns>
+        public static Complex[,,] Stft(float[] x, STFTArgs args, bool center = false, bool periodic = false,
+                                      bool? onesided = false, bool normalized = false, string padMode = "reflect")
         {
-            float[,] melSpec = new Utils.MelSpectrogram().ComputeMelSpectrogram(y: y, nFft: args.n_fft, numMels: args.num_mels, samplingRate: args.sampling_rate, hopSize: args.hop_size, winSize: args.win_size, fmin: args.fmin, fmax: args.fmax, center: args.center);
-            return melSpec;
+            if (x == null || x.Length == 0)
+                throw new ArgumentException("Input audio signal cannot be null or empty", nameof(x));
 
-        }
-
-        // 计算短时傅里叶变换 (STFT)
-        public static Complex[,,] Stft(float[] x, STFTArgs args, bool center = false, bool periodic = false, bool? onesided = false, bool normalized = false, string pad_mode = "reflect")
-        {
-            string winType = args.win_type;
-            int winLen = args.win_len;
-            int winInc = args.win_inc;
-            int fftLen = args.fft_len;
-
-            // 选择窗函数类型并创建窗函数
-            float[] window = CreateWindow(winType, winLen, periodic);
+            var window = CreateWindow(args.WinType, args.WinLen, periodic);
             if (window == null)
             {
-                Console.WriteLine($"In STFT, {winType} is not supported!");
+                Console.WriteLine($"In STFT, window type '{args.WinType}' is not supported!");
                 return null;
             }
 
-            // 初始化STFT结果矩阵
-            Complex[,,] stftComplex = STFTFastWithMathNetNumerics.ComputeSTFT(
-                input: x, n_fft:
-                fftLen,
-                hop_length: winInc,
-                win_length: winLen,
+            return STFTFastWithMathNetNumerics.ComputeSTFT(
+                input: x,
+                n_fft: args.FftLen,
+                hop_length: args.WinInc,
+                win_length: args.WinLen,
                 center: center,
                 window: window,
                 normalized: normalized,
-                pad_mode: pad_mode,
+                pad_mode: padMode,
                 onesided: true);
-            return stftComplex;
         }
 
         /// <summary>
-        /// Converts back from float[1, 642, 723] STFT format to Complex[321, 2, 723]
+        /// Converts STFT format from float[1, 2*freq_bins, time_frames] to Complex[321, 2, 723]
         /// </summary>
-        /// <param name="stftFormat">STFT format array with shape [1, 2*freq_bins, time_frames]</param>
+        /// <param name="stftFormat">STFT array with shape [1, 2*freq_bins, time_frames]</param>
         /// <returns>Complex spectrogram with shape [freq_bins, 1, time_frames]</returns>
         public static Complex[,,] ConvertSTFTFormatToComplex2(float[,,] stftFormat)
         {
-            //int totalChannels = stftFormat.GetLength(1);
+            if (stftFormat == null)
+                throw new ArgumentNullException(nameof(stftFormat));
+
             int freqBins = stftFormat.GetLength(1) / 2;
             int timeFrames = stftFormat.GetLength(2);
             int channels = 2;
 
-            Complex[,,] complexSpectrogram = new Complex[freqBins, channels, timeFrames];
-
-            //var complexData = new Complex[freqBins, channels, timeFrames];
+            var complexSpectrogram = new Complex[freqBins, channels, timeFrames];
 
             for (int f = 0; f < freqBins; f++)
             {
@@ -83,103 +94,126 @@ namespace ManySpeech.AudioSep.Utils
                 {
                     for (int t = 0; t < timeFrames; t++)
                     {
-                        // For channel 0: use first 321 elements (real parts)
-                        // For channel 1: use next 321 elements (imaginary parts)
                         int sourceIndex = c == 0 ? f : f + freqBins;
-                        complexSpectrogram[f, c, t] = new Complex(
-                            stftFormat[0, sourceIndex, t],
-                            0); // Initialize with 0 imaginary
+                        complexSpectrogram[f, c, t] = new Complex(stftFormat[0, sourceIndex, t], 0);
                     }
                 }
             }
 
             return complexSpectrogram;
         }
+        #endregion
 
-        // 计算逆短时傅里叶变换 (ISTFT)
+        #region ISTFT Operations
+        /// <summary>
+        /// Computes the Inverse Short-Time Fourier Transform (ISTFT) for 2D complex input
+        /// </summary>
+        /// <param name="x">2D complex spectrogram</param>
+        /// <param name="args">STFT configuration parameters (used for inverse transform)</param>
+        /// <param name="slen">Desired output signal length</param>
+        /// <param name="center">Whether the signal was centered during STFT</param>
+        /// <param name="normalized">Whether the STFT was normalized</param>
+        /// <param name="periodic">Whether the window is periodic</param>
+        /// <param name="onesided">Whether the input is one-sided spectrum</param>
+        /// <param name="returnComplex">Whether to return complex output (not used for real signals)</param>
+        /// <param name="window">Window function (auto-created if null)</param>
+        /// <returns>Reconstructed audio signal</returns>
         public static float[] Istft(Complex[,] x, STFTArgs args, int? slen = null, bool center = false,
                                    bool normalized = false, bool periodic = false, bool? onesided = null,
-                                   bool return_complex = false, float[]? window = null)
+                                   bool returnComplex = false, float[] window = null)
         {
-            string winType = args.win_type;
-            int winLen = args.win_len;
-            int winInc = args.win_inc;
-            int fftLen = args.fft_len;
+            if (x == null)
+                throw new ArgumentNullException(nameof(x));
 
-            // 选择窗函数类型并创建窗函数
-            window = window ?? CreateWindow(winType, winLen, periodic);
+            window ??= CreateWindow(args.WinType, args.WinLen, periodic);
             if (window == null)
             {
-                Console.WriteLine($"In ISTFT, {winType} is not supported!");
+                Console.WriteLine($"In ISTFT, window type '{args.WinType}' is not supported!");
                 return null;
             }
 
-            // 初始化输出信号和归一化缓冲区
-            float[] output = ISTFTFastWithMathNetNumerics.ComputeISTFT(
+            return ISTFTFastWithMathNetNumerics.ComputeISTFT(
                 input2D: x,
-                n_fft: fftLen,
-                hop_length: winInc,
-                win_length: winLen,
-                window: window, // Uses Hann window
+                n_fft: args.FftLen,
+                hop_length: args.WinInc,
+                win_length: args.WinLen,
+                window: window,
                 center: true,
                 normalized: normalized,
                 onesided: true,
-                length: slen // Reconstruct original length
+                length: slen
             );
-
-            return output;
         }
 
+        /// <summary>
+        /// Computes the Inverse Short-Time Fourier Transform (ISTFT) for 3D complex input
+        /// </summary>
+        /// <param name="x">3D complex spectrogram</param>
+        /// <param name="args">STFT configuration parameters (used for inverse transform)</param>
+        /// <param name="slen">Desired output signal length</param>
+        /// <param name="center">Whether the signal was centered during STFT</param>
+        /// <param name="normalized">Whether the STFT was normalized</param>
+        /// <param name="periodic">Whether the window is periodic</param>
+        /// <param name="onesided">Whether the input is one-sided spectrum</param>
+        /// <param name="returnComplex">Whether to return complex output (not used for real signals)</param>
+        /// <param name="window">Window function (auto-created if null)</param>
+        /// <returns>Reconstructed audio signal</returns>
         public static float[] Istft(Complex[,,] x, STFTArgs args, int? slen = null, bool center = false,
                                    bool normalized = false, bool periodic = false, bool? onesided = null,
-                                   bool return_complex = false, float[]? window = null)
+                                   bool returnComplex = false, float[] window = null)
         {
-            string winType = args.win_type;
-            int winLen = args.win_len;
-            int winInc = args.win_inc;
-            int fftLen = args.fft_len;
+            if (x == null)
+                throw new ArgumentNullException(nameof(x));
 
-            // 选择窗函数类型并创建窗函数
-            window = window ?? CreateWindow(winType, winLen, periodic);
+            window ??= CreateWindow(args.WinType, args.WinLen, periodic);
             if (window == null)
             {
-                Console.WriteLine($"In ISTFT, {winType} is not supported!");
+                Console.WriteLine($"In ISTFT, window type '{args.WinType}' is not supported!");
                 return null;
             }
 
-            // 初始化输出信号和归一化缓冲区
-            float[] output = ISTFTFastWithMathNetNumerics.ComputeISTFT(
+            return ISTFTFastWithMathNetNumerics.ComputeISTFT(
                 input: x,
-                n_fft: fftLen,
-                hop_length: winInc,
-                win_length: winLen,
-                window: window, // Uses Hann window
+                n_fft: args.FftLen,
+                hop_length: args.WinInc,
+                win_length: args.WinLen,
+                window: window,
                 center: true,
                 normalized: normalized,
                 onesided: true,
-                length: slen // Reconstruct original length
+                length: slen
             );
+        }
+        #endregion
 
-            return output;
-        }     
-
-        // 创建窗函数
+        #region Window Functions
+        /// <summary>
+        /// Creates a window function of specified type and length
+        /// </summary>
+        /// <param name="winType">Type of window (hamming or hanning)</param>
+        /// <param name="winLen">Length of the window</param>
+        /// <param name="periodic">Whether the window is periodic</param>
+        /// <returns>Window function array</returns>
         private static float[] CreateWindow(string winType, int winLen, bool periodic)
         {
-            float[] window = new float[winLen];
+            if (winLen <= 0)
+                throw new ArgumentOutOfRangeException(nameof(winLen), "Window length must be positive");
 
-            if (winType == "hamming")
+            var window = new float[winLen];
+            int adjustedLength = periodic ? winLen : winLen - 1;
+
+            if (string.Equals(winType, "hamming", StringComparison.OrdinalIgnoreCase))
             {
                 for (int i = 0; i < winLen; i++)
                 {
-                    window[i] = 0.54f - 0.46f * (float)Math.Cos(2 * Math.PI * i / (winLen - 1));
+                    window[i] = 0.54f - 0.46f * (float)Math.Cos(2 * Math.PI * i / adjustedLength);
                 }
             }
-            else if (winType == "hanning")
+            else if (string.Equals(winType, "hanning", StringComparison.OrdinalIgnoreCase))
             {
                 for (int i = 0; i < winLen; i++)
                 {
-                    window[i] = 0.5f * (1 - (float)Math.Cos(2 * Math.PI * i / (winLen - 1)));
+                    window[i] = 0.5f * (1 - (float)Math.Cos(2 * Math.PI * i / adjustedLength));
                 }
             }
             else
@@ -189,22 +223,27 @@ namespace ManySpeech.AudioSep.Utils
 
             return window;
         }
+        #endregion
+
+        #region Array Manipulations
         /// <summary>
-        /// 将一维数组重复为指定形状的三维数组 [1, windowLength, repeatCount]
+        /// Repeats a 1D array into a 3D array with shape [1, windowLength, repeatCount]
         /// </summary>
-        /// <param name="window">原始一维数组，长度为 windowLength</param>
-        /// <param name="repeatCount">第三维重复次数</param>
-        /// <returns>形状为 [1, windowLength, repeatCount] 的三维数组</returns>
+        /// <param name="window">Original 1D array with length windowLength</param>
+        /// <param name="repeatCount">Number of repetitions in the third dimension</param>
+        /// <returns>3D array with shape [1, windowLength, repeatCount]</returns>
         public static float[,,] RepeatTo3DArray(float[] window, int repeatCount)
         {
-            if (window == null || window.Length == 0)
-                throw new ArgumentException("window 数组不能为空");
+            if (window == null)
+                throw new ArgumentNullException(nameof(window));
+            if (window.Length == 0)
+                throw new ArgumentException("Window array cannot be empty", nameof(window));
+            if (repeatCount <= 0)
+                throw new ArgumentOutOfRangeException(nameof(repeatCount), "Repeat count must be positive");
 
             int windowLength = window.Length;
-            // 创建目标三维数组 [1, windowLength, repeatCount]
-            float[,,] result = new float[1, windowLength, repeatCount];
+            var result = new float[1, windowLength, repeatCount];
 
-            // 填充数据：将window数组复制到第三维的每个位置
             for (int d = 0; d < repeatCount; d++)
             {
                 for (int i = 0; i < windowLength; i++)
@@ -212,31 +251,34 @@ namespace ManySpeech.AudioSep.Utils
                     result[0, i, d] = window[i];
                 }
             }
+
             return result;
         }
 
+        /// <summary>
+        /// Permutes dimensions of a 2D float array
+        /// </summary>
+        /// <param name="tensor">Input 2D array</param>
+        /// <param name="dim0">New first dimension index (0 or 1)</param>
+        /// <param name="dim1">New second dimension index (0 or 1)</param>
+        /// <returns>2D array with permuted dimensions</returns>
         public static float[,] PermuteDimensions(float[,] tensor, int dim0, int dim1)
         {
-            // 验证维度参数
+            if (tensor == null)
+                throw new ArgumentNullException(nameof(tensor));
             if (dim0 < 0 || dim0 > 1 || dim1 < 0 || dim1 > 1)
-                throw new ArgumentException("维度参数必须是0或1");
+                throw new ArgumentException("Dimension indices must be 0 or 1", nameof(dim0));
 
-            // 获取新维度的大小
             int size0 = tensor.GetLength(dim0);
             int size1 = tensor.GetLength(dim1);
+            var result = new float[size0, size1];
 
-            // 创建结果数组
-            float[,] result = new float[size0, size1];
-
-            // 遍历原始数组并根据新维度顺序填充结果
             for (int i = 0; i < tensor.GetLength(0); i++)
             {
                 for (int j = 0; j < tensor.GetLength(1); j++)
                 {
-                    // 根据指定的维度顺序映射索引
                     int newI = dim0 == 0 ? i : j;
                     int newJ = dim1 == 0 ? i : j;
-
                     result[newI, newJ] = tensor[i, j];
                 }
             }
@@ -244,14 +286,24 @@ namespace ManySpeech.AudioSep.Utils
             return result;
         }
 
-        // 辅助函数：调整张量维度顺序
+        /// <summary>
+        /// Permutes dimensions of a 3D float array
+        /// </summary>
+        /// <param name="tensor">Input 3D array</param>
+        /// <param name="dim0">New first dimension index (0, 1, or 2)</param>
+        /// <param name="dim1">New second dimension index (0, 1, or 2)</param>
+        /// <param name="dim2">New third dimension index (0, 1, or 2)</param>
+        /// <returns>3D array with permuted dimensions</returns>
         public static float[,,] PermuteDimensions(float[,,] tensor, int dim0, int dim1, int dim2)
         {
+            if (tensor == null)
+                throw new ArgumentNullException(nameof(tensor));
+            ValidateDimensionIndices(dim0, dim1, dim2);
+
             int size0 = tensor.GetLength(dim0);
             int size1 = tensor.GetLength(dim1);
             int size2 = tensor.GetLength(dim2);
-
-            float[,,] result = new float[size0, size1, size2];
+            var result = new float[size0, size1, size2];
 
             for (int i = 0; i < tensor.GetLength(0); i++)
             {
@@ -259,22 +311,9 @@ namespace ManySpeech.AudioSep.Utils
                 {
                     for (int k = 0; k < tensor.GetLength(2); k++)
                     {
-                        int newI = i;
-                        int newJ = j;
-                        int newK = k;
-
-                        if (dim0 == 0) newI = i;
-                        else if (dim0 == 1) newI = j;
-                        else if (dim0 == 2) newI = k;
-
-                        if (dim1 == 0) newJ = i;
-                        else if (dim1 == 1) newJ = j;
-                        else if (dim1 == 2) newJ = k;
-
-                        if (dim2 == 0) newK = i;
-                        else if (dim2 == 1) newK = j;
-                        else if (dim2 == 2) newK = k;
-
+                        int newI = GetNewIndex(dim0, i, j, k);
+                        int newJ = GetNewIndex(dim1, i, j, k);
+                        int newK = GetNewIndex(dim2, i, j, k);
                         result[newI, newJ, newK] = tensor[i, j, k];
                     }
                 }
@@ -282,13 +321,25 @@ namespace ManySpeech.AudioSep.Utils
 
             return result;
         }
+
+        /// <summary>
+        /// Converts and permutes dimensions of a 3D complex array to float array (using real parts)
+        /// </summary>
+        /// <param name="tensor">Input 3D complex array</param>
+        /// <param name="dim0">New first dimension index (0, 1, or 2)</param>
+        /// <param name="dim1">New second dimension index (0, 1, or 2)</param>
+        /// <param name="dim2">New third dimension index (0, 1, or 2)</param>
+        /// <returns>3D float array with permuted dimensions (real parts only)</returns>
         public static float[,,] PermuteDimensions(Complex[,,] tensor, int dim0, int dim1, int dim2)
         {
+            if (tensor == null)
+                throw new ArgumentNullException(nameof(tensor));
+            ValidateDimensionIndices(dim0, dim1, dim2);
+
             int size0 = tensor.GetLength(dim0);
             int size1 = tensor.GetLength(dim1);
             int size2 = tensor.GetLength(dim2);
-
-            float[,,] result = new float[size0, size1, size2];
+            var result = new float[size0, size1, size2];
 
             for (int i = 0; i < tensor.GetLength(0); i++)
             {
@@ -296,22 +347,9 @@ namespace ManySpeech.AudioSep.Utils
                 {
                     for (int k = 0; k < tensor.GetLength(2); k++)
                     {
-                        int newI = i;
-                        int newJ = j;
-                        int newK = k;
-
-                        if (dim0 == 0) newI = i;
-                        else if (dim0 == 1) newI = j;
-                        else if (dim0 == 2) newI = k;
-
-                        if (dim1 == 0) newJ = i;
-                        else if (dim1 == 1) newJ = j;
-                        else if (dim1 == 2) newJ = k;
-
-                        if (dim2 == 0) newK = i;
-                        else if (dim2 == 1) newK = j;
-                        else if (dim2 == 2) newK = k;
-
+                        int newI = GetNewIndex(dim0, i, j, k);
+                        int newJ = GetNewIndex(dim1, i, j, k);
+                        int newK = GetNewIndex(dim2, i, j, k);
                         result[newI, newJ, newK] = (float)tensor[i, j, k].Real;
                     }
                 }
@@ -319,89 +357,98 @@ namespace ManySpeech.AudioSep.Utils
 
             return result;
         }
+        #endregion
 
-        // 辅助函数：将掩码应用到频谱上
+        #region Spectrum Processing
+        /// <summary>
+        /// Applies a mask to a complex spectrum
+        /// </summary>
+        /// <param name="spectrum">Complex spectrum with shape [time, freq, 2] (real/imaginary parts)</param>
+        /// <param name="mask">Mask array with shape [time, freq, 1]</param>
+        /// <returns>Masked complex spectrum</returns>
         public static float[,,] ApplyMask(float[,,] spectrum, float[,,] mask)
         {
+            if (spectrum == null)
+                throw new ArgumentNullException(nameof(spectrum));
+            if (mask == null)
+                throw new ArgumentNullException(nameof(mask));
+
             int timeBins = spectrum.GetLength(0);
             int freqBins = spectrum.GetLength(1);
 
-            // 验证掩码维度是否匹配
+            // Validate mask dimensions
             if (mask.GetLength(0) != timeBins || mask.GetLength(1) != freqBins || mask.GetLength(2) != 1)
             {
-                //throw new ArgumentException("掩码维度与频谱不匹配");
+                throw new ArgumentException("Mask dimensions do not match spectrum dimensions");
             }
 
-            // 创建结果数组，保持与输入频谱相同的格式 [time, freq, 2]
-            float[,,] result = new float[timeBins, freqBins, 2];
+            var result = new float[timeBins, freqBins, 2];
 
             for (int t = 0; t < timeBins; t++)
             {
                 for (int f = 0; f < freqBins; f++)
                 {
-                    // 获取单通道掩码值（假设mask的第三维大小为1）
                     float maskValue = mask[t, f, 0];
-
-                    // 应用掩码到频谱的实部和虚部
-                    result[t, f, 0] = spectrum[t, f, 0] * maskValue;  // 实部
-                    result[t, f, 1] = spectrum[t, f, 1] * maskValue;  // 虚部
+                    result[t, f, 0] = spectrum[t, f, 0] * maskValue;  // Apply to real part
+                    result[t, f, 1] = spectrum[t, f, 1] * maskValue;  // Apply to imaginary part
                 }
             }
 
             return result;
         }
 
-        // 将float[,,]格式的复数频谱转换为Complex[,]格式
+        /// <summary>
+        /// Converts a float[,,] complex spectrum to Complex[,] format
+        /// </summary>
+        /// <param name="spec">3D array with shape [time, freq, 2] (real/imaginary parts)</param>
+        /// <returns>2D complex array with shape [time, freq]</returns>
         public static Complex[,] ConvertToComplex(float[,,] spec)
         {
+            if (spec == null)
+                throw new ArgumentNullException(nameof(spec));
+            if (spec.GetLength(2) != 2)
+                throw new ArgumentException("Spectrum must have 2 components (real/imaginary) in third dimension", nameof(spec));
+
             int timeBins = spec.GetLength(0);
             int freqBins = spec.GetLength(1);
+            var complexSpec = new Complex[timeBins, freqBins];
 
-            // 创建复数数组
-            Complex[,] complexSpec = new Complex[timeBins, freqBins];
-
-            // 填充复数数组
             for (int t = 0; t < timeBins; t++)
             {
                 for (int f = 0; f < freqBins; f++)
                 {
-                    // 从第三维获取实部和虚部
-                    float real = spec[t, f, 0];
-                    float imag = spec[t, f, 1];
-
-                    // 创建复数
-                    complexSpec[t, f] = new Complex(real, imag);
+                    complexSpec[t, f] = new Complex(spec[t, f, 0], spec[t, f, 1]);
                 }
             }
 
             return complexSpec;
         }
+        #endregion
 
+        #region Tensor Conversions
+        /// <summary>
+        /// Converts a 3D Tensor<float> to a 3D float array
+        /// </summary>
+        /// <param name="tensor">Input 3D tensor</param>
+        /// <returns>3D float array with the same dimensions</returns>
         public static float[,,] TensorTo3DArray(Tensor<float> tensor)
         {
+            if (tensor == null)
+                throw new ArgumentNullException(nameof(tensor));
             if (tensor.Rank != 3)
-                throw new ArgumentException("Tensor must be 3-dimensional.");
+                throw new ArgumentException("Tensor must be 3-dimensional", nameof(tensor));
 
             int dim0 = tensor.Dimensions[0];
             int dim1 = tensor.Dimensions[1];
             int dim2 = tensor.Dimensions[2];
+            var array3D = new float[dim0, dim1, dim2];
 
-            float[,,] array3D = new float[dim0, dim1, dim2];
-
-            // 计算每个维度的步长
-            int stride0 = dim1 * dim2;
-            int stride1 = dim2;
-            int stride2 = 1;
-
-            // 遍历所有元素
             for (int i = 0; i < dim0; i++)
             {
                 for (int j = 0; j < dim1; j++)
                 {
                     for (int k = 0; k < dim2; k++)
                     {
-                        // 计算线性索引
-                        int linearIndex = i * stride0 + j * stride1 + k * stride2;
                         array3D[i, j, k] = tensor[i, j, k];
                     }
                 }
@@ -410,21 +457,24 @@ namespace ManySpeech.AudioSep.Utils
             return array3D;
         }
 
+        /// <summary>
+        /// Converts a 3D DenseTensor<float> to a 3D float array (optimized for dense storage)
+        /// </summary>
+        /// <param name="tensor">Input 3D dense tensor</param>
+        /// <returns>3D float array with the same dimensions</returns>
         public static float[,,] TensorTo3DArray(DenseTensor<float> tensor)
         {
+            if (tensor == null)
+                throw new ArgumentNullException(nameof(tensor));
             if (tensor.Rank != 3)
-                throw new ArgumentException("Tensor must be 3-dimensional.");
+                throw new ArgumentException("Tensor must be 3-dimensional", nameof(tensor));
 
             int dim0 = tensor.Dimensions[0];
             int dim1 = tensor.Dimensions[1];
             int dim2 = tensor.Dimensions[2];
-
-            float[,,] array3D = new float[dim0, dim1, dim2];
-
-            // 获取张量的内存span
+            var array3D = new float[dim0, dim1, dim2];
             var tensorSpan = tensor.Buffer.Span;
 
-            // 使用线性索引快速填充数组
             for (int i = 0; i < dim0; i++)
             {
                 for (int j = 0; j < dim1; j++)
@@ -439,41 +489,49 @@ namespace ManySpeech.AudioSep.Utils
 
             return array3D;
         }
+        #endregion
 
-        // 计算 float[] 的 RMS 值
+        #region Signal Normalization
+        /// <summary>
+        /// Calculates the Root Mean Square (RMS) of a signal
+        /// </summary>
+        /// <param name="data">Input signal</param>
+        /// <returns>RMS value</returns>
         public static float CalculateRms(float[] data)
         {
+            if (data == null || data.Length == 0)
+                throw new ArgumentException("Input data cannot be null or empty", nameof(data));
+
             double sumSquared = 0;
             foreach (var value in data)
             {
                 sumSquared += value * value;
             }
+
             return (float)Math.Sqrt(sumSquared / data.Length);
         }
 
         /// <summary>
-        /// 使用输入的 RMS 值对样本进行归一化
-        /// Normalize the outputs back to the input magnitude for each speaker
+        /// Normalizes a sample to match a target RMS value
         /// </summary>
-        /// <param name="sample"></param>
-        /// <param name="rmsInput"></param>
-        /// <returns></returns>
+        /// <param name="sample">Input audio sample</param>
+        /// <param name="rmsInput">Target RMS value (uses sample's RMS if null)</param>
+        /// <returns>Normalized sample</returns>
         public static float[] NormalizeSample(float[] sample, float? rmsInput = null)
         {
-            // 如果未提供 rmsInput，则使用输入样本自身的 RMS
-            float effectiveRmsInput = rmsInput ?? CalculateRms(sample);
+            if (sample == null || sample.Length == 0)
+                throw new ArgumentException("Sample cannot be null or empty", nameof(sample));
 
-            // 计算样本的 RMS
+            float effectiveRmsInput = rmsInput ?? CalculateRms(sample);
             float rmsOut = CalculateRms(sample);
 
-            // 避免除零错误
+            // Avoid division by zero
             if (rmsOut < 1e-10f)
             {
                 rmsOut = 1e-10f;
             }
 
-            // 归一化处理
-            float[] result = new float[sample.Length];
+            var result = new float[sample.Length];
             for (int i = 0; i < sample.Length; i++)
             {
                 result[i] = sample[i] / rmsOut * effectiveRmsInput;
@@ -481,5 +539,28 @@ namespace ManySpeech.AudioSep.Utils
 
             return result;
         }
+        #endregion
+
+        #region Helper Methods
+        /// <summary>
+        /// Validates that dimension indices are within valid range (0-2)
+        /// </summary>
+        private static void ValidateDimensionIndices(int dim0, int dim1, int dim2)
+        {
+            if (dim0 < 0 || dim0 > 2 || dim1 < 0 || dim1 > 2 || dim2 < 0 || dim2 > 2)
+                throw new ArgumentException("Dimension indices must be 0, 1, or 2");
+        }
+
+        /// <summary>
+        /// Gets new index based on dimension permutation
+        /// </summary>
+        private static int GetNewIndex(int dim, int i, int j, int k) => dim switch
+        {
+            0 => i,
+            1 => j,
+            2 => k,
+            _ => throw new ArgumentOutOfRangeException(nameof(dim))
+        };
+        #endregion
     }
 }

@@ -181,12 +181,7 @@ namespace ManySpeech.AudioSep
             {
                 if (configFilePath.ToLower().EndsWith(".json"))
                 {
-                    //confJsonEntity = Utils.PreloadHelper.ReadJson<ConfEntity>(configFilePath);
                     confJsonEntity = Utils.PreloadHelper.ReadJson(configFilePath);
-                }
-                else if (configFilePath.ToLower().EndsWith(".yaml"))
-                {
-                    confJsonEntity = Utils.PreloadHelper.ReadYaml<ConfEntity>(configFilePath);
                 }
             }
             return confJsonEntity;

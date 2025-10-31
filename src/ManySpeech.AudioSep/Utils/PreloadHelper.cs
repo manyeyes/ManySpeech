@@ -3,8 +3,6 @@
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-//using YamlDotNet.Serialization;
-//using YamlDotNet.Serialization.NamingConventions;
 
 namespace ManySpeech.AudioSep.Utils
 {
@@ -15,46 +13,12 @@ namespace ManySpeech.AudioSep.Utils
     {
         // 生成器会自动填充实现
     }
-    // 源生成器的上下文配置
-    //[YamlStaticContext]
-    //[YamlSerializable(typeof(Model.ConfEntity))] // 指定需要序列化的类型
-    //public partial class YamlStaticContext : YamlDotNet.Serialization.StaticContext
-    //{
-    //    // 生成器会自动填充实现
-    //}
     /// <summary>
     /// YamlHelper
     /// Copyright (c)  2024 by manyeyes
     /// </summary>
     internal class PreloadHelper
     {
-        public static T? ReadYaml<T>(string yamlFilePath)
-        {
-            T? info = default(T);
-            ////Deserializer yamlDeserializer = new Deserializer();
-            //IDeserializer yamlDeserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNamingConvention(UnderscoredNamingConvention.Instance).Build();
-            if (!string.IsNullOrEmpty(yamlFilePath) && yamlFilePath.IndexOf("/") < 0 && yamlFilePath.IndexOf("\\") < 0)
-            {
-                var assembly = Assembly.GetExecutingAssembly();
-                var stream = assembly.GetManifestResourceStream(yamlFilePath) ??
-                             throw new FileNotFoundException($"Embedded resource '{yamlFilePath}' not found.");
-                using (var yamlReader = new StreamReader(stream))
-                {
-                    //info = yamlDeserializer.Deserialize<T>(yamlReader);
-                    yamlReader.Close();
-                }
-            }
-            else if (File.Exists(yamlFilePath))
-            {
-                using (var yamlReader = File.OpenText(yamlFilePath))
-                {
-                    //info = yamlDeserializer.Deserialize<T>(yamlReader);
-                    yamlReader.Close();
-                }
-            }
-            return info;
-        }
-
         public static T? ReadJson<T>(string jsonFilePath)
         {
             T? info = default(T);
