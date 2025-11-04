@@ -19,9 +19,14 @@ namespace PreProcessUtils
             int sampleRate = audioFileReader.WaveFormat.SampleRate;
             int sourceChannels = audioFileReader.WaveFormat.Channels;
             int bitsPerSample = audioFileReader.WaveFormat.BitsPerSample;
-            byte[] datas = new byte[audioFileReader.Length];
-            //audioFileReader.Read(datas, 0, datas.Length);
-            audioFileReader.ReadExactly(datas, 0, datas.Length);
+            byte[] datas = new byte[audioFileReader.Length];            
+#if NET472_OR_GREATER
+            audioFileReader.Read(datas, 0, datas.Length);
+#endif
+#if NET6_0_OR_GREATER
+            audioFileReader.ReadExactly(datas);
+            //audioFileReader.ReadExactly(datas, 0, datas.Length);
+#endif
             duration = audioFileReader.TotalTime;
             float[] wavsdata = new float[datas.Length / sizeof(float)];
             Buffer.BlockCopy(datas, 0, wavsdata, 0, datas.Length);
@@ -91,8 +96,12 @@ namespace PreProcessUtils
             int sampleRate = audioFileReader.WaveFormat.SampleRate;
             int sourceChannels = audioFileReader.WaveFormat.Channels;
             byte[] datas = new byte[audioFileReader.Length];
-            //audioFileReader.Read(datas);
+#if NET472_OR_GREATER
+            audioFileReader.Read(datas, 0, datas.Length);
+#endif
+#if NET6_0_OR_GREATER
             audioFileReader.ReadExactly(datas);
+#endif
             duration = audioFileReader.TotalTime;
             float[] wavsdata = new float[datas.Length / sizeof(float)];
             Buffer.BlockCopy(datas, 0, wavsdata, 0, datas.Length);

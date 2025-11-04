@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFrameworks>net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+				<TargetFrameworks>net472;net48;net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
 				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 				<!-- 平台最低版本要求 -->
 				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
@@ -21,6 +21,7 @@
 		<ItemGroup>
 				<PackageReference Include="LibGit2Sharp" Version="0.31.0" />
 				<PackageReference Include="NAudio" Version="2.2.1" />
+				<PackageReference Include="System.Net.Http" Version="4.3.4" Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' OR '$(TargetFramework)' == 'net461' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'" />
 		</ItemGroup>
 		
 </Project>
