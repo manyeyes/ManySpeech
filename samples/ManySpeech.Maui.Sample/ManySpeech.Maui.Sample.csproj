@@ -113,6 +113,7 @@
 
 	<ItemGroup>
 	  <ProjectReference Include="..\..\src\AudioInOut\AudioInOut.csproj" />
+	  <ProjectReference Include="..\..\src\ManySpeech.SpeechProcessing\ManySpeech.SpeechProcessing.csproj" />
 	  <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 	</ItemGroup>
 
