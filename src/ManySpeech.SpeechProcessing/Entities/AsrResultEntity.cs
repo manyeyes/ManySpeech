@@ -1,4 +1,4 @@
-﻿namespace ManySpeech.Maui.Sample.SpeechProcessing.Entities
+﻿namespace ManySpeech.SpeechProcessing.Entities
 {
     public class AsrResultEntity
     {

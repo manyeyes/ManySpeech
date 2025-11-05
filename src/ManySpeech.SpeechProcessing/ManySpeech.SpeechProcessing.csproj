@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFrameworks>net472;net48;net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
 				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 				<!-- 平台最低版本要求 -->
 				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
@@ -10,18 +10,21 @@
 				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-maccatalyst'))">15.0</SupportedOSPlatformVersion>
 				<!-- 统一配置 .NET 6+ 共有的属性 -->
 				<DefineConstants>$(DefineConstants);MODERN_DOTNET</DefineConstants>
-				<LangVersion>10</LangVersion>
+				<LangVersion>10.0</LangVersion>
 				<ImplicitUsings>enable</ImplicitUsings>
 				<Nullable>enable</Nullable>
-				<!--<PublishAot>true</PublishAot>-->
-				<!--<IlcTrimMode>partial</IlcTrimMode>-->
-				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+				<!-- info -->
+				<PackageId>ManySpeech.SpeechProcessing</PackageId>
+				<Version>1.0.0</Version>
 		</PropertyGroup>
-		
 		<ItemGroup>
-				<PackageReference Include="LibGit2Sharp" Version="0.31.0" />
-				<PackageReference Include="NAudio" Version="2.2.1" />
-				<PackageReference Include="System.Net.Http" Version="4.3.4" Condition="'$(TargetFramework)' == 'netstandard2.0' OR '$(TargetFramework)' == 'netstandard2.1' OR '$(TargetFramework)' == 'netcoreapp3.1' OR '$(TargetFramework)' == 'net461' OR '$(TargetFramework)' == 'net472' OR '$(TargetFramework)' == 'net48'" />
+				<PackageReference Include="ManySpeech.AliCTTransformerPunc" Version="1.0.6" />
+				<PackageReference Include="ManySpeech.AliFsmnVad" Version="1.1.4" />
+				<PackageReference Include="ManySpeech.AliParaformerAsr" Version="1.1.9" />
+				<PackageReference Include="ManySpeech.FireRedAsr" Version="1.0.5" />
+				<PackageReference Include="ManySpeech.K2TransducerAsr" Version="1.0.9" />
+				<PackageReference Include="ManySpeech.MoonshineAsr" Version="1.1.1" />
+				<PackageReference Include="ManySpeech.WenetAsr" Version="1.0.2" />
+				<PackageReference Include="ManySpeech.WhisperAsr" Version="1.0.1" />
 		</ItemGroup>
-		
 </Project>

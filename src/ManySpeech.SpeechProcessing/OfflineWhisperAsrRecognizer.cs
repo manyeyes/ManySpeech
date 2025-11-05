@@ -1,14 +1,14 @@
-﻿using ManySpeech.Maui.Sample.SpeechProcessing.Base;
-using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
-using ManySpeech.MoonshineAsr;
-using ManySpeech.MoonshineAsr.Model;
+﻿using ManySpeech.SpeechProcessing.Base;
+using ManySpeech.SpeechProcessing.Entities;
+using ManySpeech.WhisperAsr;
+using ManySpeech.WhisperAsr.Model;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing
+namespace ManySpeech.SpeechProcessing
 {
-    internal partial class OfflineMoonshineAsrRecognizer : BaseAsr
+    public partial class OfflineWhisperAsrRecognizer : BaseAsr
     {
-        private OfflineRecognizer? _recognizer;
-        public OfflineRecognizer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
+        private TranscribeRecognizer? _recognizer;
+        public TranscribeRecognizer InitTranscribeRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
             if (_recognizer == null)
             {
@@ -16,13 +16,9 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string preprocessFilePath = modelBasePath + "./" + modelName + "/preprocess.int8.onnx";
-                string encodeFilePath = modelBasePath + "./" + modelName + "/encode.int8.onnx";
-                string cachedDecodeFilePath = modelBasePath + "./" + modelName + "/cached_decode.int8.onnx";
-                string uncachedDecodeFilePath = modelBasePath + "./" + modelName + "/uncached_decode.int8.onnx";
-                string configFilePath = modelBasePath + "./" + modelName + "/conf.json";
-                string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
-                //OfflineRecognizer offlineRecognizer = new OfflineRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, configFilePath: configFilePath, threadsNum: 1);
+                string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
+                string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
+                string configFilePath = modelBasePath + "/" + modelName + "/conf.json";
                 try
                 {
                     string folderPath = Path.Combine(modelBasePath, modelName);
@@ -45,67 +41,35 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         })
                         .ToList();
 
-                    // Process preprocess path (priority: containing modelAccuracy>last one that matches prefix)
-                    var preprocessCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("preprocess."))
+                    // Process encoder path (priority: containing modelAccuracy>last one that matches prefix)
+                    var encoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("encoder."))
                         .ToList();
-                    if (preprocessCandidates.Any())
+                    if (encoderCandidates.Any())
                     {
                         // Prioritize selecting files that contain the specified model accuracy
-                        var preferredModel = preprocessCandidates
+                        var preferredModel = encoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        preprocessFilePath = preferredModel?.TargetPath ?? preprocessCandidates.Last().TargetPath;
+                        encoderFilePath = preferredModel?.TargetPath ?? encoderCandidates.Last().TargetPath;
                     }
 
-                    // Process encode path (priority: containing modelAccuracy>last one that matches prefix)
-                    var encodeCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("encode."))
+                    // Process decoder path
+                    var decoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("decoder."))
                         .ToList();
-                    if (encodeCandidates.Any())
+                    if (decoderCandidates.Any())
                     {
-                        // Prioritize selecting files that contain the specified model accuracy
-                        var preferredModel = encodeCandidates
+                        var preferredModeleb = decoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        encodeFilePath = preferredModel?.TargetPath ?? encodeCandidates.Last().TargetPath;
+                        decoderFilePath = preferredModeleb?.TargetPath ?? decoderCandidates.Last().TargetPath;
                     }
 
-                    // Process cachedDecode path
-                    var cachedDecodeCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("cached_decode."))
-                        .ToList();
-                    if (cachedDecodeCandidates.Any())
-                    {
-                        var preferredModeleb = cachedDecodeCandidates
-                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        cachedDecodeFilePath = preferredModeleb?.TargetPath ?? cachedDecodeCandidates.Last().TargetPath;
-                    }
-
-                    // Process uncachedDecode path
-                    var uncachedDecodeCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("uncached_decode."))
-                        .ToList();
-                    if (uncachedDecodeCandidates.Any())
-                    {
-                        var preferredModeleb = uncachedDecodeCandidates
-                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        uncachedDecodeFilePath = preferredModeleb?.TargetPath ?? uncachedDecodeCandidates.Last().TargetPath;
-                    }
-                    // Process token paths (take the last one that matches the prefix)
-                    configFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("conf.") && f.FileName.EndsWith(".json"))
-                        ?.TargetPath ?? "";
-
-                    // Process token paths (take the last one that matches the prefix)
-                    tokensFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("tokens.") && f.FileName.EndsWith(".txt"))
-                        ?.TargetPath ?? "";
-
-                    if (new[] { preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, configFilePath, tokensFilePath }.Any(string.IsNullOrEmpty))
+                    if (new[] { encoderFilePath, decoderFilePath, configFilePath }.Any(string.IsNullOrEmpty))
                     {
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OfflineRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
+                    _recognizer = new TranscribeRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -129,7 +93,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
         public override async Task<List<AsrResultEntity>> RecognizeAsync(
             List<List<float[]>> samplesList,
             string modelBasePath,
-            string modelName = "moonshine-tiny-en-onnx",
+            string modelName = "wenet-u2pp-conformer-wenetspeech-onnx-offline-20220506",
             string modelAccuracy = "int8",
             string streamDecodeMethod = "one",
             int threadsNum = 2)
@@ -138,8 +102,8 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             {
                 modelBasePath = applicationBase;
             }
-            OfflineRecognizer? offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
-            if (offlineRecognizer == null)
+            TranscribeRecognizer? transcribeRecognizer = InitTranscribeRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            if (transcribeRecognizer == null)
             {
                 throw new InvalidOperationException("Failed to initialize recognizer");
             }
@@ -157,12 +121,12 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     {
                         for (int i = 0; i < samplesList.Count; i++)
                         {
-                            OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                            TranscribeStream stream = transcribeRecognizer.CreateTranscribeStream();
                             foreach (var sample in samplesList[i])
                             {
                                 stream.AddSamples(sample);
                             }
-                            OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                            TranscribeRecognizerResultEntity nativeResult = transcribeRecognizer.GetResult(stream);
                             var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
                             var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
                             results.Add(resultEntity);
@@ -186,9 +150,9 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         {
                             foreach (var sample in samplesList[i])
                             {
-                                OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                                TranscribeStream stream = transcribeRecognizer.CreateTranscribeStream();
                                 stream.AddSamples(sample);
-                                OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
+                                TranscribeRecognizerResultEntity nativeResult = transcribeRecognizer.GetResult(stream);
                                 var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
                                 var resultEntity = ConvertToResultEntity(nativeResult, i, processingTime);
                                 results.Add(resultEntity);
@@ -211,17 +175,17 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     try
                     {
                         //int n = 0;
-                        List<OfflineStream> streams = new List<OfflineStream>();
+                        List<TranscribeStream> streams = new List<TranscribeStream>();
                         foreach (var sampleGroup in samplesList)
                         {
-                            var stream = offlineRecognizer.CreateOfflineStream();
+                            var stream = transcribeRecognizer.CreateTranscribeStream();
                             foreach (var sample in sampleGroup)
                             {
                                 stream.AddSamples(sample);
                             }
                             streams.Add(stream);
                         }
-                        var nativeResults = offlineRecognizer.GetResults(streams);
+                        var nativeResults = transcribeRecognizer.GetResults(streams);
                         for (int i = 0; i < nativeResults.Count; i++)
                         {
                             var resultEntity = ConvertToResultEntity(nativeResults[i], i, (DateTime.Now - processStartTime).TotalMilliseconds / nativeResults.Count);
@@ -246,13 +210,14 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return results;
         }
-        protected static AsrResultEntity ConvertToResultEntity(OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        protected static AsrResultEntity ConvertToResultEntity(TranscribeRecognizerResultEntity nativeResult, int index, double processingTimeMs)
         {
             return new AsrResultEntity
             {
                 Text = nativeResult.Text,
-                Tokens = nativeResult.Tokens?.ToArray() ?? Array.Empty<string>(),
-                Timestamps = nativeResult.Timestamps?.Select(ts => new[] { ts.First(), ts.Last() }).ToArray() ?? Array.Empty<int[]>(),
+                Tokens = nativeResult.Segments?.Select(x => x.Text).ToArray() ?? Array.Empty<string>(),
+                Timestamps = nativeResult.Segments?.Select(x => new[] { (int)TimeSpan.FromSeconds((double)x.Start).TotalMilliseconds, (int)TimeSpan.FromSeconds((double)x.End).TotalMilliseconds }).ToArray() ?? Array.Empty<int[]>(),
+                Languages = nativeResult.Segments?.Select(x => x.Language).ToArray() ?? Array.Empty<string>(),
                 Index = index,
                 ProcessingTimeMs = processingTimeMs
             };

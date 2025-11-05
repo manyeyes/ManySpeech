@@ -1,10 +1,10 @@
-﻿using ManySpeech.Maui.Sample.SpeechProcessing.Delegates;
-using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
+﻿using ManySpeech.SpeechProcessing.Delegates;
+using ManySpeech.SpeechProcessing.Entities;
 using SpeechProcessing.ASR.Base;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing.Base
+namespace ManySpeech.SpeechProcessing.Base
 {
-    internal abstract class BaseAsr:IDisposable,IRecognizer
+    public abstract class BaseAsr:IDisposable,IRecognizer
     {
         public bool _disposed=false;
 

@@ -1,13 +1,13 @@
-﻿using ManySpeech.AliParaformerAsr;
-using ManySpeech.AliParaformerAsr.Model;
-using ManySpeech.Maui.Sample.SpeechProcessing.Base;
-using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
+﻿using ManySpeech.K2TransducerAsr;
+using ManySpeech.K2TransducerAsr.Model;
+using ManySpeech.SpeechProcessing.Base;
+using ManySpeech.SpeechProcessing.Entities;
 using System.Diagnostics;
 using System.Text;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing
+namespace ManySpeech.SpeechProcessing
 {
-    internal partial class OnlineAliParaformerAsrRecognizer : BaseAsr
+    public partial class OnlineK2TransducerAsrRecognizer : BaseAsr
     {
         private string _lastResult = "";
         private string _lastResultPunc = "";
@@ -21,18 +21,17 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
         private DateTime _processStartTime;
 
         private OnlineRecognizer? _recognizer;
-        public OnlineRecognizer? InitOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
+        private OnlineRecognizer? InitOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
             if (_recognizer == null)
             {
-                if (string.IsNullOrEmpty(modelName))
+                if (string.IsNullOrEmpty(modelBasePath) || string.IsNullOrEmpty(modelName))
                 {
                     return null;
                 }
-                string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
-                string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
-                string configFilePath = modelBasePath + "/" + modelName + "/asr.yaml";
-                string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
+                string decoderFilePath = "";
+                string joinerFilePath = "";
                 string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
@@ -79,15 +78,16 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         decoderFilePath = preferredDecoder?.TargetPath ?? decoderCandidates.Last().TargetPath;
                     }
 
-                    // Process config paths (take the last one that matches the prefix)
-                    configFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("asr") && (f.FileName.EndsWith(".yaml") || f.FileName.EndsWith(".json")))
-                        ?.TargetPath ?? "";
-
-                    // Process mvn paths (take the last one that matches the prefix)
-                    mvnFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("am") && f.FileName.EndsWith(".mvn"))
-                        ?.TargetPath ?? "";
+                    // Process joiner path
+                    var joinerCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("joiner"))
+                        .ToList();
+                    if (joinerCandidates.Any())
+                    {
+                        var preferredJoiner = joinerCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        joinerFilePath = preferredJoiner?.TargetPath ?? joinerCandidates.Last().TargetPath;
+                    }
 
                     // Process token paths (take the last one that matches the prefix)
                     tokensFilePath = fileInfos
@@ -99,10 +99,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OnlineRecognizer(encoderFilePath, decoderFilePath, configFilePath, mvnFilePath, tokensFilePath, threadsNum: threadsNum);
+                    _recognizer = new K2TransducerAsr.OnlineRecognizer(encoderFilePath, decoderFilePath, joinerFilePath, tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
-                    double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-                    Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
+                    double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
+                    Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -119,11 +119,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return _recognizer;
         }
-
         public override async Task<List<AsrResultEntity>> RecognizeAsync(
              List<List<float[]>> samplesList,
              string modelBasePath,
-             string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline",
+             string modelName = "k2transducer-zipformer-ctc-small-zh-onnx-online-20250401",
              string modelAccuracy = "int8",
              string streamDecodeMethod = "one",
              int threadsNum = 2)
@@ -400,7 +399,6 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return results;
         }
-
         protected static AsrResultEntity ConvertToResultEntity(OnlineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
         {
             return new AsrResultEntity

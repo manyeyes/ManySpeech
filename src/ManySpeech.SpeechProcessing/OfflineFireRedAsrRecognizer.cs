@@ -1,15 +1,14 @@
-﻿using ManySpeech.Maui.Sample.SpeechProcessing.Base;
-using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
-using ManySpeech.K2TransducerAsr;
-using ManySpeech.K2TransducerAsr.Model;
-using PreProcessUtils;
+﻿using ManySpeech.SpeechProcessing.Base;
+using ManySpeech.SpeechProcessing.Entities;
+using ManySpeech.FireRedAsr;
+using ManySpeech.FireRedAsr.Model;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing
+namespace ManySpeech.SpeechProcessing
 {
-    internal partial class OfflineK2TransducerAsrRecognizer : BaseAsr
+    public partial class OfflineFireRedAsrRecognizer : BaseAsr
     {
-        private OfflineRecognizer? _recognizer;
-        private OfflineRecognizer? InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
+        private static OfflineRecognizer? _recognizer;
+        public static OfflineRecognizer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
             if (_recognizer == null)
             {
@@ -17,9 +16,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string encoderFilePath = modelBasePath + "/" + modelName + "/model.int8.onnx";
-                string decoderFilePath = "";
-                string joinerFilePath = "";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
+                string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
+                string configFilePath = modelBasePath + "/" + modelName + "/config.json";
+                string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
                 string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
@@ -30,66 +30,66 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         Console.WriteLine($"Error: folder does not exist - {folderPath}");
                         return null;
                     }
-                    // 2. Get the complete paths of all files in the folder
-                    // Optional parameters: search mode (such as "*. txt" filtering text files), whether to search subdirectories
-                    string[] allFilePaths = Directory.GetFiles(folderPath);
-                    foreach (string filePath in allFilePaths)
+                    // 2. Obtain the file names and destination paths of all files
+                    // (calculate the paths in advance to avoid duplicate concatenation)
+                    var fileInfos = Directory.GetFiles(folderPath)
+                        .Select(filePath => new
+                        {
+                            FileName = Path.GetFileName(filePath),
+                            // Recommend using Path. Combine to handle paths (automatically adapt system separators)
+                            TargetPath = Path.Combine(modelBasePath, modelName, Path.GetFileName(filePath))
+                            // If it is necessary to strictly maintain the original splicing method, it can be replaced with:
+                            // TargetPath = $"{modelBasePath}/./{modelName}/{Path.GetFileName(filePath)}"
+                        })
+                        .ToList();
+
+                    // Process encoder path (priority: containing modelAccuracy>last one that matches prefix)
+                    var encoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("_eb"))
+                        .ToList();
+                    if (encoderCandidates.Any())
                     {
-                        // Extract pure file name (including extension)
-                        string fileName = Path.GetFileName(filePath);
-                        //Console.WriteLine(fileName);
-                        if (fileName.StartsWith("model") || fileName.StartsWith("encoder"))
-                        {
-                            if (fileName.Contains("." + modelAccuracy + "."))
-                            {
-                                encoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                            }
-                            else
-                            {
-                                if (string.IsNullOrEmpty(encoderFilePath))
-                                {
-                                    encoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                                }
-                            }
-                        }
-                        if (fileName.StartsWith("decoder"))
-                        {
-                            if (fileName.Contains("." + modelAccuracy + "."))
-                            {
-                                decoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                            }
-                            else
-                            {
-                                if (string.IsNullOrEmpty(decoderFilePath))
-                                {
-                                    decoderFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                                }
-                            }
-                        }
-                        if (fileName.StartsWith("joiner"))
-                        {
-                            if (fileName.Contains("." + modelAccuracy + "."))
-                            {
-                                joinerFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                            }
-                            else
-                            {
-                                if (string.IsNullOrEmpty(joinerFilePath))
-                                {
-                                    joinerFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                                }
-                            }
-                        }
-                        if (fileName.StartsWith("tokens"))
-                        {
-                            tokensFilePath = modelBasePath + "/" + modelName + "/" + fileName;
-                        }
+                        // Prioritize selecting files that contain the specified model accuracy
+                        var preferredEncoder = encoderCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        encoderFilePath = preferredEncoder?.TargetPath ?? encoderCandidates.Last().TargetPath;
+                    }
+
+                    // Process decoder path
+                    var decoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("model_eb"))
+                        .ToList();
+                    if (decoderCandidates.Any())
+                    {
+                        var preferredDecoder = decoderCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        decoderFilePath = preferredDecoder?.TargetPath ?? decoderCandidates.Last().TargetPath;
+                    }
+
+                    // Process config paths (take the last one that matches the prefix)
+                    //configFilePath = fileInfos
+                    //    .LastOrDefault(f => f.FileName.StartsWith("asr") && (f.FileName.EndsWith(".json")))
+                    //    ?.TargetPath ?? "";
+
+                    // Process mvn paths (take the last one that matches the prefix)
+                    mvnFilePath = fileInfos
+                        .LastOrDefault(f => f.FileName.StartsWith("am") && f.FileName.EndsWith(".mvn"))
+                        ?.TargetPath ?? "";
+
+                    // Process token paths (take the last one that matches the prefix)
+                    tokensFilePath = fileInfos
+                        .LastOrDefault(f => f.FileName.StartsWith("tokens") && f.FileName.EndsWith(".txt"))
+                        ?.TargetPath ?? "";
+
+                    if (string.IsNullOrEmpty(encoderFilePath) || string.IsNullOrEmpty(decoderFilePath) || string.IsNullOrEmpty(tokensFilePath))
+                    {
+                        return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OfflineRecognizer(encoderFilePath, decoderFilePath, joinerFilePath, tokensFilePath, threadsNum: threadsNum);
+                    _recognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
-                    double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-                    Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());
+                    double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
+                    Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
                 }
                 catch (UnauthorizedAccessException)
                 {
@@ -101,16 +101,15 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Error occurred: {ex.Message}");
+                    Console.WriteLine($"Error occurred: {ex}");
                 }
             }
             return _recognizer;
         }
-
         public override async Task<List<AsrResultEntity>> RecognizeAsync(
             List<List<float[]>> samplesList,
             string modelBasePath,
-            string modelName = "k2transducer-zipformer-ctc-small-zh-onnx-offline-20250716",
+            string modelName = "fireredasr-aed-large-zh-en-onnx-offline-20250124",
             string modelAccuracy = "int8",
             string streamDecodeMethod = "one",
             int threadsNum = 2)
@@ -119,7 +118,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             {
                 modelBasePath = applicationBase;
             }
-            OfflineRecognizer? offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            OfflineRecognizer offlineRecognizer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (offlineRecognizer == null)
             {
                 throw new InvalidOperationException("Failed to initialize recognizer");
@@ -216,7 +215,6 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         Console.WriteLine(ex.Message);
                         Console.WriteLine(ex.InnerException?.InnerException.Message);
                     }
-                    // batch method
                 }
                 int totalDurationMs = (int)samplesList.Select(x => x.Select(x => CalculateAudioDuration(x)).Sum()).Sum();
                 RaiseRecognitionCompleted(DateTime.Now - processStartTime, TimeSpan.FromMilliseconds(totalDurationMs), samplesList.Count);
@@ -227,7 +225,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return results;
         }
-        protected static AsrResultEntity ConvertToResultEntity(OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
+        protected static AsrResultEntity ConvertToResultEntity(FireRedAsr.Model.OfflineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
         {
             return new AsrResultEntity
             {

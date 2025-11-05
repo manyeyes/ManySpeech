@@ -1,9 +1,9 @@
 ﻿using ManySpeech.AliCTTransformerPunc;
 using System.Text;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing
+namespace ManySpeech.SpeechProcessing
 {
-    internal partial class AliCTTransformerPuncRestorer : IDisposable
+    public partial class AliCTTransformerPuncRestorer : IDisposable
     {
         public bool _disposed = false;
 
@@ -22,7 +22,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
-                    string folderPath = Path.Join(modelBasePath, modelName);
+                    string folderPath = Path.Combine(modelBasePath, modelName);
                     // 1. Check if the folder exists
                     if (!Directory.Exists(folderPath))
                     {

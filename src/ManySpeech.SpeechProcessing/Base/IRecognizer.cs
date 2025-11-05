@@ -1,5 +1,5 @@
-﻿using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
-using ManySpeech.Maui.Sample.SpeechProcessing.Delegates;
+﻿using ManySpeech.SpeechProcessing.Entities;
+using ManySpeech.SpeechProcessing.Delegates;
 
 namespace SpeechProcessing.ASR.Base
 {

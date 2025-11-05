@@ -1,9 +1,9 @@
 ﻿using ManySpeech.AliFsmnVad;
 using ManySpeech.AliFsmnVad.Model;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing
+namespace ManySpeech.SpeechProcessing
 {
-    internal partial class AliFsmnVadDetector : IDisposable
+    public partial class AliFsmnVadDetector : IDisposable
     {
         public bool _disposed = false;
 
@@ -22,7 +22,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 string mvnFilePath = modelBasePath + "/" + modelName + "/vad.mvn";
                 try
                 {
-                    string folderPath = Path.Join(modelBasePath, modelName);
+                    string folderPath = Path.Combine(modelBasePath, modelName);
                     // 1. 检查文件夹是否存在
                     if (!Directory.Exists(folderPath))
                     {

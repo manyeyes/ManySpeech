@@ -84,7 +84,7 @@ namespace PreProcessUtils
             }
 
             string repoUrl = "https://www.modelscope.cn/manyeyes/" + modelName + ".git";
-            string localPath = Path.Join(baseFolder, modelName);
+            string localPath = Path.Combine(baseFolder, modelName);
 
             if (Directory.Exists(localPath))
             {
@@ -182,7 +182,7 @@ namespace PreProcessUtils
 
         public async Task DeleteModels(string baseFolder, string modelName)
         {
-            string localPath = Path.Join(baseFolder, modelName);
+            string localPath = Path.Combine(baseFolder, modelName);
 
             if (Directory.Exists(localPath))
             {

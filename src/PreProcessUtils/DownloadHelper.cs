@@ -3,6 +3,7 @@ using System.Net;
 using System.Security.Cryptography;
 using System.Text;
 using System.Windows.Input;
+using System.Net.Http;
 
 namespace PreProcessUtils
 {
@@ -223,7 +224,12 @@ namespace PreProcessUtils
                     response.EnsureSuccessStatusCode(); // Check HTTP status code (e.g., 403, 404)
 
                     long totalBytes = response.Content.Headers.ContentLength ?? 0;
+#if NET472_OR_GREATER
+                    using (var httpStream = await response.Content.ReadAsStreamAsync())
+#endif
+#if NET6_0_OR_GREATER
                     using (var httpStream = await response.Content.ReadAsStreamAsync(cancellationToken))
+#endif
                     using (var fileStream = new FileStream(filePath, FileMode.Create, FileAccess.Write, FileShare.None))
                     {
                         byte[] buffer = new byte[65536]; // 64KB buffer for stream reading

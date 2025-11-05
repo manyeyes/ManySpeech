@@ -1,13 +1,13 @@
-﻿using ManySpeech.MoonshineAsr;
-using ManySpeech.MoonshineAsr.Model;
-using ManySpeech.Maui.Sample.SpeechProcessing.Base;
-using ManySpeech.Maui.Sample.SpeechProcessing.Entities;
+﻿using ManySpeech.AliParaformerAsr;
+using ManySpeech.AliParaformerAsr.Model;
+using ManySpeech.SpeechProcessing.Base;
+using ManySpeech.SpeechProcessing.Entities;
 using System.Diagnostics;
 using System.Text;
 
-namespace ManySpeech.Maui.Sample.SpeechProcessing
+namespace ManySpeech.SpeechProcessing
 {
-    internal partial class OnlineMoonshineAsrRecognizer : BaseAsr
+    public partial class OnlineAliParaformerAsrRecognizer : BaseAsr
     {
         private string _lastResult = "";
         private string _lastResultPunc = "";
@@ -17,11 +17,11 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
         private StringBuilder _output = new StringBuilder();
         private int _i = 0;
         bool _isStart = false;
-        private OnlineVadStream? _onlineStream = null;
+        private OnlineStream? _onlineStream = null;
         private DateTime _processStartTime;
 
-        private OnlineVadRecognizer? _recognizer;
-        public OnlineVadRecognizer? InitOnlineVadRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2, string vadModelName = "alifsmnvad-onnx")
+        private OnlineRecognizer? _recognizer;
+        public OnlineRecognizer? InitOnlineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
             if (_recognizer == null)
             {
@@ -29,15 +29,11 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 {
                     return null;
                 }
-                string preprocessFilePath = modelBasePath + "./" + modelName + "/preprocess.int8.onnx";
-                string encodeFilePath = modelBasePath + "./" + modelName + "/encode.int8.onnx";
-                string cachedDecodeFilePath = modelBasePath + "./" + modelName + "/cached_decode.int8.onnx";
-                string uncachedDecodeFilePath = modelBasePath + "./" + modelName + "/uncached_decode.int8.onnx";
-                string configFilePath = modelBasePath + "./" + modelName + "/conf.json";
-                string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
-                string vadModelFilePath = modelBasePath + "/" + vadModelName + "/" + "model.int8.onnx";
-                string vadMvnFilePath = modelBasePath + vadModelName + "/" + "vad.mvn";
-                string vadConfigFilePath = modelBasePath + vadModelName + "/" + "vad.json";
+                string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
+                string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
+                string configFilePath = modelBasePath + "/" + modelName + "/asr.yaml";
+                string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
+                string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
                 try
                 {
                     string folderPath = Path.Combine(modelBasePath, modelName);
@@ -60,67 +56,50 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                         })
                         .ToList();
 
-                    // Process preprocess path (priority: containing modelAccuracy>last one that matches prefix)
-                    var preprocessCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("preprocess."))
+                    // Process encoder path (priority: containing modelAccuracy>last one that matches prefix)
+                    var encoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("model") || f.FileName.StartsWith("encoder"))
                         .ToList();
-                    if (preprocessCandidates.Any())
+                    if (encoderCandidates.Any())
                     {
                         // Prioritize selecting files that contain the specified model accuracy
-                        var preferredModel = preprocessCandidates
+                        var preferredEncoder = encoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        preprocessFilePath = preferredModel?.TargetPath ?? preprocessCandidates.Last().TargetPath;
+                        encoderFilePath = preferredEncoder?.TargetPath ?? encoderCandidates.Last().TargetPath;
                     }
 
-                    // Process encode path (priority: containing modelAccuracy>last one that matches prefix)
-                    var encodeCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("encode."))
+                    // Process decoder path
+                    var decoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("decoder"))
                         .ToList();
-                    if (encodeCandidates.Any())
+                    if (decoderCandidates.Any())
                     {
-                        // Prioritize selecting files that contain the specified model accuracy
-                        var preferredModel = encodeCandidates
+                        var preferredDecoder = decoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        encodeFilePath = preferredModel?.TargetPath ?? encodeCandidates.Last().TargetPath;
+                        decoderFilePath = preferredDecoder?.TargetPath ?? decoderCandidates.Last().TargetPath;
                     }
 
-                    // Process cachedDecode path
-                    var cachedDecodeCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("cached_decode."))
-                        .ToList();
-                    if (cachedDecodeCandidates.Any())
-                    {
-                        var preferredModeleb = cachedDecodeCandidates
-                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        cachedDecodeFilePath = preferredModeleb?.TargetPath ?? cachedDecodeCandidates.Last().TargetPath;
-                    }
-
-                    // Process uncachedDecode path
-                    var uncachedDecodeCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("uncached_decode."))
-                        .ToList();
-                    if (uncachedDecodeCandidates.Any())
-                    {
-                        var preferredModeleb = uncachedDecodeCandidates
-                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        uncachedDecodeFilePath = preferredModeleb?.TargetPath ?? uncachedDecodeCandidates.Last().TargetPath;
-                    }
-                    // Process token paths (take the last one that matches the prefix)
+                    // Process config paths (take the last one that matches the prefix)
                     configFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("conf.") && f.FileName.EndsWith(".json"))
+                        .LastOrDefault(f => f.FileName.StartsWith("asr") && (f.FileName.EndsWith(".yaml") || f.FileName.EndsWith(".json")))
+                        ?.TargetPath ?? "";
+
+                    // Process mvn paths (take the last one that matches the prefix)
+                    mvnFilePath = fileInfos
+                        .LastOrDefault(f => f.FileName.StartsWith("am") && f.FileName.EndsWith(".mvn"))
                         ?.TargetPath ?? "";
 
                     // Process token paths (take the last one that matches the prefix)
                     tokensFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("tokens.") && f.FileName.EndsWith(".txt"))
+                        .LastOrDefault(f => f.FileName.StartsWith("tokens"))
                         ?.TargetPath ?? "";
 
-                    if (new[] { preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, configFilePath, tokensFilePath }.Any(string.IsNullOrEmpty))
+                    if (string.IsNullOrEmpty(encoderFilePath) || string.IsNullOrEmpty(tokensFilePath))
                     {
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OnlineVadRecognizer(preprocessFilePath, encodeFilePath, cachedDecodeFilePath, uncachedDecodeFilePath, tokensFilePath, vadModelFilePath: vadModelFilePath, vadConfigFilePath: vadConfigFilePath, vadMvnFilePath: vadMvnFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
+                    _recognizer = new OnlineRecognizer(encoderFilePath, decoderFilePath, configFilePath, mvnFilePath, tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -140,10 +119,11 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             }
             return _recognizer;
         }
+
         public override async Task<List<AsrResultEntity>> RecognizeAsync(
              List<List<float[]>> samplesList,
              string modelBasePath,
-             string modelName = "moonshine-tiny-en-onnx",
+             string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline",
              string modelAccuracy = "int8",
              string streamDecodeMethod = "one",
              int threadsNum = 2)
@@ -152,7 +132,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             {
                 modelBasePath = applicationBase;
             }
-            OnlineVadRecognizer? onlineRecognizer = InitOnlineVadRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            OnlineRecognizer? onlineRecognizer = InitOnlineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (onlineRecognizer == null)
             {
                 throw new InvalidOperationException("Failed to initialize recognizer");
@@ -169,7 +149,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     for (int j = 0; j < samplesList.Count; j++)
                     {
                         DateTime processStartTime = DateTime.Now;
-                        using var stream = onlineRecognizer.CreateOnlineVadStream();
+                        using var stream = onlineRecognizer.CreateOnlineStream();
                         List<int[]> timestamps = new List<int[]>() { new int[2] };
                         foreach (float[] samplesItem in samplesList[j])
                         {
@@ -212,10 +192,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             return results;
         }
 
-        private async Task<List<AsrResultEntity>> ProcessMultiStream(OnlineVadRecognizer recognizer, List<List<float[]>> samplesList, string modelName)
+        private async Task<List<AsrResultEntity>> ProcessMultiStream(OnlineRecognizer recognizer, List<List<float[]>> samplesList, string modelName)
         {
             var results = new List<AsrResultEntity>();
-            var onlineStreams = new List<OnlineVadStream>();
+            var onlineStreams = new List<OnlineStream>();
             var isEndpoints = new List<bool>();
             var isEnds = new List<bool>();
             List<List<int[]>> timestampsList = new List<List<int[]>>();
@@ -224,7 +204,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 // 初始化所有流
                 for (int i = 0; i < samplesList.Count; i++)
                 {
-                    var stream = recognizer.CreateOnlineVadStream();
+                    var stream = recognizer.CreateOnlineStream();
                     onlineStreams.Add(stream);
                     isEndpoints.Add(false);
                     isEnds.Add(false);
@@ -246,7 +226,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
 
                 while (hasMoreFrames)
                 {
-                    var activeStreams = new List<OnlineVadStream>();
+                    var activeStreams = new List<OnlineStream>();
                     var streamIndices = new List<int>();
 
                     // 收集当前帧需要处理的流
@@ -344,19 +324,19 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             return results;
         }
 
-        private async Task<List<AsrResultEntity>> ProcessChunkStream(OnlineVadRecognizer recognizer, List<List<float[]>> samplesList, string modelName)
+        private async Task<List<AsrResultEntity>> ProcessChunkStream(OnlineRecognizer recognizer, List<List<float[]>> samplesList, string modelName)
         {
             var results = new List<AsrResultEntity>();
             int i = 0;
             if (_onlineStream == null)
             {
-                _onlineStream = recognizer.CreateOnlineVadStream();
+                _onlineStream = recognizer.CreateOnlineStream();
                 _processStartTime = DateTime.Now;
             }
             float[] sample = samplesList[i][0];
             Array.Resize(ref _lastSample, _lastSample.Length + sample.Length);
             Array.Copy(sample, 0, _lastSample, _lastSample.Length - sample.Length, sample.Length);
-            int maxMuteTimes = 1;
+            int maxMuteTimes = 3;
             int minSentenceLength = 8;
             if (!_isStart)
             {
@@ -374,7 +354,7 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
             if (_muteTimes <= maxMuteTimes)
             {
                 _lastTimestamps.Add(new int[] { _lastTimestamps.Last()[1], _lastTimestamps.Last()[1] + (int)CalculateAudioDuration(sample) });
-                if (nativeResult != null && nativeResult.Text?.Trim().Length > 0)
+                if (nativeResult != null && nativeResult.Text?.Length > 0)
                 {
                     if (nativeResult.Text.CompareTo(_lastResult) == 0)
                     {
@@ -390,25 +370,25 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                     nativeResult.Text = string.Format("{0}{2}", _output.ToString(), _i, _lastResultPunc);
                     var resultEntity = ConvertToResultEntity(nativeResult, _i, processingTime);
                     resultEntity.ModelName = modelName;
-                    resultEntity.Timestamps = _lastTimestamps.ToArray();//置换为最新时间戳
+                    resultEntity.Timestamps = _lastTimestamps.ToArray();
                     RaiseRecognitionResult(resultEntity);
                     results.Clear();
                     results.Add(resultEntity);
                 }
             }
-            if (_muteTimes > maxMuteTimes || nativeResult != null)
+            if (_muteTimes > maxMuteTimes)
             {
                 _output.Append(string.Format("{1}", _i, _lastResultPunc));
                 nativeResult.Text = string.Format("{0}", _output.ToString());
                 var resultEntity = ConvertToResultEntity(nativeResult, _i, processingTime);
                 resultEntity.ModelName = modelName;
                 resultEntity.Timestamps = _lastTimestamps.ToArray();
-                //RaiseRecognitionResult(resultEntity);
+                RaiseRecognitionResult(resultEntity);
                 RaiseRecognitionCompleted(TimeSpan.FromMilliseconds(processingTime), TimeSpan.FromMilliseconds(CalculateAudioDuration(_lastSample)), results.Count, _lastSample);
                 if (sentenceIfNeed) _output = new StringBuilder();
                 results.Clear();
                 results.Add(resultEntity);
-                _onlineStream = recognizer.CreateOnlineVadStream();
+                _onlineStream = recognizer.CreateOnlineStream();
                 _processStartTime = DateTime.Now;
                 _lastResult = "";
                 _lastSample = new float[0];
@@ -417,10 +397,10 @@ namespace ManySpeech.Maui.Sample.SpeechProcessing
                 _i++;
                 _onlineStream.AddSamples(new float[2400]);
                 _onlineStream.AddSamples(new float[2400]);
-
             }
             return results;
         }
+
         protected static AsrResultEntity ConvertToResultEntity(OnlineRecognizerResultEntity nativeResult, int index, double processingTimeMs)
         {
             return new AsrResultEntity
