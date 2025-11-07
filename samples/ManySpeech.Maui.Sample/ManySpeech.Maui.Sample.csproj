@@ -136,6 +136,12 @@
 	  <Compile Update="FireRedOfflineAsrVad.xaml.cs">
 	    <DependentUpon>FireRedOfflineAsrVad.xaml</DependentUpon>
 	  </Compile>
+	  <Compile Update="OfflineAsr.xaml.cs">
+	    <DependentUpon>OfflineAsr.xaml</DependentUpon>
+	  </Compile>
+	  <Compile Update="OnlineAsr.xaml.cs">
+	    <DependentUpon>OnlineAsr.xaml</DependentUpon>
+	  </Compile>
 	  <Compile Update="WhisperOfflineAsrVad.xaml.cs">
 	    <DependentUpon>WhisperOfflineAsrVad.xaml</DependentUpon>
 	  </Compile>
@@ -203,6 +209,12 @@
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="FireRedOfflineAsrVad.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="OfflineAsr.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </MauiXaml>
+	  <MauiXaml Update="OnlineAsr.xaml">
 	    <Generator>MSBuild:Compile</Generator>
 	  </MauiXaml>
 	  <MauiXaml Update="WhisperOfflineAsrVad.xaml">

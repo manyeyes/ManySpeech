@@ -8,7 +8,7 @@
             Padding="30,20"
             Spacing="25">
             <Image
-                Source="dotnet_bot_368x173.png"
+                Source="dotnet_bot_512x295.png"
                 HeightRequest="128"
                 Aspect="AspectFit"
                 SemanticProperties.Description="dot net bot in a race car number eight" />
@@ -31,7 +31,7 @@
             Tapped="OnLinkTapped" 
                         NumberOfTapsRequired="1" /> 
                 </Label.GestureRecognizers>
-            </Label>
+            </Label>  
             
             <Label
                 x:Name="TimeLabel"

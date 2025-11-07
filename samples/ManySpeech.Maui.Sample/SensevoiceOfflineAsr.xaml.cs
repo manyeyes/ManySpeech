@@ -21,7 +21,7 @@ public partial class SensevoiceOfflineAsr : ContentPage
         {"asr.json","" },
         {"tokens.txt","" }
     };
-    OfflineAliParaformerAsrRecognizer? _recognizer;
+    private OfflineAliParaformerAsrRecognizer? _recognizer;
 
     public SensevoiceOfflineAsr()
     {
@@ -120,114 +120,49 @@ public partial class SensevoiceOfflineAsr : ContentPage
 
     private void DownloadDisplay(int progress, DownloadState downloadState, string filename, string msg = "")
     {
-        if (progress == 0 && downloadState == DownloadState.inprogres)
-        {
-            DownloadProgressLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.IsVisible = true;
-                                     DownloadProgressLabel.Text = msg;
-                                 }));
-        }
-        else
-        {
-            switch (downloadState)
-            {
-                case DownloadState.inprogres:
-                    DownloadProgressBar.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressBar.Progress = progress / 100.0;
-                                 }));
-                    DownloadProgressLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.Text = $"File: {filename}, downloading, progress: {progress}%\n";
-                                 }));
+        this.Dispatcher.Dispatch(
+            new Action(
+                delegate
+                {
+                    if (progress == 0 && downloadState == DownloadState.inprogres)
+                    {
 
-                    break;
-                case DownloadState.cancelled:
-                    DownloadProgressBar.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressBar.Progress = progress / 100.0;
-                                 }));
-                    DownloadProgressLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.Text = $"File: {filename}, download cancelled\n";
-                                 }));
-                    break;
-                case DownloadState.error:
-                    DownloadProgressBar.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressBar.Progress = progress / 100.0;
-                                 }));
-                    DownloadProgressLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.Text = $"File: {filename}, download failed: {msg}\n";
-                                 }));
-                    DownloadResultsLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadResultsLabel.Text += $"File: {filename}, download failed: {msg}\n";
-                                 }));
-                    break;
-                case DownloadState.completed:
-                    DownloadProgressBar.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressBar.Progress = progress / 100.0;
-                                 }));
-                    DownloadProgressLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.Text = $"File: {filename}, download completed\n";
-                                 }));
-                    DownloadResultsLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadResultsLabel.Text += $"File: {filename}, download completed\n";
-                                 }));
-                    break;
-                case DownloadState.existed:
-                    DownloadProgressBar.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressBar.Progress = progress / 100.0;
-                                 }));
-                    DownloadResultsLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadResultsLabel.Text += $"File: {filename}, already exists\n";
-                                 }));
-                    break;
-                case DownloadState.noexisted:
-                    DownloadResultsLabel.Dispatcher.Dispatch(
-                             new Action(
-                                 delegate
-                                 {
-                                     DownloadProgressLabel.IsVisible = false;
-                                     DownloadResultsLabel.Text += $"File: {filename}, does not exist\n";
-                                 }));
-                    break;
-            }
-        }
+                        DownloadProgressLabel.IsVisible = true;
+                        DownloadProgressLabel.Text = msg;
+                    }
+                    else
+                    {
+                        switch (downloadState)
+                        {
+                            case DownloadState.inprogres:
+                                DownloadProgressBar.Progress = progress / 100.0;
+                                DownloadProgressLabel.Text = $"File: {filename}, downloading, progress: {progress}%\n";
+                                break;
+                            case DownloadState.cancelled:
+                                DownloadProgressBar.Progress = progress / 100.0;
+                                DownloadProgressLabel.Text = $"File: {filename}, download cancelled\n";
+                                break;
+                            case DownloadState.error:
+                                DownloadProgressBar.Progress = progress / 100.0;
+                                DownloadProgressLabel.Text = $"File: {filename}, download failed: {msg}\n";
+                                DownloadResultsLabel.Text += $"File: {filename}, download failed: {msg}\n";
+                                break;
+                            case DownloadState.completed:
+                                DownloadProgressBar.Progress = progress / 100.0;
+                                DownloadProgressLabel.Text = $"File: {filename}, download completed\n";
+                                DownloadResultsLabel.Text += $"File: {filename}, download completed\n";
+                                break;
+                            case DownloadState.existed:
+                                DownloadProgressBar.Progress = progress / 100.0;
+                                DownloadResultsLabel.Text += $"File: {filename}, already exists\n";
+                                break;
+                            case DownloadState.noexisted:
+                                DownloadProgressLabel.IsVisible = false;
+                                DownloadResultsLabel.Text += $"File: {filename}, does not exist\n";
+                                break;
+                        }
+                    }
+                }));
     }
 
     private async void OnBtnRecognitionExampleClicked(object sender, EventArgs e)
