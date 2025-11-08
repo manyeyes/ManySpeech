@@ -5,39 +5,39 @@
     xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
     xmlns:local="clr-namespace:ManySpeech.Maui.Sample"
     xmlns:sys="clr-namespace:System;assembly=netstandard"
-    Shell.FlyoutBehavior="Flyout"
+    Shell.FlyoutBehavior="Locked"
     Shell.NavBarIsVisible="{OnPlatform Default='False', iOS='True', Android='True'}"    
     Shell.NavBarHasShadow="True"    
     Shell.TabBarForegroundColor="WhiteSmoke"
     Shell.BackgroundColor="BlueViolet" 
     Title="ManySpeech"
     x:Name="SysShell"
-    FlyoutWidth="300"
+    FlyoutWidth="280"
     Padding="4,0,0,0">
     <!-- 在资源中定义自定义样式 -->
     <Shell.ItemTemplate>
         <DataTemplate>
             <Grid ColumnDefinitions="3,*" 
-                  Padding="0,10" 
-                HeightRequest="40">
+                  Padding="4,4" Margin="0,0"
+                HeightRequest="38">
                 <Image Grid.Column="0"
                        Source="{Binding Icon}"
                        VerticalOptions="Center"
                        HorizontalOptions="Center"
-                       WidthRequest="24"
-                       HeightRequest="24"/>
+                       WidthRequest="16"
+                       HeightRequest="16"/>
                 <Label Grid.Column="1"
                        Text="{Binding Title}"
                        VerticalOptions="Center"
                        LineBreakMode="WordWrap"
-                       Margin="5,0,0,0"
-                    FontSize="16"/>
+                       Margin="15,0,0,0"
+                    FontSize="Micro"/>
             </Grid>
         </DataTemplate>
     </Shell.ItemTemplate>
     <Shell.FlyoutHeader>
         <VerticalStackLayout HorizontalOptions="Start" VerticalOptions="Center" Padding="0,0">
-            <Label Margin="{OnPlatform Default='15,20,0,12',
+            <Label Margin="{OnPlatform Default='15,15,0,12',
                     iOS='0',
                     MacCatalyst='0'}"
 Padding="{OnPlatform Default='4,0',
@@ -47,65 +47,35 @@ HorizontalTextAlignment="Start"
 Text="ManySpeech" FontSize="Small"/>
         </VerticalStackLayout>
     </Shell.FlyoutHeader>
-    <FlyoutItem Title="Home" Route="MainPage">
+    <FlyoutItem Title="Home" Route="MainPage" Icon="home.png">
         <ShellContent ContentTemplate="{DataTemplate local:MainPage}">
             <ShellContent.Icon>
                 <FontImageSource Glyph="&#xe88a;" FontFamily="MaterialIcons" />
             </ShellContent.Icon>
         </ShellContent>
     </FlyoutItem>
-    <FlyoutItem Title="firered-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:FireRedOfflineAsr}"/>
+    <FlyoutItem Title="Sentence recognition" Route="MainPage" Icon="cube.png">
+        <ShellContent Title="firered-offline-asr" ContentTemplate="{DataTemplate local:FireRedOfflineAsr}"/>
+        <ShellContent Title="k2-offline-asr" ContentTemplate="{DataTemplate local:K2TransducerOfflineAsr}"/>
+        <ShellContent Title="Moonshine-offline-asr" ContentTemplate="{DataTemplate local:MoonshineOfflineAsr}"/>
+        <ShellContent Title="paraformer-offline-asr" ContentTemplate="{DataTemplate local:ParaformerOfflineAsr}"/>
+        <ShellContent Title="sensevoice-offline-asr" ContentTemplate="{DataTemplate local:SensevoiceOfflineAsr}"/>
+        <ShellContent Title="wenet-offline-asr" ContentTemplate="{DataTemplate local:WenetOfflineAsr}"/>
+        <ShellContent Title="wenet-offline-asr-vad" ContentTemplate="{DataTemplate local:WenetOfflineAsrVad}"/>
+        <ShellContent Title="whisper-offline-asr" ContentTemplate="{DataTemplate local:WhisperOfflineAsr}"/>
     </FlyoutItem>
-    <FlyoutItem Title="firered-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:FireRedOfflineAsrVad}"/>
+    <FlyoutItem Title="Long audio recognition" Route="MainPage" Icon="cube.png">
+        <ShellContent Title="firered-offline-asr-vad" ContentTemplate="{DataTemplate local:FireRedOfflineAsrVad}"/>
+        <ShellContent Title="k2-offline-asr-vad" ContentTemplate="{DataTemplate local:K2TransducerOfflineAsrVad}"/>
+        <ShellContent Title="Moonshine-offline-asr-vad" ContentTemplate="{DataTemplate local:MoonshineOfflineAsrVad}"/>
+        <ShellContent Title="paraformer-offline-asr-vad" ContentTemplate="{DataTemplate local:ParaformerOfflineAsrVad}"/>
+        <ShellContent Title="sensevoice-offline-asr-vad" ContentTemplate="{DataTemplate local:SensevoiceOfflineAsrVad}"/>
+        <ShellContent Title="whisper-offline-asr-vad" ContentTemplate="{DataTemplate local:WhisperOfflineAsrVad}"/>
     </FlyoutItem>
-    <FlyoutItem Title="k2-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:K2TransducerOfflineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="k2-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:K2TransducerOfflineAsrVad}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="k2-online-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:K2TransducerOnlineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="Moonshine-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:MoonshineOfflineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="Moonshine-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:MoonshineOfflineAsrVad}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="Moonshine-online-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:MoonshineOnlineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="paraformer-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:ParaformerOfflineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="paraformer-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:ParaformerOfflineAsrVad}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="paraformer-online-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:ParaformerOnlineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="sensevoice-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:SensevoiceOfflineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="sensevoice-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:SensevoiceOfflineAsrVad}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="wenet-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:WenetOfflineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="wenet-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:WenetOfflineAsrVad}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="wenet-online-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:WenetOnlineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="whisper-offline-asr" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:WhisperOfflineAsr}"/>
-    </FlyoutItem>
-    <FlyoutItem Title="whisper-offline-asr-vad" Route="MainPage">
-        <ShellContent ContentTemplate="{DataTemplate local:WhisperOfflineAsrVad}"/>
+    <FlyoutItem  Title="Real-time speech recognition" Route="MainPage" Icon="cube.png">
+        <ShellContent Title="k2-online-asr" ContentTemplate="{DataTemplate local:K2TransducerOnlineAsr}"/>
+        <ShellContent Title="Moonshine-online-asr" ContentTemplate="{DataTemplate local:MoonshineOnlineAsr}"/>
+        <ShellContent Title="paraformer-online-asr" ContentTemplate="{DataTemplate local:ParaformerOnlineAsr}"/>
+        <ShellContent Title="wenet-online-asr" ContentTemplate="{DataTemplate local:WenetOnlineAsr}"/>
     </FlyoutItem>
 </Shell>
