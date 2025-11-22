@@ -90,8 +90,9 @@ namespace ManySpeech.SpeechProcessing
             return _cttpuncRestorer;
         }
 
-        public void AutoPunctuationWithText(string[]? texts, string? modelBasePath, string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, int splitSize = 15)
+        public string[] AutoPunctuationWithText(string[]? texts, string? modelBasePath, string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, int splitSize = 15)
         {
+            List<string>? resultList = new List<string>();
             if (string.IsNullOrEmpty(modelBasePath))
             {
                 modelBasePath = applicationBase;
@@ -100,13 +101,13 @@ namespace ManySpeech.SpeechProcessing
             if (cttpuncRestorer == null)
             {
                 Console.WriteLine("Init models failure!");
-                return;
+                return resultList.ToArray();
             }
             int totalWordsNum = 0;
             if (texts == null || texts.Length == 0)
             {
                 Console.WriteLine("No text content is read!");
-                return;
+                return resultList.ToArray();
             }
             int wordsNum = 0;
             totalWordsNum += wordsNum;
@@ -121,26 +122,22 @@ namespace ManySpeech.SpeechProcessing
                 string result = cttpuncRestorer.GetResults(text, splitSize: splitSize);
                 if (result != null)
                 {
-                    StringBuilder r = new StringBuilder();
-                    r.Append("{");
-                    r.Append($"\"text\": \"{result}\"");
-                    r.Append("}");
-                    Console.WriteLine(r.ToString());
-                    Console.WriteLine();
+                    resultList.Add(result);
                 }
             }
-            if (_cttpuncRestorer != null)
-            {
-                _cttpuncRestorer.Dispose();
-                _cttpuncRestorer = null;
-            }
+            //if (_cttpuncRestorer != null)
+            //{
+            //    _cttpuncRestorer.Dispose();
+            //    _cttpuncRestorer = null;
+            //}
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
             double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
-            double rtf = totalWordsNum / elapsed_milliseconds * 1000;
+            double wps = totalWordsNum / elapsed_milliseconds * 1000;
             Console.WriteLine("punc_elapsed_seconds:{0}", ((double)(elapsed_milliseconds / 1000)).ToString());
             Console.WriteLine("total_words_number:{0}", totalWordsNum.ToString());
-            Console.WriteLine("words_per_second:{1}", "0".ToString(), rtf.ToString());
+            Console.WriteLine("words_per_second:{1}", "0".ToString(), wps.ToString());
             Console.WriteLine("end!");
+            return resultList.ToArray();
         }
         public void Dispose()
         {

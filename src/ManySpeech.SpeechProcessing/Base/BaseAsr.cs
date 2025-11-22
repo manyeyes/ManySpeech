@@ -1,6 +1,6 @@
 ﻿using ManySpeech.SpeechProcessing.Delegates;
 using ManySpeech.SpeechProcessing.Entities;
-using SpeechProcessing.ASR.Base;
+using ManySpeech.SpeechProcessing.ASR.Base;
 
 namespace ManySpeech.SpeechProcessing.Base
 {

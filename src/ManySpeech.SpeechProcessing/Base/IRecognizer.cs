@@ -1,7 +1,7 @@
 ﻿using ManySpeech.SpeechProcessing.Entities;
 using ManySpeech.SpeechProcessing.Delegates;
 
-namespace SpeechProcessing.ASR.Base
+namespace ManySpeech.SpeechProcessing.ASR.Base
 {
     // 定义所有识别器的通用接口
     public interface IRecognizer
