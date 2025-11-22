@@ -3,7 +3,7 @@ using ManySpeech.SpeechProcessing;
 using ManySpeech.Maui.Sample.Utils;
 using PreProcessUtils;
 using System.Text;
-using SpeechProcessing.ASR.Base;
+using ManySpeech.SpeechProcessing.ASR.Base;
 using ManySpeech.Maui.Sample.Model;
 
 namespace ManySpeech.Maui.Sample;
