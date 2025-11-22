@@ -105,11 +105,11 @@ namespace ManySpeech.SpeechProcessing
             TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
             Console.WriteLine("multi sample vad results:\r\n");
             segments = detector.GetSegmentsByStep(samples);
-            if (_detector != null)
-            {
-                _detector.Dispose();
-                _detector = null;
-            }
+            //if (_detector != null)
+            //{
+            //    _detector.Dispose();
+            //    _detector = null;
+            //}
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
             double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
             Console.WriteLine("recognition_elapsed_milliseconds:{0}", elapsed_milliseconds.ToString());

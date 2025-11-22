@@ -112,7 +112,7 @@ namespace ManySpeech.SpeechProcessing
             }
             return _recognizer;
         }
-        public override async Task<List<AsrResultEntity>> RecognizeAsync(
+        public override async Task<List<AsrResultEntity>> RecognizeAsync( 
             List<List<float[]>> samplesList,
             string modelBasePath,
             string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline",
