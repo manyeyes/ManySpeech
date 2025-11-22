@@ -2,7 +2,7 @@
 using ManySpeech.Maui.Sample.Utils;
 using ManySpeech.SpeechProcessing;
 using PreProcessUtils;
-using SpeechProcessing.ASR.Base;
+using ManySpeech.SpeechProcessing.ASR.Base;
 using System.IO;
 using System.Text;
 
@@ -18,8 +18,10 @@ public partial class OfflineAsr : ContentPage, IDisposable
     // 3.设置 _modelName 值，_modelName = [模型名称]
     private string _modelName = "sensevoice-small-int8-onnx";
     private string _vadModelName = "alifsmnvad-onnx";
+    private string _puncModelName = "alicttransformerpunc-large-zh-en-int8-onnx";
     private Dictionary<string, Dictionary<string, string>> _models;
     private IRecognizer? _recognizer;
+    private AliCTTransformerPuncRestorer? _puncRestorer;
     private RecognizerCategory _recognizerCategory = RecognizerCategory.AliParaformerAsr;
     public OfflineAsr(RecognizerCategory recognizerCategory, string modelName)
     {
@@ -38,7 +40,8 @@ public partial class OfflineAsr : ContentPage, IDisposable
                     //{"tokens.txt","" }
                 }
             },
-            {_vadModelName,new Dictionary<string, string>()}
+            {_vadModelName,new Dictionary<string, string>()},
+            {_puncModelName,new Dictionary<string, string>()}
         };
         LblTitle.Text = string.Join(", ", _models.Keys.ToArray());
     }
@@ -502,13 +505,18 @@ public partial class OfflineAsr : ContentPage, IDisposable
     #region callback
     private void SetOfflineRecognizerCallbackForResult(IRecognizer recognizer, string? recognizerType, string outputFormat = "txt", int startIndex = 0, List<List<int[]>> timestampsList = null)
     {
+        if (_puncRestorer == null)
+        {
+            _puncRestorer = new ManySpeech.SpeechProcessing.AliCTTransformerPuncRestorer();
+        }
         List<int> orderIndexList = timestampsList != null ? new int[timestampsList.Count].ToList() : null;
         var timestamps = timestampsList != null ? ConvertHelper.Convert(timestampsList, orderIndexList).ToList() : null;
         int i = startIndex;
         recognizer.ResetRecognitionResultHandlers();
         recognizer.OnRecognitionResult += async result =>
         {
-            string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">"));
+            string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">")); 
+            text = _puncRestorer.AutoPunctuationWithText(new string[] { text }, _modelBase, _puncModelName).FirstOrDefault();
             if (!string.IsNullOrEmpty(text))
             {
                 int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
@@ -587,6 +595,8 @@ public partial class OfflineAsr : ContentPage, IDisposable
         {
             _recognizer?.Dispose();
             _recognizer = null;
+            _puncRestorer?.Dispose();
+            _puncRestorer = null;
         }
         _disposed = true;
     }
