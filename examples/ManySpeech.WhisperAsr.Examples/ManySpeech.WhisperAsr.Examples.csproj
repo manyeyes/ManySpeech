@@ -10,7 +10,7 @@
 		</PropertyGroup>
 
 		<ItemGroup>
-				<ProjectReference Include="..\..\src\ManySpeech.WhisperAsr\ManySpeech.WhisperAsr.csproj" />
+				<ProjectReference Include="..\..\src\ManySpeech\ManySpeech.csproj" />
 				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 		</ItemGroup>
 
