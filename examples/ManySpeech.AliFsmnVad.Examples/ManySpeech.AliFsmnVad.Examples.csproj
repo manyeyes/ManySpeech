@@ -8,7 +8,7 @@
 				<IsPackable>false</IsPackable>
 		</PropertyGroup>
 		<ItemGroup>
-				<ProjectReference Include="..\..\src\ManySpeech.AliFsmnVad\ManySpeech.AliFsmnVad.csproj" />
+				<ProjectReference Include="..\..\src\ManySpeech\ManySpeech.csproj" />
 				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 		</ItemGroup>
 
