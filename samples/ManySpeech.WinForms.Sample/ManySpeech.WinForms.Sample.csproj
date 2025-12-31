@@ -1,0 +1,65 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+		<PropertyGroup>
+			<!-- 核心：WinForm 专属框架（必须包含 windows 后缀） --><!--
+			<TargetFramework>net8.0-windows</TargetFramework>
+			--><!-- 启用 Windows 窗体设计器支持（可选，开发时用） --><!--
+			<UseWindowsForms>true</UseWindowsForms>
+			--><!-- 启用 AOT 编译（核心配置） --><!--
+			<PublishAot>true</PublishAot>
+			--><!-- 自包含部署（AOT 必须搭配自包含，无需目标机器安装 .NET 运行时） --><!--
+			<SelfContained>true</SelfContained>
+			--><!-- 指定运行时标识符（RID）：Win10+ x64，根据需求调整 --><!--
+			<RuntimeIdentifier>win-x64</RuntimeIdentifier>
+			--><!-- 优化级别：Release 模式（AOT 编译需 Release，Debug 不支持 AOT） --><!--
+			<Configuration>Release</Configuration>
+			--><!-- 可选：裁剪冗余代码（进一步减小体积，需确保无隐式依赖） --><!--
+			<TrimMode>full</TrimMode>
+			--><!-- 可选：启用压缩（减小发布包体积） --><!--
+			--><!--<PublishSingleFile>true</PublishSingleFile>
+			<PublishCompressAssets>true</PublishCompressAssets>-->
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <UseWindowsForms>true</UseWindowsForms>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\AudioInOut\AudioInOut.csproj" />
+    <ProjectReference Include="..\..\src\ManySpeech.SpeechProcessing\ManySpeech.SpeechProcessing.csproj" />
+    <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Images\dotnet_bot_368x173.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Update="FormAbout.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="FormSetting.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="FormASR.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Update="Properties\Resources.Designer.cs">
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+      <DependentUpon>Resources.resx</DependentUpon>
+    </Compile>
+    <Compile Update="OfflineAsr.cs">
+      <SubType>Form</SubType>
+    </Compile>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Update="Properties\Resources.resx">
+      <Generator>ResXFileCodeGenerator</Generator>
+      <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
+  </ItemGroup>
+
+</Project>
