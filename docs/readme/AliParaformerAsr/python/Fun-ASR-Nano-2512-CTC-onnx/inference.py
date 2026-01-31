@@ -14,11 +14,11 @@ import onnxruntime as ort
 # ===================== 配置项（统一管理路径和参数） =====================
 # 基础配置 - 可根据实际环境修改
 CONFIG = {
-    "model_dir": "/to/path/Fun-ASR-Nano-2512",
+    "tokenizer_dir": "/to/path/Fun-ASR-Nano-2512/onnx",
     "onnx_model_dir": "/to/path/Fun-ASR-Nano-2512/onnx",
     "audio_test_path": "/to/path/Fun-ASR-Nano-2512/example/zh.mp3", 
     "blank_id_default": 60514,
-    "target_seq_len": 512,
+    "target_seq_len": 0,  # 大于0时限制解码时长(512≈30秒)
     "warmup_runs": 3,
     "benchmark_runs": 5,
     "intra_op_num_threads": 1,  # 根据CPU核心数调整
@@ -168,7 +168,7 @@ class CTCInference:
 
         padded_encoder_out = np.zeros((batch_size, self.target_seq_len, feat_dim), dtype=np.float32)
         valid_len = min(seq_len, self.target_seq_len)
-        padded_encoder_lens = np.array([valid_len] * batch_size, dtype=np.int32)
+        padded_encoder_lens = np.array([valid_len] * batch_size, dtype=np.int64)
         padded_encoder_out[:, :valid_len, :] = encoder_out_np[:, :valid_len, :]
 
         logging.info(f"编码器输出长度调整: {seq_len} -> {valid_len} (目标长度: {self.target_seq_len})")
@@ -207,7 +207,7 @@ class CTCInference:
 
             # 转换为numpy数组
             speech_np = speech.cpu().numpy().astype(np.float32)
-            speech_lengths_np = speech_lengths.cpu().numpy().astype(np.int32)
+            speech_lengths_np = speech_lengths.cpu().numpy().astype(np.int64)
 
             # 更新统计信息
             self.inference_stats["audio_load_time"] = load_time
@@ -303,9 +303,11 @@ class CTCInference:
                         encoder_inputs = {"speech": speech_np, "speech_lengths": speech_lengths_np}
                         encoder_outputs = self.encoder_session.run(None, encoder_inputs)
                         encoder_out_np = encoder_outputs[0]
+                        encoder_out_lens_np=encoder_outputs[1]
 
                         # 调整长度
-                        encoder_out_np, encoder_out_lens_np = self._pad_or_truncate_encoder_output(encoder_out_np)
+                        if self.target_seq_len>0:
+                            encoder_out_np, encoder_out_lens_np = self._pad_or_truncate_encoder_output(encoder_out_np)
 
                         # 解码器推理
                         decoder_inputs = {"encoder_out": encoder_out_np, "encoder_out_lens": encoder_out_lens_np}
@@ -335,7 +337,8 @@ class CTCInference:
                 encoder_times.append(enc_time)
 
                 # 调整编码器输出长度
-                encoder_out_np, encoder_out_lens_np = self._pad_or_truncate_encoder_output(encoder_out_np)
+                if self.target_seq_len>0:
+                    encoder_out_np, encoder_out_lens_np = self._pad_or_truncate_encoder_output(encoder_out_np)
 
                 # 解码器推理
                 dec_start = time.time()
@@ -413,10 +416,10 @@ class CTCInference:
 
 
 # ===================== 工具函数 =====================
-def get_tokenizer(model_dir: str) -> Optional[object]:
+def get_tokenizer(tokenizer_dir: str) -> Optional[object]:
     """获取tokenizer（用于推理）"""
     try:
-        vocab_path = os.path.join(model_dir, "multilingual.tiktoken")
+        vocab_path = os.path.join(tokenizer_dir, "multilingual.tiktoken")
         tokenizer = SenseVoiceTokenizer(
             language="en",
             task="transcribe",
@@ -446,14 +449,14 @@ def main():
     # 检查必要的模型文件
     if not os.path.exists(encoder_onnx_path):
         logging.error(f"编码器ONNX模型不存在: {encoder_onnx_path}")
-        return
+        # return
 
     if not os.path.exists(decoder_onnx_path):
         logging.error(f"解码器ONNX模型不存在: {decoder_onnx_path}")
-        return
+        # return
 
     # 2. 获取tokenizer
-    tokenizer = get_tokenizer(CONFIG["model_dir"])
+    tokenizer = get_tokenizer(CONFIG["tokenizer_dir"])
 
     # 3. 检查测试音频
     if not os.path.exists(CONFIG["audio_test_path"]):
