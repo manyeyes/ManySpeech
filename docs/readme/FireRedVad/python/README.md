@@ -11,7 +11,7 @@ pip install numpy onnxruntime soundfile kaldi-native-fbank kaldiio
 
 ## 准备模型文件
 需要以下两个文件：
-- **ONNX 模型**：如 `model.onnx`（推荐使用静态缓存维度的版本）
+- **ONNX 模型**：如 `model.onnx`
 - **CMVN 文件**：`cmvn.ark`（Kaldi 格式，用于特征归一化）
 
 ## 使用
@@ -19,7 +19,7 @@ pip install numpy onnxruntime soundfile kaldi-native-fbank kaldiio
     ```bash
     cd /to/path
 
-    # 示例：从 Modelscope 下载（请替换为实际仓库地址）
+    # 示例：从 Modelscope 下载
     git clone https://modelscope.cn/models/manyeyes/FireRedVad-onnx.git
 
     # 进入模型目录
