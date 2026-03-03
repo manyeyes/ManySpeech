@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-FireRedASR-AED-L ONNX 推理：ONNX Encoder + ONNX Decoder
+FireRedASR2-AED ONNX 推理：ONNX Encoder + ONNX Decoder + ONNX CTC
 模型下载
-git clone https://www.modelscope.cn/manyeyes/fireredasr-aed-large-zh-en-onnx-offline-20250124.git
+git clone https://www.modelscope.cn/manyeyes/fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212.git
 """
 
 import os
@@ -22,14 +22,19 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
 
 # ========== 配置路径 ==========
-ONNX_DIR = "/path/to/fireredasr-aed-large-zh-en-onnx-offline-20250124"
+ONNX_DIR = "/path/to/fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212"
 CMVN_FILE = os.path.join(ONNX_DIR, "cmvn.ark")
 DICT_PATH = os.path.join(ONNX_DIR, "tokens.txt")
 ENCODER_ONNX = os.path.join(ONNX_DIR, "encoder.int8.onnx")
 DECODER_ONNX = os.path.join(ONNX_DIR, "decoder.int8.onnx")
+CTC_ONNX = os.path.join(ONNX_DIR, "ctc.int8.onnx")
 
 # 音频文件路径
 WAV_PATH = "/path/to/test_wavs/0.wav"
+# WAV_PATH = "/workspace/FireRedASR2S-main/assets/wav/TEST_MEETING_T0000000001_S00000.wav"
+# WAV_PATH = "/workspace/FireRedASR2S-main/assets/wav/IT0011W0001.wav"
+# WAV_PATH = "/workspace/FireRedASR2S-main/assets/wav/TEST_NET_Y0000000000_-KTKHdZ2fb8_S00000.wav"
+# WAV_PATH = "/workspace/FireRedASR2S-main/assets/wav/BAC009S0764W0121.wav"
 
 # ========== 模型参数 ==========
 d_model = 1280
@@ -203,6 +208,7 @@ def load_onnx_model(path):
 
 encoder_sess = load_onnx_model(ENCODER_ONNX)
 decoder_sess = load_onnx_model(DECODER_ONNX)
+ctc_sess = load_onnx_model(CTC_ONNX)
 
 # 验证 decoder 输入数量
 decoder_inputs = decoder_sess.get_inputs()
@@ -228,6 +234,13 @@ def run_encoder(feats: torch.Tensor, feat_lengths: torch.Tensor):
     if enc_mask.dtype != np.bool_:
         enc_mask = enc_mask.astype(np.bool_)
     return torch.from_numpy(enc_out), torch.from_numpy(enc_len), torch.from_numpy(enc_mask)
+
+# ========== CTC ONNX 推理 ==========
+def run_ctc(enc_out: torch.Tensor):
+    enc_out_np = enc_out.numpy().astype(np.float32)
+    inputs = {'encoder_outputs': enc_out_np}
+    logits = ctc_sess.run(['logits'], inputs)[0]
+    return torch.from_numpy(logits)
 
 # ========== 使用 ONNX Decoder 进行贪心解码 ==========
 def greedy_decode_with_onnx(decoder_sess, enc_out: torch.Tensor, src_mask: torch.Tensor,
@@ -262,8 +275,7 @@ def greedy_decode_with_onnx(decoder_sess, enc_out: torch.Tensor, src_mask: torch
             input_dict[f'cache_{i}'] = cache
 
         # 运行 ONNX
-        # output_names = ['logits'] + [f'new_cache_{i}' for i in range(n_layers_dec)]
-        output_names = ['output'] + [f'new_cache_{i}' for i in range(n_layers_dec)]
+        output_names = ['logits'] + [f'new_cache_{i}' for i in range(n_layers_dec)]
         outputs = decoder_sess.run(output_names, input_dict)
         logits = outputs[0]  # (1, vocab_size)
         new_caches = outputs[1:]  # 每层的新缓存
@@ -292,6 +304,46 @@ def greedy_decode_with_onnx(decoder_sess, enc_out: torch.Tensor, src_mask: torch
         tokens = tokens[:-1]
     return tokens
 
+# ========== 强制对齐获取时间戳 ==========
+def get_ctc_timestamp(ctc_logits: torch.Tensor, tokens: List[int],
+                      blank_id=BLANK_ID, frame_shift=ENC_FRAME_SHIFT_SEC):
+    if len(tokens) == 0:
+        return None, None
+    log_probs = ctc_logits.log_softmax(dim=-1)  # (1, T, C)
+    T = log_probs.size(1)
+    if len(tokens) > T:
+        logger.warning(f"Token length ({len(tokens)}) > log_probs length ({T}), cannot align")
+        return None, None
+    targets = torch.tensor([tokens], dtype=torch.int32)
+    try:
+        alignment, _ = torchaudio.functional.forced_align(log_probs, targets, blank=blank_id)
+    except RuntimeError as e:
+        logger.warning(f"Forced alignment failed: {e}")
+        return None, None
+    alignment = alignment[0].cpu().numpy()  # (T,)
+
+    # 将 alignment 转换为每个 token 的起止时间
+    start_times, end_times = [], []
+    prev_token = blank_id
+    for t, token in enumerate(alignment):
+        if token != blank_id:
+            if token != prev_token:  # 新 token 开始
+                if prev_token != blank_id:
+                    end_times.append(t * frame_shift)
+                start_times.append(t * frame_shift)
+                prev_token = token
+        else:
+            if prev_token != blank_id:
+                end_times.append(t * frame_shift)
+                prev_token = blank_id
+    if prev_token != blank_id:
+        end_times.append(len(alignment) * frame_shift)
+
+    if len(start_times) != len(tokens):
+        logger.warning(f"Align length mismatch: got {len(start_times)} segments, expected {len(tokens)}")
+        return None, None
+    return start_times, end_times
+
 # ========== 主流程 ==========
 def main():
     # 1. 提取特征
@@ -309,6 +361,18 @@ def main():
     # 4. 转换为文本
     text = ''.join([token_dict[t] for t in tokens])
     print(f"\n识别文本: {text}")
+
+    # 5. CTC 推理并获取时间戳
+    ctc_logits = run_ctc(enc_out)
+    start_times, end_times = get_ctc_timestamp(ctc_logits, tokens, blank_id=BLANK_ID)
+
+    if start_times is not None:
+        print("时间戳 (秒):")
+        for i, (s, e) in enumerate(zip(start_times, end_times)):
+            token_str = token_dict[tokens[i]]
+            print(f"  {token_str}: {s:.3f} - {e:.3f}")
+    else:
+        print("无法生成时间戳")
 
 if __name__ == "__main__":
     # 设置日志级别为 DEBUG 以查看每一步的 token 分布
