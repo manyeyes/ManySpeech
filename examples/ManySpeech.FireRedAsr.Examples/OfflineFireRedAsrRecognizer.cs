@@ -20,6 +20,7 @@ namespace ManySpeech.FireRedAsr.Examples
                 }
                 string encoderFilePath = modelBasePath + "./" + modelName + "/encoder.int8.onnx";
                 string decoderFilePath = modelBasePath + "./" + modelName + "/decoder.int8.onnx";
+                string ctcFilePath = applicationBase + "./" + modelName + "/ctc.int8.onnx";
                 string configFilePath = modelBasePath + "./" + modelName + "/config.json";
                 string mvnFilePath = modelBasePath + "./" + modelName + "/am.mvn";
                 string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
@@ -47,7 +48,7 @@ namespace ManySpeech.FireRedAsr.Examples
 
                     // Process encoder path (priority: containing modelAccuracy>last one that matches prefix)
                     var encoderCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("_eb"))
+                        .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("encoder"))
                         .ToList();
                     if (encoderCandidates.Any())
                     {
@@ -59,13 +60,24 @@ namespace ManySpeech.FireRedAsr.Examples
 
                     // Process decoder path
                     var decoderCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model_eb"))
+                        .Where(f => f.FileName.StartsWith("decoder"))
                         .ToList();
                     if (decoderCandidates.Any())
                     {
                         var preferredDecoder = decoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
                         decoderFilePath = preferredDecoder?.TargetPath ?? decoderCandidates.Last().TargetPath;
+                    }
+
+                    // Process ctc path
+                    var ctcCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("ctc"))
+                        .ToList();
+                    if (ctcCandidates.Any())
+                    {
+                        var preferredCtc = ctcCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        ctcFilePath = preferredCtc?.TargetPath ?? ctcCandidates.Last().TargetPath;
                     }
 
                     // Process config paths (take the last one that matches the prefix)
@@ -88,7 +100,7 @@ namespace ManySpeech.FireRedAsr.Examples
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
+                    _offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, ctcFilePath: ctcFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -108,7 +120,7 @@ namespace ManySpeech.FireRedAsr.Examples
             }
             return _offlineRecognizer;
         }
-        public static void OfflineRecognizer(string streamDecodeMethod = "one", string modelName = "fireredasr-aed-large-zh-en-onnx-offline-20250124", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
+        public static void OfflineRecognizer(string streamDecodeMethod = "one", string modelName = "fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {

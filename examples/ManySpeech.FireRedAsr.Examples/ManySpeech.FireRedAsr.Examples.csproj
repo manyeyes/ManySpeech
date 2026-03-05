@@ -11,12 +11,15 @@
 		</PropertyGroup>
 
 		<ItemGroup>
+		  <PackageReference Include="ManySpeech" Version="1.2.1" />
+		</ItemGroup>
+
+		<ItemGroup>
 				<!-- 引用 TrimmerRoots.xml -->
 				<TrimmerRoots Include="Config\TrimmerRoots.xml" />
 		</ItemGroup>
 
 		<ItemGroup>
-				<ProjectReference Include="..\..\src\ManySpeech\ManySpeech.csproj" />
 				<ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
 		</ItemGroup>
 
