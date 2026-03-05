@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 		<PropertyGroup>
-				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst</TargetFrameworks>
+				<TargetFrameworks>net461;net472;net48;netstandard2.0;netstandard2.1;netcoreapp3.1;net6.0;net8.0;net9.0;net9.0-android;net9.0-ios;net9.0-maccatalyst;</TargetFrameworks>
 				<TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">$(TargetFrameworks);net9.0-windows10.0.19041.0</TargetFrameworks>
 				<!-- 平台最低版本要求 -->
 				<SupportedOSPlatformVersion Condition="$(TargetFramework.Contains('-windows'))">10.0.19041.0</SupportedOSPlatformVersion>
@@ -16,14 +16,14 @@
 				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 				<!-- info -->
 				<PackageId>ManySpeech</PackageId>
-				<Version>1.2.0</Version>
+				<Version>1.2.1</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
 				<Summary>c# library for AI Speech Tasks such as ASR, Vocal Extraction, Accompaniment Extraction, Audio Denoising, and Enhancement.</Summary>
 				<Description>AI Speech Solutions for Tasks such as ASR, Vocal Extraction, Accompaniment Extraction, Audio Denoising, and Enhancement, Support models such as paraformer, sensevoice, fireredasr, zipformer, moonshine, wenet, whisper, fsmn-vad, silero-vad, CT Transformer punc, Spleeter, Uvr5, etc, apply ONNX models in various scenarios.</Description>
-				<PackageTags>speech recognition asr paraformer sensevoice ai local privacy</PackageTags>
-				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl>
+				<PackageTags>speech recognition asr vad uvr spleeter ai local privacy</PackageTags>
+				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl> 
 				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>
 				<IncludeSymbols>true</IncludeSymbols>
 				<SymbolPackageFormat>snupkg</SymbolPackageFormat>

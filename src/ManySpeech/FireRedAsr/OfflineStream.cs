@@ -22,7 +22,7 @@ namespace ManySpeech.FireRedAsr
 
         private CustomMetadata _customMetadata;
         private List<Int64> _tokens = new List<Int64>();
-        private List<int> _timestamps = new List<int>();
+        private List<int[]> _timestamps = new List<int[]>();
         private List<float[]> _caches = new List<float[]>();
         private List<float[]> _states = new List<float[]>();
         private static object obj = new object();
@@ -57,7 +57,7 @@ namespace ManySpeech.FireRedAsr
         public AsrInputEntity AsrInputEntity { get => _asrInputEntity; set => _asrInputEntity = value; }
         //public long[] Hyp { get => _hyp; set => _hyp = value; }
         public List<Int64> Tokens { get => _tokens; set => _tokens = value; }
-        public List<int> Timestamps { get => _timestamps; set => _timestamps = value; }
+        public List<int[]> Timestamps { get => _timestamps; set => _timestamps = value; }
         public List<float[]> States { get => _states; set => _states = value; }
         public int Offset { get => _offset; set => _offset = value; }
         public List<float[]> Caches { get => _caches; set => _caches = value; }

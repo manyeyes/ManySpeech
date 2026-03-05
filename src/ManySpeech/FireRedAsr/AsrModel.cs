@@ -7,6 +7,7 @@ namespace ManySpeech.FireRedAsr
     {
         private InferenceSession _encoderSession;
         private InferenceSession _decoderSession;
+        private InferenceSession _ctcSession;
         private CustomMetadata _customMetadata;
         private int _blank_id = 0;
         private int _unk_id = 1;
@@ -14,17 +15,17 @@ namespace ManySpeech.FireRedAsr
         private int _sos_id = 3;
         private int _eos_id = 4;
 
-
         private int _featureDim = 80;
         private int _sampleRate = 16000;
         private int _chunkLength = 0;
         private int _shiftLength = 0;
         private int _required_cache_size = 0;
 
-        public AsrModel(string encoderFilePath, string decoderFilePath, string configFilePath = "", int threadsNum = 2)
+        public AsrModel(string encoderFilePath, string decoderFilePath, string ctcFilePath = "", string configFilePath = "", int threadsNum = 2)
         {
             _encoderSession = initModel(encoderFilePath, threadsNum);
             _decoderSession = initModel(decoderFilePath, threadsNum);
+            _ctcSession = initModel(ctcFilePath, threadsNum);
 
             _customMetadata = new CustomMetadata();
             var encoder_meta = _encoderSession.ModelMetadata.CustomMetadataMap;
@@ -166,6 +167,7 @@ namespace ManySpeech.FireRedAsr
 
         public InferenceSession EncoderSession { get => _encoderSession; set => _encoderSession = value; }
         public InferenceSession DecoderSession { get => _decoderSession; set => _decoderSession = value; }
+        public InferenceSession CtcSession { get => _ctcSession; set => _ctcSession = value; }
         public CustomMetadata CustomMetadata { get => _customMetadata; set => _customMetadata = value; }
         public int ChunkLength { get => _chunkLength; set => _chunkLength = value; }
         public int ShiftLength { get => _shiftLength; set => _shiftLength = value; }
@@ -180,14 +182,52 @@ namespace ManySpeech.FireRedAsr
 
         public InferenceSession initModel(string modelFilePath, int threadsNum = 2)
         {
+            if (string.IsNullOrEmpty(modelFilePath) || !File.Exists(modelFilePath))
+            {
+                return null;
+            }
             Microsoft.ML.OnnxRuntime.SessionOptions options = new Microsoft.ML.OnnxRuntime.SessionOptions();
+            //options.LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_INFO;
             options.LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL;
             //options.AppendExecutionProvider_DML(0);
             options.AppendExecutionProvider_CPU(0);
             //options.AppendExecutionProvider_CUDA(0);
-            options.InterOpNumThreads = threadsNum;
-            InferenceSession onnxSession = new InferenceSession(modelFilePath, options);
+            //options.AppendExecutionProvider_MKLDNN();
+            //options.AppendExecutionProvider_ROCm(0);
+            if (threadsNum > 0)
+                options.InterOpNumThreads = threadsNum;
+            else
+                options.InterOpNumThreads = System.Environment.ProcessorCount;
+            // 启用CPU内存计划
+            options.EnableMemoryPattern = true;
+            // 设置其他优化选项            
+            options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
+
+            InferenceSession onnxSession = null;
+            if (!string.IsNullOrEmpty(modelFilePath) && modelFilePath.IndexOf("/") < 0 && modelFilePath.IndexOf("\\") < 0)
+            {
+                byte[] model = ReadEmbeddedResourceAsBytes(modelFilePath);
+                onnxSession = new InferenceSession(model, options);
+            }
+            else
+            {
+                onnxSession = new InferenceSession(modelFilePath, options);
+            }
             return onnxSession;
+        }
+        private static byte[] ReadEmbeddedResourceAsBytes(string resourceName)
+        {
+            //var assembly = Assembly.GetExecutingAssembly();
+            var assembly = typeof(AsrModel).Assembly;
+            var stream = assembly.GetManifestResourceStream(resourceName) ??
+                         throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
+            byte[] bytes = new byte[stream.Length];
+            stream.Read(bytes, 0, bytes.Length);
+            stream.Seek(0, SeekOrigin.Begin);
+            stream.Close();
+            stream.Dispose();
+
+            return bytes;
         }
     }
 }

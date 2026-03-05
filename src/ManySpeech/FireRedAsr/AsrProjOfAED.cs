@@ -14,6 +14,7 @@ namespace ManySpeech.FireRedAsr
 
         private InferenceSession _encoderSession;
         private InferenceSession _decoderSession;
+        private InferenceSession _ctcSession;
         private CustomMetadata _customMetadata;
         private int _blank_id = 0;
         private int _unk_id = 1;
@@ -30,6 +31,7 @@ namespace ManySpeech.FireRedAsr
         {
             _encoderSession = asrModel.EncoderSession;
             _decoderSession = asrModel.DecoderSession;
+            _ctcSession = asrModel.CtcSession;
             _blank_id = asrModel.Blank_id;
             _unk_id = asrModel.Unk_id;
             _pad_id = asrModel.Pad_id;
@@ -44,6 +46,7 @@ namespace ManySpeech.FireRedAsr
         }
         public InferenceSession EncoderSession { get => _encoderSession; set => _encoderSession = value; }
         public InferenceSession DecoderSession { get => _decoderSession; set => _decoderSession = value; }
+        public InferenceSession CtcSession { get => _ctcSession; set => _ctcSession = value; }
         public CustomMetadata CustomMetadata { get => _customMetadata; set => _customMetadata = value; }
         public int Blank_id { get => _blank_id; set => _blank_id = value; }
         public int Unk_id { get => _unk_id; set => _unk_id = value; }
@@ -242,6 +245,60 @@ namespace ManySpeech.FireRedAsr
                 throw new Exception("DecoderProj failed", ex);
             }
             return decoderOutputEntity;
+        }
+
+        public CtcOutputEntity CtcProj(float[] encoder_outputs, int batchSize = 1)
+        {
+            CustomMetadata customMetadata = _customMetadata;
+            CtcOutputEntity ctcOutputEntity = new CtcOutputEntity();
+            var container = new List<NamedOnnxValue>();
+            var inputMeta = _ctcSession.InputMetadata;
+            try
+            {
+                foreach (var name in inputMeta.Keys)
+                {
+                    if (name == "encoder_outputs")
+                    {
+                        int[] dim = new int[3] { batchSize, encoder_outputs.Length / 1280 / batchSize, 1280 };
+                        var tensor = new DenseTensor<float>(encoder_outputs, dim, false);
+                        container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
+                    }
+                }
+
+                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> ctcResults = null;
+                ctcResults = _ctcSession.Run(container);
+
+                List<float> rescoring_score = new List<float>();
+                if (ctcResults != null)
+                {
+                    var ctcResultsArray = ctcResults.ToArray();
+                    Tensor<float> logits_tensor = ctcResultsArray[0].AsTensor<float>();
+                    List<List<float[]>> logitsList = new List<List<float[]>>();
+                    for (int i = 0; i < logits_tensor.Dimensions[0]; i++)
+                    {
+                        List<float[]> item = new List<float[]>();
+                        int t = logits_tensor.Dimensions[1];
+                        for (int j = 0; j < t; j++)
+                        {
+                            int n = logits_tensor.Dimensions[2];
+                            float[] row = new float[n];
+                            for (int k = 0; k < n; k++)
+                            {
+                                row[k] = logits_tensor[i, j, k];
+                            }
+                            item.Add(row);
+                        }
+                        logitsList.Add(item);
+                    }
+                    logitsList = logitsList.Select(item => item = item.Select(x => x = ComputeHelper.LogCompute(ComputeHelper.SoftmaxCompute(x.Select(y => y / 1.25f).ToArray()))).ToList()).ToList();
+                    ctcOutputEntity.LogitsList = logitsList;
+                }
+            }
+            catch (Exception ex)
+            {
+                //
+            }
+            return ctcOutputEntity;
         }
 
         private float ComputeAttentionScore(float[] prob, Int64[] hyp, int eos, int decode_out_len)
