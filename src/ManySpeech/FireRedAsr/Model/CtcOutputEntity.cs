@@ -1,15 +1,11 @@
 ﻿// See https://github.com/manyeyes for more information
-// Copyright (c)  2025 by manyeyes
+// Copyright (c)  2026 by manyeyes
 namespace ManySpeech.FireRedAsr.Model
 {
     public class CtcOutputEntity
     {
-        private float[]? _probs;
-        private List<Int64[]>? hyps;
-        private List<Int64>? hyps_lens;
+        private List<List<float[]>>? _logitsList;
 
-        public float[]? Probs { get => _probs; set => _probs = value; }
-        public List<Int64[]>? Hyps { get => hyps; set => hyps = value; }
-        public List<Int64>? Hyps_lens { get => hyps_lens; set => hyps_lens = value; }
+        public List<List<float[]>>? LogitsList { get => _logitsList; set => _logitsList = value; }
     }
 }

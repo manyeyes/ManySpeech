@@ -14,7 +14,12 @@ namespace ManySpeech.FireRedAsr
         {
             get;
             set;
-        }  
+        }
+        InferenceSession CtcSession
+        {
+            get;
+            set;
+        }
         CustomMetadata CustomMetadata
         {
             get;
@@ -74,6 +79,7 @@ namespace ManySpeech.FireRedAsr
         List<List<float[]>> unstack_states(List<float[]> states);
         internal EncoderOutputEntity EncoderProj(List<AsrInputEntity> modelInputs);
         internal DecoderOutputEntity DecoderProj(List<List<Int64>> tokensList, float[] encoder_outputs, bool[] src_mask, List<float[]> cacheList);
+        internal CtcOutputEntity CtcProj(float[] encoder_outputs, int batchSize = 1);
         internal void Dispose();
     }
 }
