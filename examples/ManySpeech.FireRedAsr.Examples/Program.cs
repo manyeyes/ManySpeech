@@ -27,12 +27,15 @@ namespace ManySpeech.FireRedAsr.Examples
         private const string EnvThreads = EnvPrefix + "THREADS";       // thread num
                                                                        // The complete model path, eg: path/to/directory/modelname
         private const string _modelBasePath = @"";// eg: path/to/directory. It is the root directory where the model is stored. If it is empty, the program root directory will be read by default.
-                                                  // default-model
+        // default-model
         private static Dictionary<string, string> _defaultOnlineModelName = new Dictionary<string, string>{
-            { "fireredasr", "fireredasr-aed-large-zh-en-onnx-offline-20250124" }
+            { "fireredasr", "fireredasr-aed-large-zh-en-onnx-offline-20250124" },
+            { "fireredasr2", "fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212" }
         };
         private static Dictionary<string, string> _defaultOfflineModelName = new Dictionary<string, string>{
-            { "fireredasr", "fireredasr-aed-large-zh-en-onnx-offline-20250124" } };
+            { "fireredasr", "fireredasr-aed-large-zh-en-onnx-offline-20250124" },
+            { "fireredasr2", "fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212" }
+        };
 
         [STAThread]
         static void Main(string[] args)
@@ -274,8 +277,8 @@ namespace ManySpeech.FireRedAsr.Examples
                 modelBasePath = applicationBase;
             }
 
-            string defaultOnlineModelName = _defaultOnlineModelName.GetValueOrDefault("fireredasr");
-            string defaultOfflineModelName = _defaultOfflineModelName.GetValueOrDefault("fireredasr");
+            string defaultOnlineModelName = _defaultOnlineModelName.GetValueOrDefault("fireredasr2");
+            string defaultOfflineModelName = _defaultOfflineModelName.GetValueOrDefault("fireredasr2");
             modelName = modelName == "default-model" ? (recognizerType == "online" ? defaultOnlineModelName : defaultOfflineModelName) : modelName;
             if (!string.IsNullOrEmpty(modelName))
                 await Task.Run(() => _modelPreparer.ProcessCloneModel(modelBasePath, modelName));
@@ -322,7 +325,7 @@ namespace ManySpeech.FireRedAsr.Examples
         }
 
         #region callback
-        private static async void SetOfflineRecognizerCallbackForResult(string? recognizerType, string outputFormat = "text")
+        private static async void SetOfflineRecognizerCallbackForResult(string? recognizerType, string outputFormat = "json")
         {
             int i = 0;
             OfflineFireRedAsrRecognizer.ResetRecognitionResultHandlers();
@@ -331,16 +334,15 @@ namespace ManySpeech.FireRedAsr.Examples
                 string? text = AEDEmojiHelper.ReplaceTagsWithEmojis(result.Text.Replace("> ", ">"));
                 if (!string.IsNullOrEmpty(text))
                 {
+                    StringBuilder r = new StringBuilder();
                     int resultIndex = recognizerType == "offline" ? i : result.Index + 1;
+                    Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
                     switch (outputFormat)
                     {
                         case "text":
-                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
-                            Console.WriteLine(text);
+                            r.Append($"{result.Text}");
                             break;
                         case "json":
-                            Console.WriteLine($"[{recognizerType} Stream {resultIndex}]");
-                            StringBuilder r = new StringBuilder();
                             r.AppendLine("{");
                             r.AppendLine($"\"text\": \"{text}\",");
                             if (result.Tokens.Length > 0)
@@ -352,9 +354,9 @@ namespace ManySpeech.FireRedAsr.Examples
                                 r.AppendLine($"\"timestamps\":[{string.Join(",", result.Timestamps.Select(x => $"[{x.First()},{x.Last()}]").ToArray())}]");
                             }
                             r.AppendLine("}");
-                            Console.WriteLine($"{r.ToString()}");
                             break;
                     }
+                    Console.WriteLine($"{r.ToString()}");
                 }
                 i++;
             };
