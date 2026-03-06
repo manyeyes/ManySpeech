@@ -108,16 +108,19 @@ namespace ManySpeech.FireRedAsr
                 float[] encoder_outputs = encoderOutputEntity.Output;
                 bool[] src_mask = encoderOutputEntity.Mask;
                 // decoder
-                for (int i = 0; i < maxlen; i++)
+                if (_asrProj.DecoderSession != null)
                 {
-                    DecoderOutputEntity decoderOutputEntity = _asrProj.DecoderProj(tokensList, encoder_outputs, src_mask, stackStatesList);
-                    // 合并对应索引的子列表
-                    tokensList = tokensList.Zip(decoderOutputEntity.TokensList, (a, b) => a.Concat(b).ToList()).ToList();
-                    stackStatesList = decoderOutputEntity.CacheList;
-                    bool allEnd = tokensList.All(item => item.Any() && item.Last() == _asrProj.Eos_id);
-                    if (allEnd)
+                    for (int i = 0; i < maxlen; i++)
                     {
-                        break;
+                        DecoderOutputEntity decoderOutputEntity = _asrProj.DecoderProj(tokensList, encoder_outputs, src_mask, stackStatesList);
+                        // 合并对应索引的子列表
+                        tokensList = tokensList.Zip(decoderOutputEntity.TokensList, (a, b) => a.Concat(b).ToList()).ToList();
+                        stackStatesList = decoderOutputEntity.CacheList;
+                        bool allEnd = tokensList.All(item => item.Any() && item.Last() == _asrProj.Eos_id);
+                        if (allEnd)
+                        {
+                            break;
+                        }
                     }
                 }
                 for (int i = 0; i < batchSize; i++)
@@ -136,6 +139,26 @@ namespace ManySpeech.FireRedAsr
                         double frameShift = 0.04; // 40ms
                         CtcOutputEntity ctcOutputEntity = _asrProj.CtcProj(encoder_outputs, batchSize: batchSize);
                         List<float[]> ctcLogits = ctcOutputEntity.LogitsList[i];
+                        if (tokens.Count == 0)
+                        {
+                            int t = ctcLogits.Count;
+                            int[] item = new int[ctcLogits.Count];
+                            for (int j = 0; j < ctcLogits.Count; j++)
+                            {
+                                if (j > t - t / 30 && ctcLogits[j].Average() / ctcLogits[j][0] > 100000)
+                                {
+                                    ctcLogits[j][0] = ctcLogits[j][0] < -0.000001f && ctcLogits[j][0] > -0.0001f ? ctcLogits[j][0] * 10000000 : ctcLogits[j][0];
+                                }
+                                int token_num = 0;
+                                for (int k = 1; k < ctcLogits[j].Length; k++)
+                                {
+                                    token_num = ctcLogits[j][token_num] > ctcLogits[j][k] ? token_num : k;
+                                }
+                                item[j] = (int)token_num;
+                            }
+                            tokens = RemoveDuplicatesAndBlank(item);
+                            tokensList[i].AddRange(tokens.Select(x => (Int64)x).ToArray());
+                        }
                         (List<double> startTimes, List<double> endTimes) = GetCtcTimestamp(ctcLogits, tokens, blankId: _asrProj.Blank_id, frameShift: frameShift);
                         timestampsList.Add(ConvertToMilliseconds(startTimes, endTimes));
                     }
@@ -165,6 +188,38 @@ namespace ManySpeech.FireRedAsr
             }
 
         }
+
+        /// <summary>
+        /// Removes duplicate tokens and blank tokens from the sequence
+        /// </summary>
+        /// <param name="yseq">Original token sequence</param>
+        /// <param name="blank_id">The identifier for blank token (default: 0)</param>
+        /// <returns>List of tokens with duplicates and blank tokens removed</returns>
+        public List<int> RemoveDuplicatesAndBlank(int[] yseq, int blank_id = 0)
+        {
+            // Null and empty check to avoid exceptions caused by null array
+            if (yseq == null || yseq.Length == 0)
+            {
+                return new List<int>();
+            }
+
+            int prev_token = -1;
+            List<int> decoded_tokens = new List<int>();
+
+            // Iterate through the token sequence to remove duplicates and blank tokens
+            foreach (int token in yseq)
+            {
+                // Only keep: current token != previous token AND current token != blank token
+                if (token != prev_token && token != blank_id)
+                {
+                    decoded_tokens.Add(token);
+                }
+                prev_token = token;
+            }
+
+            return decoded_tokens;
+        }
+
         public static List<int[]> ConvertToMilliseconds(List<double> startTimes, List<double> endTimes)
         {
             if (startTimes.Count != endTimes.Count)

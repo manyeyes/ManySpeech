@@ -66,7 +66,9 @@ namespace ManySpeech.FireRedAsr
         {
             lock (obj)
             {
-                float[] features = _wavFrontend.GetFbank(samples);
+                float[] waveform = new float[samples.Length + 40];
+                Array.Copy(samples, 0, waveform, 0, samples.Length);
+                float[] features = _wavFrontend.GetFbank(waveform);
                 features = _wavFrontend.ApplyCmvn(features);
                 int oLen = 0;
                 if (AsrInputEntity.SpeechLength > 0)
