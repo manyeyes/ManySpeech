@@ -18,6 +18,7 @@ namespace ManySpeech.SpeechProcessing
                 }
                 string encoderFilePath = modelBasePath + "/" + modelName + "/encoder.int8.onnx";
                 string decoderFilePath = modelBasePath + "/" + modelName + "/decoder.int8.onnx";
+                string ctcFilePath = modelBasePath + "./" + modelName + "/ctc.int8.onnx";
                 string configFilePath = modelBasePath + "/" + modelName + "/config.json";
                 string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
                 string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
@@ -45,7 +46,7 @@ namespace ManySpeech.SpeechProcessing
 
                     // Process encoder path (priority: containing modelAccuracy>last one that matches prefix)
                     var encoderCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("_eb"))
+                        .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("encoder"))
                         .ToList();
                     if (encoderCandidates.Any())
                     {
@@ -57,13 +58,24 @@ namespace ManySpeech.SpeechProcessing
 
                     // Process decoder path
                     var decoderCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model_eb"))
+                        .Where(f => f.FileName.StartsWith("decoder"))
                         .ToList();
                     if (decoderCandidates.Any())
                     {
                         var preferredDecoder = decoderCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
                         decoderFilePath = preferredDecoder?.TargetPath ?? decoderCandidates.Last().TargetPath;
+                    }
+
+                    // Process ctc path
+                    var ctcCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("ctc"))
+                        .ToList();
+                    if (ctcCandidates.Any())
+                    {
+                        var preferredCtc = ctcCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        ctcFilePath = preferredCtc?.TargetPath ?? ctcCandidates.Last().TargetPath;
                     }
 
                     // Process config paths (take the last one that matches the prefix)
@@ -81,12 +93,12 @@ namespace ManySpeech.SpeechProcessing
                         .LastOrDefault(f => f.FileName.StartsWith("tokens") && f.FileName.EndsWith(".txt"))
                         ?.TargetPath ?? "";
 
-                    if (string.IsNullOrEmpty(encoderFilePath) || string.IsNullOrEmpty(decoderFilePath) || string.IsNullOrEmpty(tokensFilePath))
+                    if (string.IsNullOrEmpty(encoderFilePath) || (string.IsNullOrEmpty(decoderFilePath) && string.IsNullOrEmpty(ctcFilePath)) || string.IsNullOrEmpty(tokensFilePath))
                     {
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
+                    _recognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, ctcFilePath: ctcFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
