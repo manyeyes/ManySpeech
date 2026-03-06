@@ -72,7 +72,8 @@ namespace ManySpeech.WinForms.Sample
                             "offlineasr", // Non-streaming models
                             new List<string>()
                             {
-                                "fireredasr-aed-large-zh-en-onnx-offline-20250124"
+                                "fireredasr-aed-large-zh-en-onnx-offline-20250124",
+                                "fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212"
                             }
                         }
                     }
