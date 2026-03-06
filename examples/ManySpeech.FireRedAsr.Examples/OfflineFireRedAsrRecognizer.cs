@@ -20,7 +20,7 @@ namespace ManySpeech.FireRedAsr.Examples
                 }
                 string encoderFilePath = modelBasePath + "./" + modelName + "/encoder.int8.onnx";
                 string decoderFilePath = modelBasePath + "./" + modelName + "/decoder.int8.onnx";
-                string ctcFilePath = applicationBase + "./" + modelName + "/ctc.int8.onnx";
+                string ctcFilePath = modelBasePath + "./" + modelName + "/ctc.int8.onnx";
                 string configFilePath = modelBasePath + "./" + modelName + "/config.json";
                 string mvnFilePath = modelBasePath + "./" + modelName + "/am.mvn";
                 string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
