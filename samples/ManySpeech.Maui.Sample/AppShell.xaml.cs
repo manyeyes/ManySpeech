@@ -22,6 +22,8 @@ namespace ManySpeech.Maui.Sample
                             "paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805",
                             "paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805",
                             "paraformer-seaco-large-zh-timestamp-onnx-offline",
+                            "paraformer-large-wenetspeech-chuan-onnx-offline",
+                            "paraformer-large-wenetspeech-chuan-int8-onnx-offline",
                             "sensevoice-small-onnx",
                             "sensevoice-small-int8-onnx",
                             "sensevoice-small-wenetspeech-yue-int8-onnx",
@@ -46,7 +48,8 @@ namespace ManySpeech.Maui.Sample
                         "offline", // Non-streaming models
                         new List<string>()
                         {
-                            "fireredasr-aed-large-zh-en-onnx-offline-20250124"
+                            "fireredasr-aed-large-zh-en-onnx-offline-20250124",
+                            "fireredasr2-aed-large-zh-en-int8-onnx-offline-20260212"
                         }
                     }
                 }
