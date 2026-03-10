@@ -5,7 +5,7 @@
  * Model Download:
  * Please read README.md
  */
-namespace ManySpeech.AliCTTransformerPunc.Examples
+namespace ManySpeech.TextPunc.Examples
 {
     internal static partial class Program
     {
@@ -18,7 +18,10 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
         private const string EnvThreads = EnvPrefix + "THREADS";
         private const string _modelBasePath = @"";
         private static Dictionary<string, string> _defaultModelName = new Dictionary<string, string>{
-            { "alicttransformer", "alicttransformerpunc-large-zh-en-int8-onnx" } };
+            { "alicttransformer", "alicttransformerpunc-large-zh-en-int8-onnx" },
+            { "fireredpunc", "FireRedPunc-zh-en-onnx" },
+            { "alicttransformer-mge","alicttransformerpunc-zh-en-mge-int8-onnx" }
+        };
         private static int i = 0;
 
         [STAThread]
@@ -254,7 +257,7 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
 
             // 处理默认模型名称
             if (modelName == "default-model")
-                modelName = _defaultModelName["alicttransformer"];
+                modelName = _defaultModelName["alicttransformer-mge"];
 
             // 打印配置信息
             PrintConfig(modelBasePath, modelName, modelAccuracy, threads, splitSize, inputType, config);
@@ -265,7 +268,7 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                 if (inputType == "files")
                 {
                     string[] files = (string[])config["files"];
-                    AutoPunctuationWithFile(
+                    PuncRestorerWithFile(
                         modelName: modelName,
                         modelAccuracy: modelAccuracy,
                         threadsNum: threads,
@@ -277,7 +280,7 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                 else if (inputType == "text")
                 {
                     string? text = config["text"] as string;
-                    AutoPunctuationWithText(
+                    PuncRestorerWithText(
                         modelName: modelName,
                         modelAccuracy: modelAccuracy,
                         threadsNum: threads,
@@ -371,9 +374,9 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                 Console.WriteLine($"  -threads <数量>          线程数（默认: 2，环境变量: {EnvThreads}）");
                 Console.WriteLine($"  -split <大小>            分段大小（默认: 15）"); // 新增说明
                 Console.WriteLine("\n示例1（调用文件处理方法）:");
-                Console.WriteLine("  AliCTTransformerPunc.Examples.exe -files ./test1.txt ./test2.txt -model my-model -split 20");
+                Console.WriteLine("  TextPunc.Examples.exe -files ./test1.txt ./test2.txt -model my-model -split 20");
                 Console.WriteLine("\n示例2（调用文本处理方法）:");
-                Console.WriteLine("  AliCTTransformerPunc.Examples.exe -text \"这是一段测试文本\" -accuracy fp32 -threads 4");
+                Console.WriteLine("  TextPunc.Examples.exe -text \"这是一段测试文本\" -accuracy fp32 -threads 4");
             }
             else
             {
@@ -388,9 +391,9 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                 Console.WriteLine($"  -threads <count>          Thread count (default: 2, env: {EnvThreads})");
                 Console.WriteLine($"  -split <size>             Split size (default: 15)"); // 新增说明
                 Console.WriteLine("\nExample 1 (call file method):");
-                Console.WriteLine("  AliCTTransformerPunc.Examples.exe -files ./test1.txt ./test2.txt -model my-model -split 20");
+                Console.WriteLine("  TextPunc.Examples.exe -files ./test1.txt ./test2.txt -model my-model -split 20");
                 Console.WriteLine("\nExample 2 (call text method):");
-                Console.WriteLine("  AliCTTransformerPunc.Examples.exe -text \"This is a test\" -accuracy fp32 -threads 4");
+                Console.WriteLine("  TextPunc.Examples.exe -text \"This is a test\" -accuracy fp32 -threads 4");
             }
         }
     }

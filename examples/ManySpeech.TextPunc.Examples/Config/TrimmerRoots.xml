@@ -32,7 +32,4 @@
 		
 		<!-- 包含部分媒体相关接口 -->
 		<assembly fullname="System.Windows.Extensions" preserve="all" />
-
-		<!-- 保留程序中直接使用的音频处理类型 -->
-		<!--<assembly fullname="FireRedAsr.Examples" preserve="all" />-->		
 </linker>
