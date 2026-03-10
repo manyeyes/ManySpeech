@@ -16,7 +16,7 @@
 				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 				<!-- info -->
 				<PackageId>ManySpeech</PackageId>
-				<Version>1.2.2</Version>
+				<Version>1.2.3</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>

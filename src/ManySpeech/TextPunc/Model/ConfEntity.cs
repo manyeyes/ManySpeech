@@ -1,11 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using YamlDotNet.Serialization;
+﻿using YamlDotNet.Serialization;
 
-namespace ManySpeech.AliCTTransformerPunc.Model
+namespace ManySpeech.TextPunc.Model
 {
     [YamlSerializable]
     public class ConfEntity
@@ -24,6 +19,7 @@ namespace ManySpeech.AliCTTransformerPunc.Model
         private string[] _punc_list = new string[] { "<unk>", "_", "','", "。", "'?'", "、" };
         private bool _distributed = true;
         private string _version = "0.1.7";
+        private string _model = "ct-transformer";
 
         public int init { get => _init; set => _init = value; }
         public bool use_preprocessor { get => _use_preprocessor; set => _use_preprocessor = value; }
@@ -39,5 +35,6 @@ namespace ManySpeech.AliCTTransformerPunc.Model
         public string version { get => _version; set => _version = value; }
         public ModelConfEntity model_conf { get => _model_conf; set => _model_conf = value; }
         public PunctuationConfEntity punctuation_conf { get => _punctuation_conf; set => _punctuation_conf = value; }
+        public string model { get => _model; set => _model = value; }
     }
 }
