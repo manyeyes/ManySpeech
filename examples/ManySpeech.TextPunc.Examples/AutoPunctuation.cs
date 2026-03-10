@@ -1,14 +1,13 @@
 ﻿using System.Text;
-using ManySpeech.AliCTTransformerPunc;
 
-namespace ManySpeech.AliCTTransformerPunc.Examples
+namespace ManySpeech.TextPunc.Examples
 {
     internal static partial class Program
     {
-        private static CTTransformer? _cttPunc;
-        public static CTTransformer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
+        private static PuncRestorer? _puncRestorer;
+        public static PuncRestorer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
-            if (_cttPunc == null)
+            if (_puncRestorer == null)
             {
                 if (string.IsNullOrEmpty(modelBasePath) || string.IsNullOrEmpty(modelName))
                 {
@@ -66,7 +65,7 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _cttPunc = new CTTransformer(modelFilePath: modelFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
+                    _puncRestorer = new PuncRestorer(modelFilePath: modelFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -84,15 +83,15 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                     Console.WriteLine($"Error occurred: {ex}");
                 }
             }
-            return _cttPunc;
+            return _puncRestorer;
         }
-        public static void AutoPunctuationWithFile(string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, string[]? filePaths = null, string? modelBasePath = null, int splitSize = 15)
+        public static void PuncRestorerWithFile(string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, string[]? filePaths = null, string? modelBasePath = null, int splitSize = 15)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {
                 modelBasePath = applicationBase;
             }
-            CTTransformer cttPunc = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            PuncRestorer cttPunc = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (cttPunc == null)
             {
                 Console.WriteLine("Init models failure!");
@@ -149,10 +148,10 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                 }
                 n++;
             }
-            if (_cttPunc != null)
+            if (_puncRestorer != null)
             {
-                _cttPunc.Dispose();
-                _cttPunc = null;
+                _puncRestorer.Dispose();
+                _puncRestorer = null;
             }
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
             double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
@@ -163,13 +162,13 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
             Console.WriteLine("end!");
         }
 
-        public static void AutoPunctuationWithText(string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, string? str = null, string? modelBasePath = null, int splitSize = 15)
+        public static void PuncRestorerWithText(string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, string? str = null, string? modelBasePath = null, int splitSize = 15)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {
                 modelBasePath = applicationBase;
             }
-            CTTransformer cttPunc = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            PuncRestorer cttPunc = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
             if (cttPunc == null)
             {
                 Console.WriteLine("Init models failure!");
@@ -200,10 +199,10 @@ namespace ManySpeech.AliCTTransformerPunc.Examples
                     Console.WriteLine();
                 }
             }
-            if (_cttPunc != null)
+            if (_puncRestorer != null)
             {
-                _cttPunc.Dispose();
-                _cttPunc = null;
+                _puncRestorer.Dispose();
+                _puncRestorer = null;
             }
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
             double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
