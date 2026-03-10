@@ -21,7 +21,7 @@ public partial class OfflineAsr : ContentPage, IDisposable
     private string _puncModelName = "alicttransformerpunc-large-zh-en-int8-onnx";
     private Dictionary<string, Dictionary<string, string>> _models;
     private IRecognizer? _recognizer;
-    private AliCTTransformerPuncRestorer? _puncRestorer;
+    private TextPuncRestorer? _puncRestorer;
     private RecognizerCategory _recognizerCategory = RecognizerCategory.AliParaformerAsr;
     public OfflineAsr(RecognizerCategory recognizerCategory, string modelName)
     {
@@ -507,7 +507,7 @@ public partial class OfflineAsr : ContentPage, IDisposable
     {
         if (_puncRestorer == null)
         {
-            _puncRestorer = new ManySpeech.SpeechProcessing.AliCTTransformerPuncRestorer();
+            _puncRestorer = new ManySpeech.SpeechProcessing.TextPuncRestorer();
         }
         List<int> orderIndexList = timestampsList != null ? new int[timestampsList.Count].ToList() : null;
         var timestamps = timestampsList != null ? ConvertHelper.Convert(timestampsList, orderIndexList).ToList() : null;
