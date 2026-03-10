@@ -1,17 +1,16 @@
-﻿using ManySpeech.AliCTTransformerPunc;
-using System.Text;
+﻿using ManySpeech.TextPunc;
 
 namespace ManySpeech.SpeechProcessing
 {
-    public partial class AliCTTransformerPuncRestorer : IDisposable
+    public partial class TextPuncRestorer : IDisposable
     {
         public bool _disposed = false;
 
         private string applicationBase = AppDomain.CurrentDomain.BaseDirectory;
-        private CTTransformer? _cttpuncRestorer;
-        public CTTransformer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
+        private PuncRestorer? _puncRestorer;
+        public PuncRestorer InitOfflineRecognizer(string modelName, string modelBasePath, string modelAccuracy = "int8", int threadsNum = 2)
         {
-            if (_cttpuncRestorer == null)
+            if (_puncRestorer == null)
             {
                 if (string.IsNullOrEmpty(modelBasePath) || string.IsNullOrEmpty(modelName))
                 {
@@ -69,7 +68,7 @@ namespace ManySpeech.SpeechProcessing
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _cttpuncRestorer = new CTTransformer(modelFilePath: modelFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
+                    _puncRestorer = new PuncRestorer(modelFilePath: modelFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -87,7 +86,7 @@ namespace ManySpeech.SpeechProcessing
                     Console.WriteLine($"Error occurred: {ex}");
                 }
             }
-            return _cttpuncRestorer;
+            return _puncRestorer;
         }
 
         public string[] AutoPunctuationWithText(string[]? texts, string? modelBasePath, string modelName = "alicttransformerpunc-large-zh-en-int8-onnx", string modelAccuracy = "int8", int threadsNum = 2, int splitSize = 15)
@@ -97,8 +96,8 @@ namespace ManySpeech.SpeechProcessing
             {
                 modelBasePath = applicationBase;
             }
-            CTTransformer cttpuncRestorer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
-            if (cttpuncRestorer == null)
+            PuncRestorer puncRestorer = InitOfflineRecognizer(modelName, modelBasePath, modelAccuracy, threadsNum);
+            if (puncRestorer == null)
             {
                 Console.WriteLine("Init models failure!");
                 return resultList.ToArray();
@@ -119,16 +118,16 @@ namespace ManySpeech.SpeechProcessing
                 {
                     continue;
                 }
-                string result = cttpuncRestorer.GetResults(text, splitSize: splitSize);
+                string result = puncRestorer.GetResults(text, splitSize: splitSize);
                 if (result != null)
                 {
                     resultList.Add(result);
                 }
             }
-            //if (_cttpuncRestorer != null)
+            //if (_puncRestorer != null)
             //{
-            //    _cttpuncRestorer.Dispose();
-            //    _cttpuncRestorer = null;
+            //    _puncRestorer.Dispose();
+            //    _puncRestorer = null;
             //}
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
             double elapsed_milliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
@@ -143,8 +142,8 @@ namespace ManySpeech.SpeechProcessing
         {
             if (!_disposed)
             {
-                _cttpuncRestorer?.Dispose();
-                _cttpuncRestorer = default;
+                _puncRestorer?.Dispose();
+                _puncRestorer = default;
                 _disposed = true;
             }
         }
