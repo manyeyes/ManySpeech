@@ -1,7 +1,7 @@
 ﻿using Microsoft.ML.OnnxRuntime;
 using System.Reflection;
 
-namespace ManySpeech.AliCTTransformerPunc
+namespace ManySpeech.TextPunc
 {
     internal class PuncModel
     {

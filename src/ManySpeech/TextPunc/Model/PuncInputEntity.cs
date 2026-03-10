@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace ManySpeech.AliCTTransformerPunc.Model
+namespace ManySpeech.TextPunc.Model
 {
     public class PuncInputEntity
     {

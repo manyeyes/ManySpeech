@@ -5,14 +5,14 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-using ManySpeech.AliCTTransformerPunc.Model;
+using ManySpeech.TextPunc.Model;
 
-namespace ManySpeech.AliCTTransformerPunc.Utils
+namespace ManySpeech.TextPunc.Utils
 {
     // 源生成器的上下文配置
     [JsonSourceGenerationOptions(WriteIndented = true)] // 配置序列化选项
     [JsonSerializable(typeof(ConfEntity))] // 指定需要序列化的类型
-    public partial class AliCTTransformerPuncJsonContext : JsonSerializerContext
+    public partial class TextPuncJsonContext : JsonSerializerContext
     {
         // 生成器会自动填充实现
     }
@@ -83,7 +83,7 @@ namespace ManySpeech.AliCTTransformerPunc.Utils
                              throw new FileNotFoundException($"Embedded resource '{jsonFilePath}' not found.");
                 using (var jsonReader = new StreamReader(stream))
                 {
-                    info = JsonSerializer.Deserialize(jsonReader.ReadToEnd(), AliCTTransformerPuncJsonContext.Default.ConfEntity);
+                    info = JsonSerializer.Deserialize(jsonReader.ReadToEnd(), TextPuncJsonContext.Default.ConfEntity);
                     jsonReader.Close();
                 }
             }
@@ -91,31 +91,12 @@ namespace ManySpeech.AliCTTransformerPunc.Utils
             {
                 using (var jsonReader = File.OpenText(jsonFilePath))
                 {
-                    info = JsonSerializer.Deserialize(jsonReader.ReadToEnd(), AliCTTransformerPuncJsonContext.Default.ConfEntity);
+                    info = JsonSerializer.Deserialize(jsonReader.ReadToEnd(), TextPuncJsonContext.Default.ConfEntity);
                     jsonReader.Close();
                 }
             }
             return info;
         }
-
-        public static string[] ReadTokens(string tokensFilePath)
-        {
-            string[] tokens = null;
-            if (!string.IsNullOrEmpty(tokensFilePath) && tokensFilePath.IndexOf("/") < 0 && tokensFilePath.IndexOf("\\") < 0)
-            {
-                var assembly = Assembly.GetExecutingAssembly();
-                var stream = assembly.GetManifestResourceStream(tokensFilePath) ??
-                             throw new FileNotFoundException($"Embedded resource '{tokensFilePath}' not found.");
-                using (var reader = new StreamReader(stream))
-                {
-                    tokens = reader.ReadToEnd().Split('\n');//Environment.NewLine
-                }
-            }
-            else
-            {
-                tokens = File.ReadAllLines(tokensFilePath);
-            }
-            return tokens;
-        }
+                
     }
 }
