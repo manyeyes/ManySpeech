@@ -2,20 +2,20 @@
 using ManySpeech.WhisperAsr;
 using PreProcessUtils;
 
-namespace ManySpeech.SpeechLid.Examples
+namespace ManySpeech.WhisperAsr.Examples
 {
-    internal partial class OfflineWhisperAsrLanguage : BaseLid
+    internal static partial class Program
     {
-        public static LanguageDetection initWhisperAsrLanguageDetection(string modelName)
+        public static LanguageID initOfflineLanguageID(string modelName)
         {
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
             string configFilePath = applicationBase + "./" + modelName + "/conf.json";
-            LanguageDetection languageDetection = new LanguageDetection(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: 1);
+            LanguageID languageDetection = new LanguageID(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: 1);
             return languageDetection;
         }
 
-        public static void WhisperAsrLanguageDetection(List<float[]>? samples = null)
+        public static void test_OfflineLanguageID(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);
@@ -41,7 +41,7 @@ namespace ManySpeech.SpeechLid.Examples
             {
                 samplesList.Add(samples);
             }
-            LanguageDetection languageDetection = initWhisperAsrLanguageDetection(modelName);
+            LanguageID languageDetection = initOfflineLanguageID(modelName);
             TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);            
             List<OfflineStream> streams = new List<OfflineStream>();
             foreach (List<float[]> samplesListItem in samplesList)

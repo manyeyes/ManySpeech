@@ -6,10 +6,10 @@ namespace ManySpeech.WhisperAsr.Examples
         [STAThread]
         private static void Main()
         {
-            test_WhisperAsrLanguageDetection();
-            test_WhisperAsrOfflineRecognizer();
-            test_WhisperAsrTranscribeRecognizer();
-            test_WhisperAsrOnlineRecognizer();
+            test_OfflineLanguageID();
+            test_OfflineRecognizer();
+            test_TranscribeRecognizer();
+            test_OnlineRecognizer();
         }
     }
 }

@@ -9,7 +9,7 @@ namespace ManySpeech.FireRedAsr
     /// offline recognizer package
     /// Copyright (c)  2026 by manyeyes
     /// </summary>
-    public class LanguageDetection : IDisposable
+    public class LanguageID : IDisposable
     {
         private bool _disposed;
 
@@ -17,7 +17,7 @@ namespace ManySpeech.FireRedAsr
         private string _mvnFilePath;
         private IOfflineProj _offlineProj;
 
-        public LanguageDetection(string encoderFilePath, string decoderFilePath, string mvnFilePath, string tokensFilePath, string configFilePath = "", int threadsNum = 1)
+        public LanguageID(string encoderFilePath, string decoderFilePath, string mvnFilePath, string tokensFilePath, string configFilePath = "", int threadsNum = 1)
         {
             _mvnFilePath = mvnFilePath;
             OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
@@ -203,7 +203,7 @@ namespace ManySpeech.FireRedAsr
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-        ~LanguageDetection()
+        ~LanguageID()
         {
             Dispose(_disposed);
         }

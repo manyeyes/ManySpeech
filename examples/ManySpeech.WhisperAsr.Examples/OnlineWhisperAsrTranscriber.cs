@@ -6,7 +6,7 @@ namespace ManySpeech.WhisperAsr.Examples
 {
     internal static partial class Program
     {
-        public static TranscribeRecognizer initWhisperAsrTranscribeRecognizer(string modelName)
+        public static TranscribeRecognizer initTranscribeRecognizer(string modelName)
         {
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
@@ -15,7 +15,7 @@ namespace ManySpeech.WhisperAsr.Examples
             return transcribeRecognizer;
         }
 
-        public static void test_WhisperAsrTranscribeRecognizer(List<float[]>? samples = null)
+        public static void test_TranscribeRecognizer(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);
@@ -41,7 +41,7 @@ namespace ManySpeech.WhisperAsr.Examples
             {
                 samplesList.Add(samples);
             }
-            TranscribeRecognizer offlineRecognizer = initWhisperAsrTranscribeRecognizer(modelName);
+            TranscribeRecognizer offlineRecognizer = initTranscribeRecognizer(modelName);
             TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
             List<TranscribeStream> streams = new List<TranscribeStream>();
             foreach (List<float[]> samplesListItem in samplesList)

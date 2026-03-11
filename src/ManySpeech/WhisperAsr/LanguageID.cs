@@ -10,7 +10,7 @@ namespace ManySpeech.WhisperAsr
     /// offline recognizer package
     /// Copyright (c)  2024 by manyeyes
     /// </summary>
-    public class LanguageDetection:IDisposable
+    public class LanguageID:IDisposable
     {
         private bool _disposed;
         private Tokenizer _tokenizer;
@@ -21,7 +21,7 @@ namespace ManySpeech.WhisperAsr
         private ModelDimensions? _modelDimensions;
         public OfflineModel OfflineModel { get => _offlineModel; set => _offlineModel = value; }
 
-        public LanguageDetection(string encoderFilePath, string decoderFilePath, ConfEntity? confEntity=null, string configFilePath = "", int threadsNum = 1)
+        public LanguageID(string encoderFilePath, string decoderFilePath, ConfEntity? confEntity=null, string configFilePath = "", int threadsNum = 1)
         {
             try
             {
@@ -279,7 +279,7 @@ namespace ManySpeech.WhisperAsr
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-        ~LanguageDetection()
+        ~LanguageID()
         {
             Dispose(_disposed);
         }
