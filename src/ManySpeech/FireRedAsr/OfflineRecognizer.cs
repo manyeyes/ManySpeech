@@ -15,12 +15,12 @@ namespace ManySpeech.FireRedAsr
 
         private string[] _tokens;
         private string _mvnFilePath;
-        private IAsrProj _asrProj;
+        private IOfflineProj _asrProj;
 
         public OfflineRecognizer(string encoderFilePath, string decoderFilePath, string mvnFilePath, string tokensFilePath, string configFilePath = "", string ctcFilePath = "", int threadsNum = 1)
         {
             _mvnFilePath = mvnFilePath;
-            AsrModel asrModel = new AsrModel(encoderFilePath, decoderFilePath, ctcFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
+            OfflineModel asrModel = new OfflineModel(encoderFilePath, decoderFilePath, ctcFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
             _tokens = File.ReadAllLines(tokensFilePath);
             _asrProj = new AsrProjOfAED(asrModel);
         }
@@ -54,7 +54,7 @@ namespace ManySpeech.FireRedAsr
             }
             List<OfflineStream> streamsWorking = new List<OfflineStream>();
             int contextSize = 1;
-            List<AsrInputEntity> modelInputs = new List<AsrInputEntity>();
+            List<OfflineInputEntity> modelInputs = new List<OfflineInputEntity>();
             List<List<float[]>> statesList = new List<List<float[]>>();
             //List<Int64[]> hypList = new List<Int64[]>();
             List<List<Int64>> tokensList = new List<List<Int64>>();
@@ -62,7 +62,7 @@ namespace ManySpeech.FireRedAsr
             List<OfflineStream> streamsTemp = new List<OfflineStream>();
             foreach (OfflineStream stream in streams)
             {
-                AsrInputEntity asrInputEntity = new AsrInputEntity();
+                OfflineInputEntity asrInputEntity = new OfflineInputEntity();
 
                 asrInputEntity.Speech = stream.GetDecodeChunk();
                 if (asrInputEntity.Speech == null)

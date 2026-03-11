@@ -3,7 +3,7 @@ using ManySpeech.FireRedAsr.Model;
 
 namespace ManySpeech.FireRedAsr
 {
-    internal interface IAsrProj
+    internal interface IOfflineProj
     {
         InferenceSession EncoderSession
         {
@@ -77,7 +77,7 @@ namespace ManySpeech.FireRedAsr
         }
         List<float[]> stack_states(List<List<float[]>> statesList);
         List<List<float[]>> unstack_states(List<float[]> states);
-        internal EncoderOutputEntity EncoderProj(List<AsrInputEntity> modelInputs);
+        internal EncoderOutputEntity EncoderProj(List<OfflineInputEntity> modelInputs);
         internal DecoderOutputEntity DecoderProj(List<List<Int64>> tokensList, float[] encoder_outputs, bool[] src_mask, List<float[]> cacheList);
         internal CtcOutputEntity CtcProj(float[] encoder_outputs, int batchSize = 1);
         internal void Dispose();

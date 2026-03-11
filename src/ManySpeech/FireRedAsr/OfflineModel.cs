@@ -3,7 +3,7 @@ using ManySpeech.FireRedAsr.Model;
 
 namespace ManySpeech.FireRedAsr
 {
-    internal class AsrModel
+    internal class OfflineModel
     {
         private InferenceSession _encoderSession;
         private InferenceSession _decoderSession;
@@ -21,7 +21,7 @@ namespace ManySpeech.FireRedAsr
         private int _shiftLength = 0;
         private int _required_cache_size = 0;
 
-        public AsrModel(string encoderFilePath, string decoderFilePath, string ctcFilePath = "", string configFilePath = "", int threadsNum = 2)
+        public OfflineModel(string encoderFilePath, string decoderFilePath, string ctcFilePath = "", string configFilePath = "", int threadsNum = 2)
         {
             _encoderSession = initModel(encoderFilePath, threadsNum);
             _decoderSession = initModel(decoderFilePath, threadsNum);
@@ -218,7 +218,7 @@ namespace ManySpeech.FireRedAsr
         private static byte[] ReadEmbeddedResourceAsBytes(string resourceName)
         {
             //var assembly = Assembly.GetExecutingAssembly();
-            var assembly = typeof(AsrModel).Assembly;
+            var assembly = typeof(OfflineModel).Assembly;
             var stream = assembly.GetManifestResourceStream(resourceName) ??
                          throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
             byte[] bytes = new byte[stream.Length];
