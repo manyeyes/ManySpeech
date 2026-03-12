@@ -4,7 +4,7 @@ using PreProcessUtils;
 
 namespace ManySpeech.WhisperAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OnlineWhisperAsrTranscriber : BaseAsr
     {
         public static TranscribeRecognizer initTranscribeRecognizer(string modelName)
         {
@@ -15,7 +15,7 @@ namespace ManySpeech.WhisperAsr.Examples
             return transcribeRecognizer;
         }
 
-        public static void test_TranscribeRecognizer(List<float[]>? samples = null)
+        public static void TranscribeRecognizer(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);

@@ -4,7 +4,7 @@ using PreProcessUtils;
 
 namespace ManySpeech.WhisperAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OfflineWhisperAsrLanguageID : BaseAsr
     {
         public static LanguageID initOfflineLanguageID(string modelName)
         {
@@ -15,7 +15,7 @@ namespace ManySpeech.WhisperAsr.Examples
             return languageDetection;
         }
 
-        public static void test_OfflineLanguageID(List<float[]>? samples = null)
+        public static void OfflineLanguageID(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);
@@ -42,7 +42,7 @@ namespace ManySpeech.WhisperAsr.Examples
                 samplesList.Add(samples);
             }
             LanguageID languageDetection = initOfflineLanguageID(modelName);
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);            
+            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
             List<OfflineStream> streams = new List<OfflineStream>();
             foreach (List<float[]> samplesListItem in samplesList)
             {

@@ -4,7 +4,7 @@ using System.Diagnostics;
 
 namespace ManySpeech.WhisperAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OnlineWhisperAsrRecognizer : BaseAsr
     {
         public static OnlineRecognizer initOnlineRecognizer(string modelName)
         {
@@ -15,7 +15,7 @@ namespace ManySpeech.WhisperAsr.Examples
             return onlineRecognizer;
         }
 
-        public static void test_OnlineRecognizer(List<float[]>? samples = null)
+        public static void OnlineRecognizer(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             OnlineRecognizer onlineRecognizer = initOnlineRecognizer(modelName);
