@@ -30,14 +30,14 @@ namespace ManySpeech.FireRedAsr
         private static object obj = new object();
         private int _offset = 0;
         private int _required_cache_size = 0;
-        internal OfflineStream(string mvnFilePath, IOfflineProj asrProj)
+        internal OfflineStream(string mvnFilePath, IOfflineProj offlineProj)
         {
-            if (asrProj != null)
+            if (offlineProj != null)
             {
-                _featureDim = asrProj.FeatureDim;
-                _sampleRate = asrProj.SampleRate;
-                _customMetadata = asrProj.CustomMetadata;
-                _required_cache_size = asrProj.Required_cache_size;
+                _featureDim = offlineProj.FeatureDim;
+                _sampleRate = offlineProj.SampleRate;
+                _customMetadata = offlineProj.CustomMetadata;
+                _required_cache_size = offlineProj.Required_cache_size;
                 if (_required_cache_size > 0)
                 {
                     _offset = _required_cache_size;

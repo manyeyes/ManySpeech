@@ -15,19 +15,19 @@ namespace ManySpeech.FireRedAsr
 
         private string[] _tokens;
         private string _mvnFilePath;
-        private IOfflineProj _asrProj;
+        private IOfflineProj _offlineProj;
 
         public OfflineRecognizer(string encoderFilePath, string decoderFilePath, string mvnFilePath, string tokensFilePath, string configFilePath = "", string ctcFilePath = "", int threadsNum = 1)
         {
             _mvnFilePath = mvnFilePath;
-            OfflineModel asrModel = new OfflineModel(encoderFilePath, decoderFilePath, ctcFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
+            OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, ctcFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
             _tokens = File.ReadAllLines(tokensFilePath);
-            _asrProj = new AsrProjOfAED(asrModel);
+            _offlineProj = new AsrProjOfAED(offlineModel);
         }
 
         public OfflineStream CreateOfflineStream()
         {
-            OfflineStream onlineStream = new OfflineStream(_mvnFilePath, _asrProj);
+            OfflineStream onlineStream = new OfflineStream(_mvnFilePath, _offlineProj);
             return onlineStream;
         }
         public OfflineRecognizerResultEntity GetResult(OfflineStream stream)
@@ -90,8 +90,8 @@ namespace ManySpeech.FireRedAsr
                 int batchSize = modelInputs.Count;
                 int offset = streams[0].Offset;
                 List<float[]> stackStatesList = new List<float[]>();
-                stackStatesList = _asrProj.stack_states(statesList);
-                EncoderOutputEntity encoderOutputEntity = _asrProj.EncoderProj(modelInputs);
+                stackStatesList = _offlineProj.stack_states(statesList);
+                EncoderOutputEntity encoderOutputEntity = _offlineProj.EncoderProj(modelInputs);
                 // conf args
                 int beamSize = 1;
                 int nbest = 1;
@@ -108,15 +108,15 @@ namespace ManySpeech.FireRedAsr
                 float[] encoder_outputs = encoderOutputEntity.Output;
                 bool[] src_mask = encoderOutputEntity.Mask;
                 // decoder
-                if (_asrProj.DecoderSession != null)
+                if (_offlineProj.DecoderSession != null)
                 {
                     for (int i = 0; i < maxlen; i++)
                     {
-                        DecoderOutputEntity decoderOutputEntity = _asrProj.DecoderProj(tokensList, encoder_outputs, src_mask, stackStatesList);
+                        DecoderOutputEntity decoderOutputEntity = _offlineProj.DecoderProj(tokensList, encoder_outputs, src_mask, stackStatesList);
                         // 合并对应索引的子列表
                         tokensList = tokensList.Zip(decoderOutputEntity.TokensList, (a, b) => a.Concat(b).ToList()).ToList();
                         stackStatesList = decoderOutputEntity.CacheList;
-                        bool allEnd = tokensList.All(item => item.Any() && item.Last() == _asrProj.Eos_id);
+                        bool allEnd = tokensList.All(item => item.Any() && item.Last() == _offlineProj.Eos_id);
                         if (allEnd)
                         {
                             break;
@@ -128,16 +128,16 @@ namespace ManySpeech.FireRedAsr
                     List<int> tokens = tokensList[i].Select(x => (int)x).ToList();
                     tokens = tokens.Skip(1).ToList();
                     // 找到第一个 Eos_id 的索引
-                    int eosIndex = tokens.FindIndex(t => t == _asrProj.Eos_id) + 1;
+                    int eosIndex = tokens.FindIndex(t => t == _offlineProj.Eos_id) + 1;
                     // 如果找到 Eos_id，移除它及其后面的所有元素
                     if (eosIndex != -1)
                     {
                         tokens.RemoveRange(eosIndex, tokens.Count - eosIndex);
                     }
-                    if (_asrProj.CtcSession != null)
+                    if (_offlineProj.CtcSession != null)
                     {
                         double frameShift = 0.04; // 40ms
-                        CtcOutputEntity ctcOutputEntity = _asrProj.CtcProj(encoder_outputs, batchSize: batchSize);
+                        CtcOutputEntity ctcOutputEntity = _offlineProj.CtcProj(encoder_outputs, batchSize: batchSize);
                         List<float[]> ctcLogits = ctcOutputEntity.LogitsList[i];
                         if (tokens.Count == 0)
                         {
@@ -159,7 +159,7 @@ namespace ManySpeech.FireRedAsr
                             tokens = RemoveDuplicatesAndBlank(item);
                             tokensList[i].AddRange(tokens.Select(x => (Int64)x).ToArray());
                         }
-                        (List<double> startTimes, List<double> endTimes) = GetCtcTimestamp(ctcLogits, tokens, blankId: _asrProj.Blank_id, frameShift: frameShift);
+                        (List<double> startTimes, List<double> endTimes) = GetCtcTimestamp(ctcLogits, tokens, blankId: _offlineProj.Blank_id, frameShift: frameShift);
                         timestampsList.Add(ConvertToMilliseconds(startTimes, endTimes));
                     }
                     else
@@ -463,9 +463,9 @@ namespace ManySpeech.FireRedAsr
             {
                 if (disposing)
                 {
-                    if (_asrProj != null)
+                    if (_offlineProj != null)
                     {
-                        _asrProj.Dispose();
+                        _offlineProj.Dispose();
                     }
                     if (_tokens != null)
                     {
