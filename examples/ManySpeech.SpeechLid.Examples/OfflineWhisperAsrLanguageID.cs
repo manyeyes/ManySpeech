@@ -1,21 +1,21 @@
-﻿using ManySpeech.WhisperAsr;
-using ManySpeech.WhisperAsr.Model;
+﻿using ManySpeech.WhisperAsr.Model;
+using ManySpeech.WhisperAsr;
 using PreProcessUtils;
 
-namespace ManySpeech.WhisperAsr.Examples
+namespace ManySpeech.SpeechLid.Examples
 {
-    internal partial class OnlineWhisperAsrTranscriber : BaseAsr
+    internal partial class OfflineWhisperAsrLanguageID : BaseLid
     {
-        public static TranscribeRecognizer initTranscribeRecognizer(string modelName)
+        public static LanguageID initOfflineLanguageID(string modelName)
         {
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
             string configFilePath = applicationBase + "./" + modelName + "/conf.json";
-            WhisperAsr.TranscribeRecognizer transcribeRecognizer = new WhisperAsr.TranscribeRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: 1);
-            return transcribeRecognizer;
+            LanguageID languageDetection = new LanguageID(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: 1);
+            return languageDetection;
         }
 
-        public static void TranscribeRecognizer(List<float[]>? samples = null)
+        public static void OfflineLanguageID(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);
@@ -41,25 +41,23 @@ namespace ManySpeech.WhisperAsr.Examples
             {
                 samplesList.Add(samples);
             }
-            TranscribeRecognizer offlineRecognizer = initTranscribeRecognizer(modelName);
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-            List<TranscribeStream> streams = new List<TranscribeStream>();
+            LanguageID languageDetection = initOfflineLanguageID(modelName);
+            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);            
+            List<OfflineStream> streams = new List<OfflineStream>();
             foreach (List<float[]> samplesListItem in samplesList)
             {
-                TranscribeStream stream = offlineRecognizer.CreateTranscribeStream();
+                WhisperAsr.OfflineStream stream = languageDetection.CreateOfflineStream();
                 foreach (float[] sample in samplesListItem)
                 {
                     stream.AddSamples(sample);
                 }
                 streams.Add(stream);
             }
-            List<TranscribeRecognizerResultEntity> results_batch = offlineRecognizer.GetResults(streams);
-            foreach (TranscribeRecognizerResultEntity result in results_batch)
+            List<OfflineRecognizerResultEntity> results_batch = languageDetection.GetResults(streams);
+            foreach (OfflineRecognizerResultEntity result in results_batch)
             {
-                Console.WriteLine(result.Text);
-                System.Diagnostics.Debug.WriteLine(result.Text);
+                Console.WriteLine(result.Language);
                 Console.WriteLine("");
-                System.Diagnostics.Debug.WriteLine("");
             }
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
             double elapsedMilliseconds = end_time.TotalMilliseconds - start_time.TotalMilliseconds;

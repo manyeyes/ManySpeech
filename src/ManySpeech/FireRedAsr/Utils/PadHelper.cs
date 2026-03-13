@@ -4,12 +4,12 @@ namespace ManySpeech.FireRedAsr.Utils
 {
     internal static class PadHelper
     {
-        public static float[] PadSequence(List<AsrInputEntity> modelInputs)
+        public static float[] PadSequence(List<OfflineInputEntity> modelInputs)
         {
             List<float[]?> floats = modelInputs.Where(x => x != null).Select(x => x.Speech).ToList();
             return PadSequence(floats);
         }
-        public static float[] PadSequence(List<AsrInputEntity> modelInputs, int tailLen = 0)
+        public static float[] PadSequence(List<OfflineInputEntity> modelInputs, int tailLen = 0)
         {
             List<float[]?> floats = modelInputs.Where(x => x != null).Select(x => x.Speech).ToList();
             return PadSequence(floats, tailLen: tailLen);
@@ -63,7 +63,7 @@ namespace ManySpeech.FireRedAsr.Utils
             return speech;
         }
 
-        public static float[] PadSequence_unittest(List<AsrInputEntity> modelInputs)
+        public static float[] PadSequence_unittest(List<OfflineInputEntity> modelInputs)
         {
             int max_speech_length = modelInputs.Max(x => x.SpeechLength);
             int speech_length = max_speech_length * modelInputs.Count;

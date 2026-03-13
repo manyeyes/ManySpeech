@@ -4,9 +4,9 @@ using PreProcessUtils;
 
 namespace ManySpeech.WhisperAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OfflinneWhisperAsrRecognizer : BaseAsr
     {
-        public static OfflineRecognizer initWhisperAsrOfflineRecognizer(string modelName)
+        public static OfflineRecognizer initOfflineRecognizer(string modelName)
         {
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
@@ -15,7 +15,7 @@ namespace ManySpeech.WhisperAsr.Examples
             return offlineRecognizer;
         }
 
-        public static void test_WhisperAsrOfflineRecognizer(List<float[]>? samples = null)
+        public static void OfflineRecognizer(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);
@@ -41,8 +41,8 @@ namespace ManySpeech.WhisperAsr.Examples
             {
                 samplesList.Add(samples);
             }
-            OfflineRecognizer offlineRecognizer = initWhisperAsrOfflineRecognizer(modelName);
-            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);            
+            OfflineRecognizer offlineRecognizer = initOfflineRecognizer(modelName);
+            TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
             List<OfflineStream> streams = new List<OfflineStream>();
             foreach (List<float[]> samplesListItem in samplesList)
             {

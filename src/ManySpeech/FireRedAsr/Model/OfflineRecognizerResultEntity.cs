@@ -8,8 +8,9 @@ namespace ManySpeech.FireRedAsr.Model
     /// </summary>
     public class OfflineRecognizerResultEntity
     {
-        private List<string>? _tokens=new List<string>();
-        private List<int[]>? _timestamps=new List<int[]>();
+        private string? _language = null;
+        private List<string>? _tokens = new List<string>();
+        private List<int[]>? _timestamps = new List<int[]>();
         /// <summary>
         /// recognizer result
         /// </summary>
@@ -27,6 +28,6 @@ namespace ManySpeech.FireRedAsr.Model
         /// timestamps
         /// </summary>
         public List<int[]>? Timestamps { get => _timestamps; set => _timestamps = value; }
-
+        public string? Language { get => _language; set => _language = value; }
     }
 }

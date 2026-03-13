@@ -4,9 +4,9 @@ using System.Diagnostics;
 
 namespace ManySpeech.WhisperAsr.Examples
 {
-    internal static partial class Program
+    internal partial class OnlineWhisperAsrRecognizer : BaseAsr
     {
-        public static OnlineRecognizer initWhisperAsrOnlineRecognizer(string modelName)
+        public static OnlineRecognizer initOnlineRecognizer(string modelName)
         {
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
@@ -15,10 +15,10 @@ namespace ManySpeech.WhisperAsr.Examples
             return onlineRecognizer;
         }
 
-        public static void test_WhisperAsrOnlineRecognizer(List<float[]>? samples = null)
+        public static void OnlineRecognizer(List<float[]>? samples = null)
         {
             string modelName = "whisper-tiny-onnx";
-            OnlineRecognizer onlineRecognizer = initWhisperAsrOnlineRecognizer(modelName);
+            OnlineRecognizer onlineRecognizer = initOnlineRecognizer(modelName);
             TimeSpan totalDuration = TimeSpan.Zero;
             TimeSpan start_time = TimeSpan.Zero;
             TimeSpan end_time = TimeSpan.Zero;

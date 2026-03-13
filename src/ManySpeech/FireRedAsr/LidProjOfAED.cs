@@ -3,11 +3,10 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 using System.Diagnostics;
 using ManySpeech.FireRedAsr.Model;
 using ManySpeech.FireRedAsr.Utils;
-using System;
 
 namespace ManySpeech.FireRedAsr
 {
-    internal class AsrProjOfAED : IOfflineProj, IDisposable
+    internal class LidProjOfAED : IOfflineProj, IDisposable
     {
         // To detect redundant calls
         private bool _disposed;
@@ -27,7 +26,7 @@ namespace ManySpeech.FireRedAsr
         private int _chunkLength = 0;
         private int _shiftLength = 0;
         private int _required_cache_size = 0;
-        public AsrProjOfAED(OfflineModel offlineModel)
+        public LidProjOfAED(OfflineModel offlineModel)
         {
             _encoderSession = offlineModel.EncoderSession;
             _decoderSession = offlineModel.DecoderSession;
@@ -58,7 +57,7 @@ namespace ManySpeech.FireRedAsr
         public int FeatureDim { get => _featureDim; set => _featureDim = value; }
         public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
         public int Required_cache_size { get => _required_cache_size; set => _required_cache_size = value; }
-        
+
         public List<float[]> stack_states(List<List<float[]>> statesList)
         {
             List<float[]> states = new List<float[]>();
@@ -122,7 +121,7 @@ namespace ManySpeech.FireRedAsr
             {
                 if (name == "input")
                 {
-                    int[] dim = new int[] { batchSize, padSequence.Length / _featureDim/ batchSize, _featureDim };
+                    int[] dim = new int[] { batchSize, padSequence.Length / _featureDim / batchSize, _featureDim };
                     var tensor = new DenseTensor<float>(padSequence, dim, false);
                     container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
                 }
@@ -130,7 +129,7 @@ namespace ManySpeech.FireRedAsr
                 {
                     int[] dim = new int[] { batchSize };
                     Int64[] input_lengths_tensor = new Int64[batchSize];
-                    input_lengths_tensor= inputLengths;
+                    input_lengths_tensor = inputLengths;
                     var tensor = new DenseTensor<Int64>(input_lengths_tensor, dim, false);
                     container.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
                 }
@@ -179,21 +178,21 @@ namespace ManySpeech.FireRedAsr
                     }
                     if (name == "encoder_outputs")
                     {
-                        int[] dim = new int[3] { batchSize, encoder_outputs.Length / 1280/ batchSize, 1280 };
+                        int[] dim = new int[3] { batchSize, encoder_outputs.Length / 1280 / batchSize, 1280 };
                         var tensor = new DenseTensor<float>(encoder_outputs, dim, false);
                         container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
                     }
                     if (name == "src_mask")
                     {
-                        int[] dim = new int[3] { batchSize, 1, src_mask.Length / 1/ batchSize };
+                        int[] dim = new int[3] { batchSize, 1, src_mask.Length / 1 / batchSize };
                         var tensor = new DenseTensor<bool>(src_mask, dim, false);
                         container.Add(NamedOnnxValue.CreateFromTensor<bool>(name, tensor));
                     }
-                    for(int i = 0; i < 16; i++)
+                    for (int i = 0; i < 16; i++)
                     {
-                        if (name == "cache_"+i.ToString())
+                        if (name == "cache_" + i.ToString())
                         {
-                            int[] dim = new int[3] { batchSize, cacheList[i].Length / 1280/ batchSize, 1280 };
+                            int[] dim = new int[3] { batchSize, cacheList[i].Length / 1280 / batchSize, 1280 };
                             var tensor = new DenseTensor<float>(cacheList[i], dim, false);
                             container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
                         }
@@ -248,66 +247,7 @@ namespace ManySpeech.FireRedAsr
 
         public CtcOutputEntity CtcProj(float[] encoder_outputs, int batchSize = 1)
         {
-            CustomMetadata customMetadata = _customMetadata;
-            CtcOutputEntity ctcOutputEntity = new CtcOutputEntity();
-            var container = new List<NamedOnnxValue>();
-            var inputMeta = _ctcSession.InputMetadata;
-            try
-            {
-                foreach (var name in inputMeta.Keys)
-                {
-                    if (name == "encoder_outputs")
-                    {
-                        int[] dim = new int[3] { batchSize, encoder_outputs.Length / 1280 / batchSize, 1280 };
-                        var tensor = new DenseTensor<float>(encoder_outputs, dim, false);
-                        container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
-                    }
-                }
-
-                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> ctcResults = null;
-                ctcResults = _ctcSession.Run(container);
-
-                List<float> rescoring_score = new List<float>();
-                if (ctcResults != null)
-                {
-                    var ctcResultsArray = ctcResults.ToArray();
-                    Tensor<float> logits_tensor = ctcResultsArray[0].AsTensor<float>();
-                    List<List<float[]>> logitsList = new List<List<float[]>>();
-                    for (int i = 0; i < logits_tensor.Dimensions[0]; i++)
-                    {
-                        List<float[]> item = new List<float[]>();
-                        int t = logits_tensor.Dimensions[1];
-                        for (int j = 0; j < t; j++)
-                        {
-                            int n = logits_tensor.Dimensions[2];
-                            float[] row = new float[n];
-                            for (int k = 0; k < n; k++)
-                            {
-                                row[k] = logits_tensor[i, j, k];
-                            }
-                            item.Add(row);
-                        }
-                        logitsList.Add(item);
-                    }
-                    ctcOutputEntity.LogitsList = logitsList;
-                }
-            }
-            catch (Exception ex)
-            {
-                //
-            }
-            return ctcOutputEntity;
-        }
-
-        private float ComputeAttentionScore(float[] prob, Int64[] hyp, int eos, int decode_out_len)
-        {
-            float score = 0.0f;
-            for (int j = 0; j < hyp.Length; j++)
-            {
-                score += prob[j * decode_out_len + hyp[j]];
-            }
-            //score += prob[hyp.Length * decode_out_len + eos];
-            return score;
+            return null;
         }
         protected virtual void Dispose(bool disposing)
         {
@@ -333,7 +273,7 @@ namespace ManySpeech.FireRedAsr
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-        ~AsrProjOfAED()
+        ~LidProjOfAED()
         {
             Dispose(_disposed);
         }

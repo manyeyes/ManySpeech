@@ -10,39 +10,41 @@ namespace ManySpeech.FireRedAsr
 
         private FrontendConfEntity _frontendConfEntity;
         private WavFrontend _wavFrontend;
-        private AsrInputEntity _asrInputEntity;
+        private OfflineInputEntity _asrInputEntity;
         private int _blank_id = 0;
         private int _unk_id = 1;
         private int _pad_id = 2;
         private int _sos_id = 3;
         private int _eos_id = 4;
+
         //private Int64[] _hyp;
         private int _sampleRate = 16000;
         private int _featureDim = 80;
 
         private CustomMetadata _customMetadata;
         private List<Int64> _tokens = new List<Int64>();
+        private string? _language;
         private List<int[]> _timestamps = new List<int[]>();
         private List<float[]> _caches = new List<float[]>();
         private List<float[]> _states = new List<float[]>();
         private static object obj = new object();
         private int _offset = 0;
         private int _required_cache_size = 0;
-        internal OfflineStream(string mvnFilePath, IAsrProj asrProj)
+        internal OfflineStream(string mvnFilePath, IOfflineProj offlineProj)
         {
-            if (asrProj != null)
+            if (offlineProj != null)
             {
-                _featureDim = asrProj.FeatureDim;
-                _sampleRate = asrProj.SampleRate;
-                _customMetadata = asrProj.CustomMetadata;
-                _required_cache_size = asrProj.Required_cache_size;
+                _featureDim = offlineProj.FeatureDim;
+                _sampleRate = offlineProj.SampleRate;
+                _customMetadata = offlineProj.CustomMetadata;
+                _required_cache_size = offlineProj.Required_cache_size;
                 if (_required_cache_size > 0)
                 {
                     _offset = _required_cache_size;
                 }
             }
 
-            _asrInputEntity = new AsrInputEntity();
+            _asrInputEntity = new OfflineInputEntity();
             _frontendConfEntity = new FrontendConfEntity();
             _frontendConfEntity.fs = _sampleRate;
             _frontendConfEntity.n_mels = _featureDim;
@@ -54,13 +56,14 @@ namespace ManySpeech.FireRedAsr
             _tokens = new List<Int64> { _sos_id };
         }
 
-        public AsrInputEntity AsrInputEntity { get => _asrInputEntity; set => _asrInputEntity = value; }
+        public OfflineInputEntity AsrInputEntity { get => _asrInputEntity; set => _asrInputEntity = value; }
         //public long[] Hyp { get => _hyp; set => _hyp = value; }
         public List<Int64> Tokens { get => _tokens; set => _tokens = value; }
         public List<int[]> Timestamps { get => _timestamps; set => _timestamps = value; }
         public List<float[]> States { get => _states; set => _states = value; }
         public int Offset { get => _offset; set => _offset = value; }
         public List<float[]> Caches { get => _caches; set => _caches = value; }
+        public string? Language { get => _language; set => _language = value; }
 
         public void AddSamples(float[] samples)
         {
