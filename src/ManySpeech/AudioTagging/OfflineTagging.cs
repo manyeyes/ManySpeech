@@ -105,57 +105,57 @@ namespace ManySpeech.AudioTagging
         }
 
         /// <summary>
-        /// 解析 Tensor 类型的批量 logits，获取每个样本的 top-k 结果
+        /// Parses batch logits from a Tensor to obtain top-k results for each sample.
         /// </summary>
-        /// <param name="logitsTensor">ONNX Runtime 输出的 Tensor，形状为 [batchSize, classCount]</param>
-        /// <param name="topK">每个样本需要提取的 top-k 数量</param>
-        /// <returns>元组：二维数组（[batchSize, topK]）- 每个样本的 top-k 索引；二维数组（[batchSize, topK]）- 每个样本的 top-k 概率</returns>
-        /// <exception cref="ArgumentNullException">logitsTensor 为空时抛出</exception>
-        /// <exception cref="ArgumentException">Tensor 维度错误（非 2 维）或类别数非 classCount 时抛出</exception>
-        /// <exception cref="ArgumentOutOfRangeException">topK 无效时抛出</exception>
+        /// <param name="logitsTensor">ONNX Runtime output Tensor with shape [batchSize, classCount].</param>
+        /// <param name="topK">Number of top-k results to extract per sample.</param>
+        /// <returns>Tuple: 2D array ([batchSize, topK]) - top-k indices per sample; 2D array ([batchSize, topK]) - top-k probabilities per sample.</returns>
+        /// <exception cref="ArgumentNullException">Thrown when logitsTensor is null.</exception>
+        /// <exception cref="ArgumentException">Thrown when tensor rank is not 2 or the number of classes does not match.</exception>
+        /// <exception cref="ArgumentOutOfRangeException">Thrown when topK is invalid.</exception>
         public (int[][] topKIndicesBatch, double[][] topKProbabilitiesBatch) ParseTensorTopKResults(
             Tensor<float> logitsTensor, int topK)
         {
-            // 1. 参数校验
+            // 1. Parameter validation
             if (logitsTensor == null)
             {
-                throw new ArgumentNullException(nameof(logitsTensor), "Logits Tensor 不能为空");
+                throw new ArgumentNullException(nameof(logitsTensor), "Logits tensor cannot be null.");
             }
 
-            // 校验 Tensor 维度：必须是 2 维
+            // Validate tensor rank: must be 2
             if (logitsTensor.Rank != 2)
             {
-                throw new ArgumentException($"Logits Tensor 必须是 2 维，当前维度：{logitsTensor.Rank}", nameof(logitsTensor));
+                throw new ArgumentException($"Logits tensor must be 2-dimensional. Current rank: {logitsTensor.Rank}", nameof(logitsTensor));
             }
 
-            // 校验类别数：第二维必须与类别数匹配
+            // Validate number of classes: second dimension must match the number of classes
             int classCount = logitsTensor.Dimensions[1];
             if (classCount != _tokens.Length)
             {
-                throw new ArgumentException($"Logits Tensor 第二维与类别数不匹配，当前：{classCount}", nameof(logitsTensor));
+                throw new ArgumentException($"The second dimension of the logits tensor does not match the number of classes. Current: {classCount}", nameof(logitsTensor));
             }
 
             if (topK <= 0 || topK > classCount)
             {
                 throw new ArgumentOutOfRangeException(nameof(topK),
-                    $"topK 必须大于 0 且不超过类别数，当前：{topK}");
+                    $"topK must be greater than 0 and not exceed the number of classes. Current: {topK}");
             }
 
-            // 2. 获取 batch 大小，并将 Tensor 转换为 C# 二维数组
+            // 2. Get batch size and convert the tensor to a C# 2D array
             int batchSize = logitsTensor.Dimensions[0];
             double[][] logitsArray = ConvertTensorTo2DArray(logitsTensor, batchSize, classCount);
 
-            // 3. 复用批量解析逻辑（和之前的二维数组解析逻辑一致）
+            // 3. Reuse the batch parsing logic (consistent with the previous 2D array parsing logic)
             return ParseBatchTopKResults(logitsArray, topK);
         }
 
         /// <summary>
-        /// 将 ONNX Runtime 的 Float Tensor 转换为 C# 二维 double 数组
+        /// Converts an ONNX Runtime Float Tensor to a C# 2D double array.
         /// </summary>
-        /// <param name="tensor">输入 Tensor（float 类型）</param>
-        /// <param name="batchSize">批量大小</param>
-        /// <param name="classCount">类别数（classCount）</param>
-        /// <returns>二维 double 数组 [batchSize, classCount]</returns>
+        /// <param name="tensor">Input tensor (float type).</param>
+        /// <param name="batchSize">Batch size.</param>
+        /// <param name="classCount">Number of classes.</param>
+        /// <returns>2D double array [batchSize, classCount].</returns>
         private static double[][] ConvertTensorTo2DArray(Tensor<float> tensor, int batchSize, int classCount)
         {
             double[][] result = new double[batchSize][];
@@ -164,7 +164,7 @@ namespace ManySpeech.AudioTagging
                 result[i] = new double[classCount];
                 for (int j = 0; j < classCount; j++)
                 {
-                    // Tensor 取值：先 batch 索引，再类别索引；转换为 double 提升精度
+                    // Tensor access: batch index first, then class index; convert to double for precision
                     result[i][j] = tensor[i, j];
                 }
             }
@@ -172,11 +172,11 @@ namespace ManySpeech.AudioTagging
         }
 
         /// <summary>
-        /// 解析二维数组形式的批量 logits（复用之前的逻辑）
+        /// Parses batch logits from a 2D array (reusing previous logic).
         /// </summary>
-        /// <param name="logits">批量 logits 数组 [batchSize, classCount]</param>
-        /// <param name="topK">top-k 数量</param>
-        /// <returns>批量 top-k 索引和概率</returns>
+        /// <param name="logits">Batch logits array [batchSize, classCount].</param>
+        /// <param name="topK">Number of top-k results.</param>
+        /// <returns>Batch top-k indices and probabilities.</returns>
         private static (int[][] topKIndicesBatch, double[][] topKProbabilitiesBatch) ParseBatchTopKResults(double[][] logits, int topK)
         {
             int batchSize = logits.Length;
@@ -194,7 +194,7 @@ namespace ManySpeech.AudioTagging
         }
 
         /// <summary>
-        /// 解析单个样本的 logits 数组
+        /// Parses a single sample's logits array.
         /// </summary>
         private static (int[] topKIndices, double[] topKProbabilities) ParseSingleSampleTopK(double[] singleSampleLogits, int topK)
         {
@@ -207,16 +207,6 @@ namespace ManySpeech.AudioTagging
                 sortedPairs.Select(pair => pair.Index).ToArray(),
                 sortedPairs.Select(pair => pair.Value).ToArray()
             );
-            //var sortedPairs = singleSampleLogits
-            //    .Select((value, idx) => new { value, idx })
-            //    .OrderByDescending(x => x.value)
-            //    .Take(topK)
-            //    .ToList();
-
-            //return (
-            //    sortedPairs.Select(pair => pair.idx).ToArray(),
-            //    sortedPairs.Select(pair => pair.value).ToArray()
-            //);
         }
 
         private List<OfflineTaggingResultEntity> DecodeMulti(List<OfflineStream> streams)
