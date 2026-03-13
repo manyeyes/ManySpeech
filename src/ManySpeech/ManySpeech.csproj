@@ -13,10 +13,10 @@
 				<LangVersion>10</LangVersion>
 				<ImplicitUsings>enable</ImplicitUsings>
 				<Nullable>enable</Nullable>
-				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>  
 				<!-- info -->
 				<PackageId>ManySpeech</PackageId>
-				<Version>1.2.4</Version>
+				<Version>1.2.5</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
@@ -47,7 +47,7 @@
 		</ItemGroup>
 
 		<ItemGroup>
-				<PackageReference Include="ManySpeech.SpeechFeatures" Version="1.1.7" />
+				<PackageReference Include="ManySpeech.SpeechFeatures" Version="1.1.8" />
 				<PackageReference Include="ManySpeech.Tiktoken" Version="1.0.0" />
 				<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 				<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.*" />
