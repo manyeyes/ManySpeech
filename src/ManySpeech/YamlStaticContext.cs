@@ -20,6 +20,7 @@ namespace ManySpeech
     [YamlSerializable(typeof(SileroVad.Model.ModelCustomMetadata))]
     [YamlSerializable(typeof(TextPunc.Model.ConfEntity))]
     [YamlSerializable(typeof(TextPunc.Model.ModelConfEntity))]
+    [YamlSerializable(typeof(OmniAsr.Model.ConfEntity))]
     [YamlSerializable(typeof(TextPunc.Model.PunctuationConfEntity))]
     [YamlSerializable(typeof(WhisperAsr.Model.ConfEntity))] 
     [YamlSerializable(typeof(WhisperAsr.Model.ModelDimensions))]
