@@ -10,7 +10,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\ManySpeech\ManySpeech.csproj" />
+    <PackageReference Include="ManySpeech" Version="1.2.4" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\src\PreProcessUtils\PreProcessUtils.csproj" />
   </ItemGroup>
 
