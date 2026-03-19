@@ -69,10 +69,11 @@ namespace ManySpeech.DolphinAsr
                 }
                 asrInputEntity.SpeechLength = asrInputEntity.Speech.Length;
                 modelInputs.Add(asrInputEntity);
+                // If specified language and region.
                 if (stream.TokenIds.Count == 1 && !string.IsNullOrEmpty(stream.Language) && !string.IsNullOrEmpty(stream.Region))
                 {
                     int langId = Array.IndexOf(_tokens, $"<{stream.Language.ToLower()}>");
-                    int regionId = Array.IndexOf(_tokens, $"<{stream.Region.ToLower()}>");
+                    int regionId = Array.IndexOf(_tokens, $"<{stream.Region.ToUpper()}>");
                     if (langId > 0 && regionId > 0)
                     {
                         stream.TokenIds.Add(langId);
@@ -102,7 +103,7 @@ namespace ManySpeech.DolphinAsr
                 // encoder
                 EncoderOutputEntity encoderOutputEntity = _offlineProj.EncoderProj(modelInputs);
                 float[] encoder_outputs = encoderOutputEntity.Output;
-                // detect lang or region
+                // If not specified, it will automatically detect lang and region.
                 if (tokenIdsList.Min(x => x.Count) == 1)
                 {
                     tokenIdsList = tokenIdsList.Select(innerList => innerList.Take(1).ToList()).ToList();
