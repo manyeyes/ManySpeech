@@ -10,16 +10,16 @@ namespace ManySpeech.DolphinAsr.Examples
         public static OfflineRecognizer initOfflineRecognizer(string modelName)
         {
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.onnx";
-            string decoderFilePath = applicationBase + "./" + modelName + "/decoder.onnx";
+            string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
             string configFilePath = applicationBase + "./" + modelName + "/conf.json"; // or conf.yaml
             string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-            OfflineRecognizer offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: 16);
+            OfflineRecognizer offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: 2);
             return offlineRecognizer;
         }
 
         public static void OfflineRecognizer(List<float[]>? samples = null)
         {
-            string modelName = "DolphinAsr-base-onnx";
+            string modelName = "DolphinAsr-base-int8-onnx";
             TimeSpan totalDuration = new TimeSpan(0L);
             List<List<float[]>> samplesList = new List<List<float[]>>();
             if (samples == null)
