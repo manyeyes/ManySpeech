@@ -35,70 +35,70 @@ namespace ManySpeech.DolphinAsr.Model
         /// </summary>
         public PreprocessorConfig preprocessor_conf { get; set; }
 
-        ///// <summary>
-        ///// 初始化默认模型配置（加载预设参数）
-        ///// </summary>
-        ///// <returns>初始化完成的 ConfEntity 实例</returns>
-        //public static ConfEntity InitializeDefault()
-        //{
-        //    return new ConfEntity
-        //    {
-        //        encoder = "e_branchformer",
-        //        encoder_conf = new EncoderConfig
-        //        {
-        //            output_size = 512,
-        //            attention_heads = 8,
-        //            attention_layer_type = "rel_selfattn",
-        //            pos_enc_layer_type = "rel_pos",
-        //            rel_pos_type = "latest",
-        //            cgmlp_linear_units = 2048,
-        //            cgmlp_conv_kernel = 31,
-        //            use_linear_after_conv = false,
-        //            gate_activation = "identity",
-        //            num_blocks = 6,
-        //            dropout_rate = 0.1f,
-        //            positional_dropout_rate = 0.1f,
-        //            attention_dropout_rate = 0.1f,
-        //            input_layer = "conv2d",
-        //            layer_drop_rate = 0.0f,
-        //            linear_units = 2048,
-        //            positionwise_layer_type = "linear",
-        //            use_ffn = true,
-        //            macaron_ffn = true,
-        //            merge_conv_kernel = 31
-        //        },
-        //        decoder = "transformer",
-        //        decoder_conf = new DecoderConfig
-        //        {
-        //            attention_heads = 8,
-        //            linear_units = 2048,
-        //            num_blocks = 6,
-        //            dropout_rate = 0.1f,
-        //            positional_dropout_rate = 0.1f,
-        //            self_attention_dropout_rate = 0.1f,
-        //            src_attention_dropout_rate = 0.1f
-        //        },
-        //        preprocessor = "s2t",
-        //        preprocessor_conf = new PreprocessorConfig
-        //        {
-        //            text_prev_name = "text_prev",
-        //            text_ctc_name = "text_ctc",
-        //            fs = 16000,
-        //            na_symbol = "<na>",
-        //            speech_length = 30,
-        //            speech_resolution = 0.02f,
-        //            speech_init_silence = 30,
-        //            text_prev_apply_prob = 0.3f,
-        //            time_apply_prob = 0.5f,
-        //            notime_symbol = "<notimestamp>",
-        //            first_time_symbol = "<0.00>",
-        //            last_time_symbol = "<30.00>",
-        //            is_padding_speech = false,
-        //            batch_padding_speech = true,
-        //            batch_padding_speech_prob = 0.5f
-        //        }
-        //    };
-        //}
+        /// <summary>
+        /// 初始化默认模型配置（加载预设参数）
+        /// </summary>
+        /// <returns>初始化完成的 ConfEntity 实例</returns>
+        public static ConfEntity InitializeDefault()
+        {
+            return new ConfEntity
+            {
+                encoder = "e_branchformer",
+                encoder_conf = new EncoderConfig
+                {
+                    output_size = 512,
+                    attention_heads = 8,
+                    attention_layer_type = "rel_selfattn",
+                    pos_enc_layer_type = "rel_pos",
+                    rel_pos_type = "latest",
+                    cgmlp_linear_units = 2048,
+                    cgmlp_conv_kernel = 31,
+                    use_linear_after_conv = false,
+                    gate_activation = "identity",
+                    num_blocks = 6,
+                    dropout_rate = 0.1f,
+                    positional_dropout_rate = 0.1f,
+                    attention_dropout_rate = 0.1f,
+                    input_layer = "conv2d",
+                    layer_drop_rate = 0.0f,
+                    linear_units = 2048,
+                    positionwise_layer_type = "linear",
+                    use_ffn = true,
+                    macaron_ffn = true,
+                    merge_conv_kernel = 31
+                },
+                decoder = "transformer",
+                decoder_conf = new DecoderConfig
+                {
+                    attention_heads = 8,
+                    linear_units = 2048,
+                    num_blocks = 6,
+                    dropout_rate = 0.1f,
+                    positional_dropout_rate = 0.1f,
+                    self_attention_dropout_rate = 0.1f,
+                    src_attention_dropout_rate = 0.1f
+                },
+                preprocessor = "s2t",
+                preprocessor_conf = new PreprocessorConfig
+                {
+                    text_prev_name = "text_prev",
+                    text_ctc_name = "text_ctc",
+                    fs = 16000,
+                    na_symbol = "<na>",
+                    speech_length = 30,
+                    speech_resolution = 0.02f,
+                    speech_init_silence = 30,
+                    text_prev_apply_prob = 0.3f,
+                    time_apply_prob = 0.5f,
+                    notime_symbol = "<notimestamp>",
+                    first_time_symbol = "<0.00>",
+                    last_time_symbol = "<30.00>",
+                    is_padding_speech = false,
+                    batch_padding_speech = true,
+                    batch_padding_speech_prob = 0.5f
+                }
+            };
+        }
     }
     /// <summary>
     /// 编码器配置参数实体类（属性名与JSON键名完全一致）
