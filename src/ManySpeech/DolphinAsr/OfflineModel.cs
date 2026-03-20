@@ -18,6 +18,7 @@ namespace ManySpeech.DolphinAsr
         private int _eosId = 40000; //<sos>
         private int _asrId = 6; //<asr>
 
+        private int _featureDim = 80;
         private int _sampleRate = 16000;
         private int _speechLength = 0; //Unit of measurement: second
         private int _chunkLength = 0;
@@ -185,6 +186,7 @@ namespace ManySpeech.DolphinAsr
         internal int AsrId { get => _asrId; set => _asrId = value; }
         public int RequiredCacheSize { get => _requiredCacheSize; set => _requiredCacheSize = value; }
         internal ConfEntity ConfEntity { get => _confEntity; set => _confEntity = value; }
+        public int FeatureDim { get => _featureDim; set => _featureDim = value; }
 
         internal InferenceSession initModel(string modelFilePath, int threadsNum = 2)
         {

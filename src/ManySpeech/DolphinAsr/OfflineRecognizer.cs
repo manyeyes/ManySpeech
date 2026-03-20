@@ -213,7 +213,7 @@ namespace ManySpeech.DolphinAsr
                     {
                         break;
                     }
-                    string currText = _tokens[token].Split(new char[] { '\t', ' ' })[0].ToLower();
+                    string currText = _tokens[token].Split(new char[] { '\t', ' ' })[0];
                     offlineRecognizerResultEntity.Tokens.Add(currText);
                     if (currText != "</s>" && currText != "<s>" && currText != "<sos/eos>" && currText != "<blank>" && currText != "<unk>" && currText != "<sos>" && currText != "<eos>" && currText != "<pad>")
                     {

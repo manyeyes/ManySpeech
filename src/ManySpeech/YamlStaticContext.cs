@@ -20,6 +20,7 @@ namespace ManySpeech
     [YamlSerializable(typeof(DolphinAsr.Model.EncoderConfig))]
     [YamlSerializable(typeof(DolphinAsr.Model.DecoderConfig))]
     [YamlSerializable(typeof(DolphinAsr.Model.PreprocessorConfig))]
+    [YamlSerializable(typeof(DolphinAsr.Model.FrontendConfig))]
     [YamlSerializable(typeof(MoonshineAsr.Model.CustomMetadata))] 
     [YamlSerializable(typeof(SileroVad.Model.ModelCustomMetadata))]
     [YamlSerializable(typeof(TextPunc.Model.ConfEntity))]

@@ -1,5 +1,5 @@
 ﻿// See https://github.com/manyeyes for more information
-// Copyright (c)  2025 by manyeyes
+// Copyright (c)  2026 by manyeyes
 using ManySpeech.DolphinAsr.Model;
 
 namespace ManySpeech.DolphinAsr
@@ -8,6 +8,7 @@ namespace ManySpeech.DolphinAsr
     {
         private bool _disposed;
 
+        private FrontendConfig? _frontendConfig;
         private WavFrontend _wavFrontend;
         private OfflineInputEntity _offlineInputEntity;
         private CustomMetadata _customMetadata;
@@ -37,14 +38,22 @@ namespace ManySpeech.DolphinAsr
             }
 
             _offlineInputEntity = new OfflineInputEntity();
-
-            _wavFrontend = new WavFrontend(offlineProj.OfflineModel.SampleRate, offlineProj.OfflineModel.SpeechLength);
+            if (offlineProj.OfflineModel.ConfEntity.preprocessor_conf.use_wavfrontend)
+            {
+                _frontendConfig = offlineProj.OfflineModel.ConfEntity.frontend_conf;
+            }
+            _wavFrontend = new WavFrontend(
+                frontendConfig: _frontendConfig, 
+                sampleRate: offlineProj.OfflineModel.SampleRate, 
+                speechLength: offlineProj.OfflineModel.SpeechLength, 
+                isPaddingSpeech: offlineProj.OfflineModel.ConfEntity.preprocessor_conf.is_padding_speech
+                );
             _caches = GetDecoderInitCaches();
             _states = GetDecoderInitCaches();
             _tokenIds = new List<int> { offlineProj.OfflineModel.SosId };
-            for(int i = 0; i < _tokenIds.Count; i++)
+            for (int i = 0; i < _tokenIds.Count; i++)
             {
-                _timestamps.Add(new int[] { 0,0});
+                _timestamps.Add(new int[] { 0, 0 });
             }
         }
 

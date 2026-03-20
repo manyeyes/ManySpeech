@@ -34,6 +34,7 @@ namespace ManySpeech.DolphinAsr.Model
         /// 预处理器配置参数
         /// </summary>
         public PreprocessorConfig preprocessor_conf { get; set; }
+        public FrontendConfig frontend_conf { get; set; }
 
         /// <summary>
         /// 初始化默认模型配置（加载预设参数）
@@ -96,6 +97,26 @@ namespace ManySpeech.DolphinAsr.Model
                     is_padding_speech = false,
                     batch_padding_speech = true,
                     batch_padding_speech_prob = 0.5f
+                },
+                frontend_conf=new FrontendConfig
+                {
+                    fs = 16000,
+                    window = "hanning",
+                    n_mels = 80,
+                    frame_length = 32,
+                    frame_shift = 10,
+                    dither = 0F,
+                    lfr_m = 7,
+                    lfr_n = 6,
+                    snip_edges = false,
+                    is_librosa = false,
+                    htk_mode = false,
+                    low_freq = 0F,
+                    high_freq = 8000F,
+                    norm = "",
+                    remove_dc_offset = false,
+                    preemph_coeff = 0f,
+                    use_log_fbank = true
                 }
             };
         }
@@ -326,6 +347,103 @@ namespace ManySpeech.DolphinAsr.Model
         /// 批次语音 padding 概率
         /// </summary>
         public float batch_padding_speech_prob { get; set; }
+
+        /// <summary>
+        /// 是否使用外部前端
+        /// </summary>
+        public bool use_wavfrontend { get; set; }
+    }
+    /// <summary>
+    /// 前端配置实体类（Frontend Configuration）
+    /// </summary>
+    public class FrontendConfig
+    {
+        /// <summary>
+        /// 采样率
+        /// </summary>
+        private int _fs = 16000;
+        /// <summary>
+        /// 窗函数类型（如hanning）
+        /// </summary>
+        private string _window = "hanning";
+        /// <summary>
+        /// mel滤波器数量
+        /// </summary>
+        private int _n_mels = 80;
+        /// <summary>
+        /// 帧长（单位：ms）
+        /// </summary>
+        private int _frame_length = 32;
+        /// <summary>
+        /// 帧移（单位：ms）
+        /// </summary>
+        private int _frame_shift = 10;
+        /// <summary>
+        /// 抖动值
+        /// </summary>
+        private float _dither = 0F;
+        /// <summary>
+        /// LFR的M参数
+        /// </summary>
+        private int _lfr_m = 7;
+        /// <summary>
+        /// LFR的N参数
+        /// </summary>
+        private int _lfr_n = 6;
+        /// <summary>
+        /// 是否裁剪边缘
+        /// </summary>
+        private bool _snip_edges = false;
+        /// <summary>
+        /// 是否使用librosa实现
+        /// </summary>
+        private bool _is_librosa = false;
+        /// <summary>
+        /// 是否启用HTK模式
+        /// </summary>
+        private bool _htk_mode = false;
+        /// <summary>
+        /// 最低频率
+        /// </summary>
+        private float _low_freq = 0F;
+        /// <summary>
+        /// 最高频率
+        /// </summary>
+        private float _high_freq = 8000F;
+        /// <summary>
+        /// 归一化方式
+        /// </summary>
+        private string _norm = "";
+        /// <summary>
+        /// 是否移除直流偏移
+        /// </summary>
+        private bool _remove_dc_offset = false;
+        /// <summary>
+        /// 预加重系数
+        /// </summary>
+        private float _preemph_coeff = 0f;
+        /// <summary>
+        /// 是否使用对数滤波器组
+        /// </summary>
+        private bool _use_log_fbank = true;
+
+        public int fs { get => _fs; set => _fs = value; }
+        public string window { get => _window; set => _window = value; }
+        public int n_mels { get => _n_mels; set => _n_mels = value; }
+        public int frame_length { get => _frame_length; set => _frame_length = value; }
+        public int frame_shift { get => _frame_shift; set => _frame_shift = value; }
+        public float dither { get => _dither; set => _dither = value; }
+        public int lfr_m { get => _lfr_m; set => _lfr_m = value; }
+        public int lfr_n { get => _lfr_n; set => _lfr_n = value; }
+        public bool snip_edges { get => _snip_edges; set => _snip_edges = value; }
+        public bool is_librosa { get => _is_librosa; set => _is_librosa = value; }
+        public bool htk_mode { get => _htk_mode; set => _htk_mode = value; }
+        public float low_freq { get => _low_freq; set => _low_freq = value; }
+        public float high_freq { get => _high_freq; set => _high_freq = value; }
+        public string norm { get => _norm; set => _norm = value; }
+        public bool remove_dc_offset { get => _remove_dc_offset; set => _remove_dc_offset = value; }
+        public float preemph_coeff { get => _preemph_coeff; set => _preemph_coeff = value; }
+        public bool use_log_fbank { get => _use_log_fbank; set => _use_log_fbank = value; }
     }
 }
 

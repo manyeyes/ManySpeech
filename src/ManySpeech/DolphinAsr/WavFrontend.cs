@@ -1,5 +1,8 @@
 ﻿// See https://github.com/manyeyes for more information
 // Copyright (c)  2026 by manyeyes
+using ManySpeech.DolphinAsr.Model;
+using SpeechFeatures;
+
 namespace ManySpeech.DolphinAsr
 {
     /// <summary>
@@ -8,18 +11,44 @@ namespace ManySpeech.DolphinAsr
     /// </summary>
     internal class WavFrontend
     {
+        private OnlineFbank? _onlineFbank;
         private int _sampleRate = 16000;
         private int _speechLength = 30;
+        private bool _isPaddingSpeech = false;
 
-        public WavFrontend(int sampleRate, int speechLength)
+        public WavFrontend(FrontendConfig? frontendConfig = null, int sampleRate = 16000, int speechLength = 30, bool isPaddingSpeech = false)
         {
+            if (frontendConfig != null)
+            {
+                _onlineFbank = new OnlineFbank(
+                    dither: frontendConfig.dither,
+                    snip_edges: frontendConfig.snip_edges,
+                    sample_rate: frontendConfig.fs,
+                    num_bins: frontendConfig.n_mels,
+                    window_type: frontendConfig.window,
+                    frame_length: frontendConfig.frame_length,
+                    frame_shift: frontendConfig.frame_shift,
+                    is_librosa: frontendConfig.is_librosa,
+                    htk_mode: frontendConfig.htk_mode,
+                    low_freq: frontendConfig.low_freq,
+                    norm: frontendConfig.norm,
+                    remove_dc_offset: frontendConfig.remove_dc_offset,
+                    preemph_coeff: frontendConfig.preemph_coeff,
+                    use_log_fbank: frontendConfig.use_log_fbank
+                    );
+            }
             _sampleRate = sampleRate;
             _speechLength = speechLength;
+            _isPaddingSpeech = isPaddingSpeech;
         }
 
         public float[] GetFeatures(float[] samples)
         {
-            float[] features = ResizeAudioDuration(samples, _sampleRate, _speechLength);
+            float[] features = _isPaddingSpeech ? ResizeAudioDuration(samples, _sampleRate, _speechLength) : samples;
+            if (_onlineFbank != null)
+            {
+                features = _onlineFbank.GetFbank(features);
+            }
             return features;
         }
         /// <summary>
@@ -55,35 +84,19 @@ namespace ManySpeech.DolphinAsr
 
             return processedAudio;
         }
-        //public float[] ProcessAudio(float[] raw, float sampleRate, float speechLength)
-        //{
-        //    // 计算目标长度
-        //    if (speechLength == 0) return raw;
-        //    int target = (int)(sampleRate * speechLength);
-        //    float[] speech;
-
-        //    if (raw.Length >= target)
-        //    {
-        //        // 截取前 target 个元素
-        //        speech = new float[target];
-        //        Array.Copy(raw, 0, speech, 0, target);
-        //    }
-        //    else
-        //    {
-        //        // 创建长度为 target 的数组，并将 raw 复制到开头，剩余部分自动填充为 0
-        //        speech = new float[target];
-        //        Array.Copy(raw, 0, speech, 0, raw.Length);
-        //        // 新数组剩余元素默认已经是 0.0f，无需额外操作
-        //    }
-
-        //    return speech;
-        //}
+        public void InputFinished()
+        {
+            _onlineFbank.InputFinished();
+        }
 
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
-                //
+                if (_onlineFbank != null)
+                {
+                    _onlineFbank.Dispose();
+                }
             }
         }
         public void Dispose()

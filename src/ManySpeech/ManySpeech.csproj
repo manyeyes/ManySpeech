@@ -16,12 +16,12 @@
 				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>  
 				<!-- info -->
 				<PackageId>ManySpeech</PackageId>
-				<Version>1.2.6</Version>
+				<Version>1.2.6.2</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
 				<Summary>c# library for AI Speech Tasks such as ASR, Vocal Extraction, Accompaniment Extraction, Audio Denoising, and Enhancement.</Summary>
-				<Description>AI Speech Solutions for Tasks such as ASR, Vocal Extraction, Accompaniment Extraction, Audio Denoising, and Enhancement, Support models such as paraformer, sensevoice, fireredasr, zipformer, moonshine, wenet, whisper, fsmn-vad, silero-vad, CT Transformer punc, Spleeter, Uvr5, etc, apply ONNX models in various scenarios.</Description>
+				<Description>AI Speech Solutions for Tasks such as ASR, Vocal Extraction, Accompaniment Extraction, Audio Denoising, and Enhancement, Support models such as paraformer, sensevoice, fireredasr, zipformer, moonshine, wenet, whisper, ced, dolphin, omniasr, fsmn-vad, silero-vad, CT Transformer punc, Spleeter, Uvr5, etc, apply ONNX models in various scenarios.</Description>
 				<PackageTags>speech recognition asr vad uvr spleeter ai local privacy</PackageTags>
 				<PackageProjectUrl>https://github.com/manyeyes/ManySpeech</PackageProjectUrl> 
 				<RepositoryUrl>https://github.com/manyeyes/ManySpeech</RepositoryUrl>
