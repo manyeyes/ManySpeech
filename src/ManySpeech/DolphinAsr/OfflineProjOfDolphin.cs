@@ -88,19 +88,43 @@ namespace ManySpeech.DolphinAsr
             var inputValues = new List<FixedBufferOnnxValue>();
             foreach (var name in inputMeta.Keys)
             {
-                if (name == "speech")
+                if (!_offlineModel.ConfEntity.preprocessor_conf.use_wavfrontend)
                 {
-                    int[] dim = new int[] { batchSize, padSequence.Length / batchSize };
-                    var tensor = new DenseTensor<float>(padSequence, dim, false);
-                    container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
+                    if (name == "speech")
+                    {
+                        int[] dim = new int[] { batchSize, padSequence.Length / batchSize };
+                        var tensor = new DenseTensor<float>(padSequence, dim, false);
+                        container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
+                    }
+                    if (name == "speech_lengths")
+                    {
+                        int[] dim = new int[] { batchSize };
+                        Int64[] input_lengths_tensor = new Int64[batchSize];
+                        input_lengths_tensor = inputLengths;
+                        var tensor = new DenseTensor<Int64>(input_lengths_tensor, dim, false);
+                        container.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
+                    }
                 }
-                if (name == "speech_lengths")
+                else
                 {
-                    int[] dim = new int[] { batchSize };
-                    Int64[] input_lengths_tensor = new Int64[batchSize];
-                    input_lengths_tensor = inputLengths;
-                    var tensor = new DenseTensor<Int64>(input_lengths_tensor, dim, false);
-                    container.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
+                    if (name == "feats")
+                    {
+                        int[] dim = new int[] { batchSize, padSequence.Length / batchSize / _offlineModel.FeatureDim, _offlineModel.FeatureDim };
+                        var tensor = new DenseTensor<float>(padSequence, dim, false);
+                        container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
+                    }
+
+                    if (name == "feats_lengths")
+                    {
+                        int[] dim = new int[] { batchSize };
+                        Int64[] input_lengths_tensor = new Int64[batchSize];
+                        for (int i = 0; i < batchSize; i++)
+                        {
+                            input_lengths_tensor[i] = padSequence.Length / batchSize / _offlineModel.FeatureDim;
+                        }
+                        var tensor = new DenseTensor<Int64>(input_lengths_tensor, dim, false);
+                        container.Add(NamedOnnxValue.CreateFromTensor(name, tensor));
+                    }
                 }
             }
             try
@@ -139,7 +163,7 @@ namespace ManySpeech.DolphinAsr
                     if (name == "ys")
                     {
                         int[] dim = new int[2] { batchSize, ys[0].Length };
-                        var tensor = new DenseTensor<Int64>(ys.SelectMany(x => x.Select(x=>(Int64)x)).ToArray(), dim, false);
+                        var tensor = new DenseTensor<Int64>(ys.SelectMany(x => x.Select(x => (Int64)x)).ToArray(), dim, false);
                         container.Add(NamedOnnxValue.CreateFromTensor<Int64>(name, tensor));
                     }
                     if (name == "enc_out")
@@ -199,7 +223,7 @@ namespace ManySpeech.DolphinAsr
                 int bestIndex = 0; // 初始假设索引 0 最大
                 for (int j = 1; j < numClasses; j++)
                 {
-                    if(j<_offlineModel.FirstLangId || j > _offlineModel.LastLangId)
+                    if (j < _offlineModel.FirstLangId || j > _offlineModel.LastLangId)
                     {
                         continue;
                     }
