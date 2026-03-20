@@ -201,19 +201,19 @@ namespace ManySpeech.DolphinAsr
 #if NET6_0_OR_GREATER
                 foreach (var result in stream.TokenIds.Zip<int, int[]>(stream.Timestamps))
                 {
-                    int token = result.First;
+                    int tokenId = result.First;
                     int[] timestamp = result.Second;
 #else
                 for (int i = 0; i < stream.TokenIds.Count && i < stream.Timestamps.Count; i++)
                 {
-                    int token = stream.TokenIds[i];
+                    int tokenId = stream.TokenIds[i];
                     int[] timestamp = stream.Timestamps[i];
 #endif
-                    if (token == 2)
+                    if (tokenId == 2)
                     {
                         break;
                     }
-                    string currText = _tokens[token].Split(new char[] { '\t', ' ' })[0];
+                    string currText = _tokens[tokenId].Split(new char[] { '\t', ' ' })[0];
                     offlineRecognizerResultEntity.Tokens.Add(currText);
                     if (currText != "</s>" && currText != "<s>" && currText != "<sos/eos>" && currText != "<blank>" && currText != "<unk>" && currText != "<sos>" && currText != "<eos>" && currText != "<pad>")
                     {
