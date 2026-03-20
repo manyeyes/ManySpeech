@@ -42,7 +42,12 @@ namespace ManySpeech.DolphinAsr
             {
                 _frontendConfig = offlineProj.OfflineModel.ConfEntity.frontend_conf;
             }
-            _wavFrontend = new WavFrontend(frontendConfig: _frontendConfig, sampleRate: offlineProj.OfflineModel.SampleRate, speechLength: offlineProj.OfflineModel.SpeechLength);
+            _wavFrontend = new WavFrontend(
+                frontendConfig: _frontendConfig, 
+                sampleRate: offlineProj.OfflineModel.SampleRate, 
+                speechLength: offlineProj.OfflineModel.SpeechLength, 
+                isPaddingSpeech: offlineProj.OfflineModel.ConfEntity.preprocessor_conf.is_padding_speech
+                );
             _caches = GetDecoderInitCaches();
             _states = GetDecoderInitCaches();
             _tokenIds = new List<int> { offlineProj.OfflineModel.SosId };

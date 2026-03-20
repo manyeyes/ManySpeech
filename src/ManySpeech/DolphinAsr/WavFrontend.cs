@@ -14,8 +14,9 @@ namespace ManySpeech.DolphinAsr
         private OnlineFbank? _onlineFbank;
         private int _sampleRate = 16000;
         private int _speechLength = 30;
+        private bool _isPaddingSpeech = false;
 
-        public WavFrontend(FrontendConfig? frontendConfig = null, int sampleRate = 16000, int speechLength = 30)
+        public WavFrontend(FrontendConfig? frontendConfig = null, int sampleRate = 16000, int speechLength = 30, bool isPaddingSpeech = false)
         {
             if (frontendConfig != null)
             {
@@ -38,11 +39,12 @@ namespace ManySpeech.DolphinAsr
             }
             _sampleRate = sampleRate;
             _speechLength = speechLength;
+            _isPaddingSpeech = isPaddingSpeech;
         }
 
         public float[] GetFeatures(float[] samples)
         {
-            float[] features = ResizeAudioDuration(samples, _sampleRate, _speechLength);
+            float[] features = _isPaddingSpeech ? ResizeAudioDuration(samples, _sampleRate, _speechLength) : samples;
             if (_onlineFbank != null)
             {
                 features = _onlineFbank.GetFbank(features);
