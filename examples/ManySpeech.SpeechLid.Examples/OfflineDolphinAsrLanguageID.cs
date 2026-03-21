@@ -1,29 +1,28 @@
-﻿using ManySpeech.FireRedAsr.Model;
-using ManySpeech.FireRedAsr;
+﻿using ManySpeech.DolphinAsr.Model;
+using ManySpeech.DolphinAsr;
 using PreProcessUtils;
 
 namespace ManySpeech.SpeechLid.Examples
 {
-    internal partial class OfflineFireRedAsrLanguageID : BaseLid
+    internal partial class OfflineDolphinAsrLanguageID : BaseLid
     {
         public static LanguageID initOfflineLanguageID(string modelName)
         {
-            string encoderFilePath = applicationBase + "./" + modelName + "/encoder.onnx";
-            string decoderFilePath = applicationBase + "./" + modelName + "/decoder.onnx";
-            string configFilePath = "";
-            string mvnFilePath = applicationBase + "./" + modelName + "/am.mvn";
+            string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
+            string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
+            string configFilePath = applicationBase + "./" + modelName + "/conf.json"; // conf.yaml
             string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-            LanguageID languageID = new LanguageID(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, configFilePath: configFilePath, threadsNum: 1);
+            LanguageID languageID = new LanguageID(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, tokensFilePath: tokensFilePath, configFilePath: configFilePath, threadsNum: 1);
             return languageID;
         }
 
         public static void OfflineLanguageID(List<float[]>? samples = null)
         {
-            string modelName = "FireRedLID-onnx";
+            string modelName = "DolphinAsr-base-int8-onnx-opt";
             TimeSpan totalDuration = new TimeSpan(0L);
             List<List<float[]>> samplesList = new List<List<float[]>>();
             if (samples == null)
-            {  
+            {
                 for (int i = 0; i < 3; i++)
                 {
                     string wavFilePath = string.Format(applicationBase + "./" + modelName + "./test_wavs/{0}.wav", i.ToString());
@@ -48,7 +47,7 @@ namespace ManySpeech.SpeechLid.Examples
             List<OfflineStream> streams = new List<OfflineStream>();
             foreach (List<float[]> samplesListItem in samplesList)
             {
-                FireRedAsr.OfflineStream stream = languageID.CreateOfflineStream();
+                DolphinAsr.OfflineStream stream = languageID.CreateOfflineStream();
                 foreach (float[] sample in samplesListItem)
                 {
                     stream.AddSamples(sample);
@@ -58,7 +57,7 @@ namespace ManySpeech.SpeechLid.Examples
             List<OfflineRecognizerResultEntity> results_batch = languageID.GetResults(streams);
             foreach (OfflineRecognizerResultEntity result in results_batch)
             {
-                Console.WriteLine(result.Language);
+                Console.WriteLine($"language:{result.Language}, region:{result.Region}");
                 Console.WriteLine("");
             }
             TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
