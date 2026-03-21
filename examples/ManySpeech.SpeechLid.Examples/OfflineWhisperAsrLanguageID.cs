@@ -11,8 +11,8 @@ namespace ManySpeech.SpeechLid.Examples
             string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
             string configFilePath = applicationBase + "./" + modelName + "/conf.json";
-            LanguageID languageDetection = new LanguageID(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: 1);
-            return languageDetection;
+            LanguageID languageID = new LanguageID(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, threadsNum: 1);
+            return languageID;
         }
 
         public static void OfflineLanguageID(List<float[]>? samples = null)
@@ -41,19 +41,19 @@ namespace ManySpeech.SpeechLid.Examples
             {
                 samplesList.Add(samples);
             }
-            LanguageID languageDetection = initOfflineLanguageID(modelName);
+            LanguageID languageID = initOfflineLanguageID(modelName);
             TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);            
             List<OfflineStream> streams = new List<OfflineStream>();
             foreach (List<float[]> samplesListItem in samplesList)
             {
-                WhisperAsr.OfflineStream stream = languageDetection.CreateOfflineStream();
+                WhisperAsr.OfflineStream stream = languageID.CreateOfflineStream();
                 foreach (float[] sample in samplesListItem)
                 {
                     stream.AddSamples(sample);
                 }
                 streams.Add(stream);
             }
-            List<OfflineRecognizerResultEntity> results_batch = languageDetection.GetResults(streams);
+            List<OfflineRecognizerResultEntity> results_batch = languageID.GetResults(streams);
             foreach (OfflineRecognizerResultEntity result in results_batch)
             {
                 Console.WriteLine(result.Language);

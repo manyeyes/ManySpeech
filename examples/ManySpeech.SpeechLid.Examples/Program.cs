@@ -6,7 +6,8 @@ namespace ManySpeech.SpeechLid.Examples
         [STAThread]
         private static void Main()
         {
-            OfflineFireRedAsrLanguageID.OfflineLanguageID();
+            OfflineDolphinAsrLanguageID.OfflineLanguageID();
+            //OfflineFireRedAsrLanguageID.OfflineLanguageID();
             //OfflineWhisperAsrLanguageID.OfflineLanguageID();
         }
     }
