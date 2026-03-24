@@ -11,60 +11,72 @@ namespace ManySpeech.AliParaformerAsr
     /// </summary>
     internal class WavFrontend
     {
-        private FrontendConfEntity _frontendConfEntity;
-        OnlineFbank _onlineFbank;
-        private CmvnEntity _cmvnEntity;
+        private FrontendConf? _frontendConf;
+        private OnlineFbank? _onlineFbank;
+        private CmvnEntity? _cmvnEntity;
 
-        public WavFrontend(string mvnFilePath, FrontendConfEntity frontendConfEntity)
+        //public WavFrontend(string mvnFilePath, FrontendConf frontendConfEntity)
+        public WavFrontend(FrontendConf? frontendConf = null, string? mvnFilePath=null)
         {
-            _frontendConfEntity = frontendConfEntity;
-            _onlineFbank = new OnlineFbank(
-                dither: _frontendConfEntity.dither,
-                snip_edges: _frontendConfEntity.snip_edges,
-                window_type: _frontendConfEntity.window,
-                sample_rate: _frontendConfEntity.fs,
-                num_bins: _frontendConfEntity.n_mels
-                );
-            _cmvnEntity = LoadCmvn(mvnFilePath);
+            if (frontendConf != null)
+            {
+                _frontendConf = frontendConf;
+                _onlineFbank = new OnlineFbank(
+                    dither: _frontendConf.dither,
+                    snip_edges: _frontendConf.snip_edges,
+                    window_type: _frontendConf.window,
+                    sample_rate: _frontendConf.fs,
+                    num_bins: _frontendConf.n_mels
+                    );
+            }
+            if (string.IsNullOrEmpty(mvnFilePath))
+            {
+                _cmvnEntity = LoadCmvn(mvnFilePath);
+            }
         }
 
-        public float[] GetFbank(float[] samples)
+        public float[] GetFeatures(float[] samples)
         {
-            float sample_rate = _frontendConfEntity.fs;
-            samples = samples.Select((float x) => x * 32768f).ToArray();
-            float[] fbanks = _onlineFbank.GetFbank(samples);
-            return fbanks;
+            float[] features = samples.Select((float x) => x * 32768f).ToArray();
+            if (_onlineFbank != null)
+            {
+                features = _onlineFbank.GetFbank(features);
+            }
+            return features;
         }
 
         public float[] LfrCmvn(float[] fbanks)
         {
             float[] features = fbanks;
-            if (_frontendConfEntity.lfr_m != 1 || _frontendConfEntity.lfr_n != 1)
+            if (_frontendConf != null)
             {
-                features = ApplyLfr(fbanks, _frontendConfEntity.lfr_m, _frontendConfEntity.lfr_n);
+                if (_frontendConf.lfr_m != 1 || _frontendConf.lfr_n != 1)
+                {
+                    features = ApplyLfr(fbanks, _frontendConf.lfr_m, _frontendConf.lfr_n);
+                }
             }
-            if (_cmvnEntity != null)
-            {
-                features = ApplyCmvn(features);
-            }
+            features = ApplyCmvn(features);
             return features;
         }
 
         public float[] ApplyCmvn(float[] inputs)
         {
-            var arr_neg_mean = _cmvnEntity.Means;
-            float[] neg_mean = arr_neg_mean.Select(x => (float)Convert.ToDouble(x)).ToArray();
-            var arr_inv_stddev = _cmvnEntity.Vars;
-            float[] inv_stddev = arr_inv_stddev.Select(x => (float)Convert.ToDouble(x)).ToArray();
-
-            int dim = neg_mean.Length;
-            int num_frames = inputs.Length / dim;
-
-            for (int i = 0; i < num_frames; i++)
+            if (_cmvnEntity != null)
             {
-                for (int k = 0; k != dim; ++k)
+                var arr_neg_mean = _cmvnEntity.Means;
+                float[] neg_mean = arr_neg_mean.Select(x => (float)Convert.ToDouble(x)).ToArray();
+                var arr_inv_stddev = _cmvnEntity.Vars;
+                float[] inv_stddev = arr_inv_stddev.Select(x => (float)Convert.ToDouble(x)).ToArray();
+
+                int dim = neg_mean.Length;
+                int num_frames = inputs.Length / dim;
+
+                for (int i = 0; i < num_frames; i++)
                 {
-                    inputs[dim * i + k] = (inputs[dim * i + k] + neg_mean[k]) * inv_stddev[k];
+                    for (int k = 0; k != dim; ++k)
+                    {
+                        inputs[dim * i + k] = (inputs[dim * i + k] + neg_mean[k]) * inv_stddev[k];
+                    }
                 }
             }
             return inputs;
@@ -109,8 +121,12 @@ namespace ManySpeech.AliParaformerAsr
             }
             return LFR_outputs;
         }
-        private CmvnEntity LoadCmvn(string mvnFilePath)
+        private CmvnEntity? LoadCmvn(string? mvnFilePath)
         {
+            if(string.IsNullOrEmpty(mvnFilePath) || !File.Exists(mvnFilePath))
+            {
+                return null;
+            }
             List<float> means_list = new List<float>();
             List<float> vars_list = new List<float>();
             StreamReader srtReader = new StreamReader(mvnFilePath);
@@ -151,6 +167,13 @@ namespace ManySpeech.AliParaformerAsr
             cmvnEntity.Vars = vars_list;
             return cmvnEntity;
         }
+        public void InputFinished()
+        {
+            if (_onlineFbank != null)
+            {
+                _onlineFbank.InputFinished();
+            }
+        }
         protected virtual void Dispose(bool disposing)
         {
             if (disposing)
@@ -158,14 +181,6 @@ namespace ManySpeech.AliParaformerAsr
                 if (_onlineFbank != null)
                 {
                     _onlineFbank.Dispose();
-                }
-                if (_cmvnEntity != null)
-                {
-                    _cmvnEntity = null;
-                }
-                if (_frontendConfEntity != null)
-                {
-                    _frontendConfEntity = null;
                 }
             }
         }
