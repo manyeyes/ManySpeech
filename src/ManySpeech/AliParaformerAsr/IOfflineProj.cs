@@ -5,37 +5,12 @@ namespace ManySpeech.AliParaformerAsr
 {
     internal interface IOfflineProj
     {
-        InferenceSession ModelSession 
-        {
-            get;
-            set;
+        OfflineModel OfflineModel 
+        { 
+            get; 
+            set; 
         }
-        int Blank_id
-        {
-            get;
-            set;
-        }
-        int Sos_eos_id
-        {
-            get;
-            set;
-        }
-        int Unk_id
-        {
-            get;
-            set;
-        }
-        int SampleRate
-        {
-            get;
-            set;
-        }
-        int FeatureDim
-        {
-            get;
-            set;
-        }
-        internal ModelOutputEntity ModelProj(List<OfflineInputEntity> modelInputs);
+        public void Infer(List<OfflineInputEntity> modelInputs, List<List<int>> tokenIdsList, List<List<int[]>> timestampsList, List<string>? languages = null, List<string>? regions = null);
         internal void Dispose();
     }
 }

@@ -1,6 +1,7 @@
 ﻿// See https://github.com/manyeyes for more information
 // Copyright (c)  2023 by manyeyes
 using ManySpeech.AliParaformerAsr.Model;
+using ManySpeech.MoonshineAsr;
 
 namespace ManySpeech.AliParaformerAsr
 {
@@ -10,34 +11,40 @@ namespace ManySpeech.AliParaformerAsr
 
         private WavFrontend _wavFrontend;
         private OfflineInputEntity _offlineInputEntity;
-        private int _blank_id = 0;
-        private int _unk_id = 2;
-        private Int64[] _hyp;
+
+        private string? _region;
+        private string? _language;
+        private List<int> _tokenIds = new List<int>();
+        private List<string>? _tokens = new List<string>();
+        private List<int[]>? _timestamps = new List<int[]>();
         private List<int[]>? _hotwords = new List<int[]>();
-        List<Int64> _tokens = new List<Int64>();
-        List<int[]> _timestamps = new List<int[]>();
+
         private static object obj = new object();
-        public OfflineStream(string mvnFilePath, ConfEntity confEntity)
+        internal OfflineStream(IOfflineProj offlineProj)
         {
             _offlineInputEntity = new OfflineInputEntity();
 
-            _wavFrontend = new WavFrontend(mvnFilePath, confEntity.frontend_conf);
-            _hyp = new Int64[] { _blank_id, _blank_id };
-            _tokens = new List<Int64> { _blank_id, _blank_id };
-            _timestamps = new List<int[]> { };
+            _wavFrontend = new WavFrontend(offlineProj.OfflineModel.ConfEntity.frontend_conf, offlineProj.OfflineModel.MvnFilePath);
+            _tokenIds = new List<int> { offlineProj.OfflineModel.Blank_id, offlineProj.OfflineModel.Blank_id };
+            for (int i = 0; i < _tokenIds.Count; i++)
+            {
+                _timestamps.Add(new int[2]);
+            }
         }
 
         public OfflineInputEntity OfflineInputEntity { get => _offlineInputEntity; set => _offlineInputEntity = value; }
-        public Int64[] Hyp { get => _hyp; set => _hyp = value; }
-        public List<Int64> Tokens { get => _tokens; set => _tokens = value; }
+        public List<int> TokenIds { get => _tokenIds; set => _tokenIds = value; }
+        public List<string>? Tokens { get => _tokens; set => _tokens = value; }
         public List<int[]> Timestamps { get => _timestamps; set => _timestamps = value; }
         public List<int[]>? Hotwords { get => _hotwords; set => _hotwords = value; }
+        public string? Region { get => _region; set => _region = value; }
+        public string? Language { get => _language; set => _language = value; }
 
         public void AddSamples(float[] samples)
         {
             lock (obj)
             {
-                float[] fbanks = _wavFrontend.GetFbank(samples);
+                float[] fbanks = _wavFrontend.GetFeatures(samples);
                 float[] features = _wavFrontend.LfrCmvn(fbanks);
                 int oLen = 0;
                 if (OfflineInputEntity.SpeechLength > 0)
@@ -91,9 +98,9 @@ namespace ManySpeech.AliParaformerAsr
                     {
                         _offlineInputEntity = null;
                     }
-                    if (_hyp != null)
+                    if (_tokenIds != null)
                     {
-                        _hyp = null;
+                        _tokenIds = null;
                     }
                     if (_tokens != null)
                     {

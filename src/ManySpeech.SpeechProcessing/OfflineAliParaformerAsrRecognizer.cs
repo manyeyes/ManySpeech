@@ -20,7 +20,7 @@ namespace ManySpeech.SpeechProcessing
                 string configFilePath = modelBasePath + "/" + modelName + "/asr.yaml";
                 string mvnFilePath = modelBasePath + "/" + modelName + "/am.mvn";
                 string tokensFilePath = modelBasePath + "/" + modelName + "/tokens.txt";
-                string modelebFilePath = modelBasePath + "/" + modelName + "/model_eb.int8.onnx";
+                string embedFilePath = modelBasePath + "/" + modelName + "/embed.int8.onnx";
                 string hotwordFilePath = modelBasePath + "/" + modelName + "/hotword.txt";
                 try
                 {
@@ -56,15 +56,15 @@ namespace ManySpeech.SpeechProcessing
                         modelFilePath = preferredModel?.TargetPath ?? modelCandidates.Last().TargetPath;
                     }
 
-                    // Process modeleb path
-                    var modelebCandidates = fileInfos
-                        .Where(f => f.FileName.StartsWith("model_eb"))
+                    // Process embed path
+                    var embedCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("model_eb") || f.FileName.StartsWith("embed"))
                         .ToList();
-                    if (modelebCandidates.Any())
+                    if (embedCandidates.Any())
                     {
-                        var preferredModeleb = modelebCandidates
+                        var preferredModeleb = embedCandidates
                             .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
-                        modelebFilePath = preferredModeleb?.TargetPath ?? modelebCandidates.Last().TargetPath;
+                        embedFilePath = preferredModeleb?.TargetPath ?? embedCandidates.Last().TargetPath;
                     }
 
                     // Process config paths (take the last one that matches the prefix)
@@ -92,7 +92,7 @@ namespace ManySpeech.SpeechProcessing
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _recognizer = new OfflineRecognizer(modelFilePath: modelFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, modelebFilePath: modelebFilePath, hotwordFilePath: hotwordFilePath, threadsNum: threadsNum);
+                    _recognizer = new OfflineRecognizer(modelFilePath: modelFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, embedFilePath: embedFilePath, hotwordFilePath: hotwordFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());

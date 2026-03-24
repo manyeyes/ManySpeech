@@ -13,13 +13,8 @@ namespace ManySpeech.AliParaformerAsr
         private bool _disposed;
 
         private InferenceSession _modelSession;
-        private EmbedSVModel _embedSVModel;
-        private int _blank_id = 0;
-        private int _sos_eos_id = 1;
-        private int _unk_id = 2;
-
-        private int _featureDim = 80;
-        private int _sampleRate = 16000;
+        private InferenceSession? _embedSession;
+        private OfflineModel _offlineModel;
 
         private bool _use_itn = false;
         private string _textnorm = "woitn";
@@ -30,25 +25,172 @@ namespace ManySpeech.AliParaformerAsr
 
         public OfflineProjOfSenseVoiceSmall(OfflineModel offlineModel)
         {
+            _offlineModel = offlineModel;
             _modelSession = offlineModel.ModelSession;
-            var inputMeta = _modelSession.InputMetadata;
-            if (!inputMeta.ContainsKey("language") && !inputMeta.ContainsKey("textnorm"))
-            {
-                _embedSVModel = new EmbedSVModel();
-            }
-            _blank_id = offlineModel.Blank_id;
-            _sos_eos_id = offlineModel.Sos_eos_id;
-            _unk_id = offlineModel.Unk_id;
-            _featureDim = offlineModel.FeatureDim;
-            _sampleRate = offlineModel.SampleRate;
+            _embedSession = offlineModel.EmbedSession;
             _use_itn = offlineModel.Use_itn;
         }
-        public InferenceSession ModelSession { get => _modelSession; set => _modelSession = value; }
-        public int Blank_id { get => _blank_id; set => _blank_id = value; }
-        public int Sos_eos_id { get => _sos_eos_id; set => _sos_eos_id = value; }
-        public int Unk_id { get => _unk_id; set => _unk_id = value; }
-        public int FeatureDim { get => _featureDim; set => _featureDim = value; }
-        public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
+        public OfflineModel OfflineModel { get => _offlineModel; set => _offlineModel = value; }
+
+        public void Infer(List<OfflineInputEntity> modelInputs, List<List<int>> tokenIdsList, List<List<int[]>> timestampsList, List<string>? languages = null, List<string>? regions = null)
+        {
+            ModelOutputEntity modelOutputEntity = ModelProj(modelInputs);
+            if (modelOutputEntity != null)
+            {
+                Tensor<float>? logitsTensor = modelOutputEntity.ModelOut;
+                string method = _offlineModel.Method;
+                // 2. 根据解码策略执行对应逻辑
+                if (string.Equals(method, "greedy", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 调用对齐原逻辑的贪心搜索
+                    ExecuteGreedySearch(logitsTensor, tokenIdsList, timestampsList);
+                }
+                else if (string.Equals(method, "beam", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 调用束搜索
+                    ExecuteBeamSearch(logitsTensor, tokenIdsList, timestampsList, _offlineModel.BeamWidth);
+                }
+                else
+                {
+                    throw new ArgumentException($"Unsupported decode method: {method}, only 'greedy' or 'beam' is allowed");
+                }
+                if (modelOutputEntity.CifPeak != null)
+                {
+                    timestampsList = new List<List<int[]>>();
+                    Tensor<float> cifPeak = modelOutputEntity.CifPeak;
+                    for (int i = 0; i < cifPeak.Dimensions[0]; i++)
+                    {
+                        float[] usCifPeak = new float[cifPeak.Dimensions[1]];
+                        Array.Copy(cifPeak.ToArray(), i * usCifPeak.Length, usCifPeak, 0, usCifPeak.Length);
+                        List<int[]> timestamps = ComputeHelper.TimestampLfr6(usCifPeak, tokenIdsList[i].ToArray());
+                        timestampsList.Add(timestamps);
+                    }
+                }
+            }
+        }
+
+        /// <summary>
+        /// 执行贪心搜索解码
+        /// </summary>
+        private void ExecuteGreedySearch(Tensor<float>? logitsTensor,
+                                               List<List<int>> tokenIdsList,
+                                               List<List<int[]>> timestampsList)
+        {
+            if (logitsTensor == null) return;
+            for (int batchIndex = 0; batchIndex < logitsTensor.Dimensions[0]; batchIndex++)
+            {
+                // 存储单个批次的Token ID序列
+                int[] batchTokenIds = new int[logitsTensor.Dimensions[1]];
+                // 存储单个批次的Token时间戳
+                List<int[]> batchTokenTimestamps = new List<int[]>();
+                for (int sequenceStep = 0; sequenceStep < logitsTensor.Dimensions[1]; sequenceStep++)
+                {
+                    // 当前序列位置的最优Token ID
+                    int bestTokenId = 0;
+                    // 逐一遍历Token，保留概率更大的Token ID
+                    for (int tokenIndex = 1; tokenIndex < logitsTensor.Dimensions[2]; tokenIndex++)
+                    {
+                        bestTokenId = logitsTensor[batchIndex, sequenceStep, bestTokenId] > logitsTensor[batchIndex, sequenceStep, tokenIndex]
+                            ? bestTokenId
+                            : tokenIndex;
+                    }
+
+                    batchTokenIds[sequenceStep] = bestTokenId;
+                    batchTokenTimestamps.Add(new int[] { 0, 0 });
+                }
+
+                tokenIdsList.Add(batchTokenIds.ToList());
+                timestampsList.Add(batchTokenTimestamps);
+            }
+        }
+
+        /// <summary>
+        /// 执行束搜索解码（维护Top-N候选序列，选整体最优）
+        /// </summary>
+        /// <param name="beamWidth">束宽度（越大精度越高，性能越低）</param>
+        private void ExecuteBeamSearch(Tensor<float> logitsTensor,
+                                             List<List<int>> tokenIdsList,
+                                             List<List<int[]>> timestampsList,
+                                             int beamWidth)
+        {
+            for (int batchIdx = 0; batchIdx < logitsTensor.Dimensions[0]; batchIdx++)
+            {
+                // 初始化束：保存(序列, 累计概率)，初始为空序列
+                var beam = new List<(List<int> sequence, float totalProb)> { (new List<int>(), 0f) };
+
+                for (int seqIdx = 0; seqIdx < logitsTensor.Dimensions[1]; seqIdx++)
+                {
+                    var candidates = new List<(List<int> sequence, float totalProb)>();
+
+                    // 遍历当前束中的所有候选序列
+                    foreach (var (currentSeq, currentProb) in beam)
+                    {
+                        // 为当前序列的下一个位置生成所有可能的Token及概率
+                        var tokenProbs = new List<(int tokenId, float prob)>();
+                        for (int tokenIdx = 0; tokenIdx < logitsTensor.Dimensions[2]; tokenIdx++)
+                        {
+                            tokenProbs.Add((tokenIdx, logitsTensor[batchIdx, seqIdx, tokenIdx]));
+                        }
+
+                        // 按概率排序，取Top-BeamWidth个Token
+                        var topTokens = tokenProbs.OrderByDescending(t => t.prob).Take(beamWidth);
+                        foreach (var (tokenId, prob) in topTokens)
+                        {
+                            // 生成新序列并累加概率（这里用加法，实际可改用对数概率避免下溢）
+                            var newSeq = new List<int>(currentSeq) { tokenId };
+                            float newProb = currentProb + prob;
+                            candidates.Add((newSeq, newProb));
+                        }
+                    }
+
+                    // 从所有候选中选Top-BeamWidth个，更新束
+                    beam = candidates.OrderByDescending(c => c.totalProb).Take(beamWidth).ToList();
+                }
+
+                // 取束中概率最大的序列作为最终结果
+                var bestSequence = beam.OrderByDescending(b => b.totalProb).First().sequence;
+                // 补全序列长度（与贪心搜索结果维度对齐）
+                while (bestSequence.Count < logitsTensor.Dimensions[1])
+                {
+                    bestSequence.Add(0); // 补零
+                }
+
+                tokenIdsList.Add(bestSequence);
+                // 初始化时间戳
+                timestampsList.Add(Enumerable.Repeat(new int[] { 0, 0 }, logitsTensor.Dimensions[1]).ToList());
+            }
+        }
+        public float[] EmbedProj(Int64[] x, int speechSize = 0)
+        {
+            float[] y = new float[0];
+            var inputMeta = _embedSession.InputMetadata;
+            var container = new List<NamedOnnxValue>();
+            foreach (var name in inputMeta.Keys)
+            {
+                if (name == "x")
+                {
+                    int[] dim = new int[] { 1, x.Length };
+                    var tensor = new DenseTensor<Int64>(x, dim, false);
+                    container.Add(NamedOnnxValue.CreateFromTensor<Int64>(name, tensor));
+                }
+            }
+            IDisposableReadOnlyCollection<DisposableNamedOnnxValue>? results = null;
+            try
+            {
+                results = _embedSession.Run(container);
+                if (results != null)
+                {
+                    var resultsArray = results.ToArray();
+                    Tensor<float> logits_tensor = resultsArray[0].AsTensor<float>();
+                    y = logits_tensor.ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Sensevoice embed model infer failed", ex.InnerException);
+            }
+            return y;
+        }
 
         public ModelOutputEntity ModelProj(List<OfflineInputEntity> modelInputs)
         {
@@ -81,15 +223,15 @@ namespace ManySpeech.AliParaformerAsr
                     float[]? speech = offlineInputEntity.Speech;
                     if (speech != null)
                     {
-                        float[] language_query = _embedSVModel.Forward(new Int64[] { languageId });
-                        float[] textnorm_query = _embedSVModel.Forward(new long[] { textnormId });
+                        float[] language_query = EmbedProj(new Int64[] { languageId });
+                        float[] textnorm_query = EmbedProj(new long[] { textnormId });
                         //
                         float[] tempSpeech = new float[speech.Length + 560];
                         Array.Copy(textnorm_query, 0, tempSpeech, 0, textnorm_query.Length);
                         Array.Copy(speech, 0, tempSpeech, textnorm_query.Length, speech.Length);
                         speech = tempSpeech;
                         //
-                        float[] event_emo_query = _embedSVModel.Forward(new Int64[] { 1, 2 });
+                        float[] event_emo_query = EmbedProj(new Int64[] { 1, 2 });
                         float[] input_query = new float[language_query.Length + event_emo_query.Length];
                         Array.Copy(language_query, 0, input_query, 0, language_query.Length);
                         Array.Copy(event_emo_query, 0, input_query, language_query.Length, event_emo_query.Length);
@@ -158,18 +300,18 @@ namespace ManySpeech.AliParaformerAsr
                 if (results != null)
                 {
                     var resultsArray = results.ToArray();
-                    modelOutputEntity.model_out = resultsArray[0].AsTensor<float>();
-                    modelOutputEntity.model_out_lens = resultsArray[1].AsEnumerable<int>().ToArray();
+                    modelOutputEntity.ModelOut = resultsArray[0].AsTensor<float>();
+                    modelOutputEntity.ModelOutLens = resultsArray[1].AsEnumerable<int>().ToArray();
                     if (resultsArray.Length >= 4)
                     {
-                        Tensor<float> cif_peak_tensor = resultsArray[3].AsTensor<float>();
-                        modelOutputEntity.cif_peak_tensor = cif_peak_tensor;
+                        Tensor<float> cifPeak = resultsArray[3].AsTensor<float>();
+                        modelOutputEntity.CifPeak = cifPeak;
                     }
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception("ModelProj failed", ex);
+                throw new Exception("Sensevoice model infer failed", ex);
             }
             return modelOutputEntity;
         }
@@ -182,6 +324,10 @@ namespace ManySpeech.AliParaformerAsr
                     if (_modelSession != null)
                     {
                         _modelSession.Dispose();
+                    }
+                    if (_embedSession != null)
+                    {
+                        _embedSession.Dispose();
                     }
                 }
                 _disposed = true;

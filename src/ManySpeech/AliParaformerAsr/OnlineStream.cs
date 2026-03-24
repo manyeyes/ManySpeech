@@ -38,9 +38,9 @@ namespace ManySpeech.AliParaformerAsr
         public OnlineStream(OnlineModel onlineModel)
         {
             _onlineInputEntity = new OnlineInputEntity();
-            FrontendConfEntity frontendConfEntity = onlineModel.ConfEntity.frontend_conf;
-            frontendConfEntity.fs = onlineModel.SampleRate;
-            frontendConfEntity.n_mels = onlineModel.FeatureDim;
+            FrontendConf frontendConf = onlineModel.ConfEntity.frontend_conf;
+            frontendConf.fs = onlineModel.SampleRate;
+            frontendConf.n_mels = onlineModel.FeatureDim;
             _fsmnDims = onlineModel.ConfEntity.encoder_conf.output_size;
             _fsmnLorder = onlineModel.ConfEntity.decoder_conf.kernel_size - 1;
             _fsmnLayer = onlineModel.ConfEntity.decoder_conf.num_blocks;
@@ -49,7 +49,7 @@ namespace ManySpeech.AliParaformerAsr
             _featureDim = onlineModel.FeatureDim;
             _sampleRate = onlineModel.SampleRate;
 
-            _wavFrontend = new OnlineWavFrontend(onlineModel.MvnFilePath, frontendConfEntity);
+            _wavFrontend = new OnlineWavFrontend(frontendConf, onlineModel.MvnFilePath);
             _hyp = new Int64[] { _blank_id, _blank_id };
             _tokens = new List<Int64> { _blank_id, _blank_id };
             _states = InitEncoderStates();
@@ -137,7 +137,7 @@ namespace ManySpeech.AliParaformerAsr
                 float[] waveform = new float[waveformLength];
                 Array.Copy(inputs, 0, waveform, 0, waveform.Length);
                 waveform = waveform.Select((float x) => x * 32768f).ToArray();
-                float[] features = _wavFrontend.GetFbank(waveform);
+                float[] features = _wavFrontend.GetFeatures(waveform);
                 if (_cacheInput.Length == 0)
                 {
                     int featureDim = _featureDim;
