@@ -16,7 +16,7 @@
 				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>  
 				<!-- info -->
 				<PackageId>ManySpeech</PackageId>
-				<Version>1.2.6.2</Version>
+				<Version>1.2.7</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
@@ -48,7 +48,7 @@
 
 		<ItemGroup>
 				<PackageReference Include="ManySpeech.SpeechFeatures" Version="1.1.8" />
-				<PackageReference Include="ManySpeech.Tiktoken" Version="1.0.0" />
+				<PackageReference Include="ManySpeech.Tiktoken" Version="1.1.0" />
 				<PackageReference Include="MathNet.Numerics" Version="5.0.0" />
 				<PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.22.*" />
 				<PackageReference Include="YamlDotNet" Version="16.3.0" />
