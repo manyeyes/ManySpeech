@@ -204,7 +204,9 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 { "modelName", envConfig["modelName"] },
                 { "modelAccuracy", envConfig["modelAccuracy"] },
                 { "threads", int.Parse(envConfig["threads"]!) },
-                { "files", Array.Empty<string>() }
+                { "files", Array.Empty<string>() },
+                { "languages", Array.Empty<string>() },   // string[]?
+                { "hotwords", Array.Empty<string>() }     // string[]?
             };
 
             // resolve command-line parameters (override default values)
@@ -245,6 +247,20 @@ namespace ManySpeech.AliParaformerAsr.Examples
                         config["files"] = files.ToArray();
                         i--; // fix index position
                         break;
+                    case "-languages":
+                        if (i + 1 < args.Length)
+                        {
+                            string langStr = args[++i];
+                            config["languages"] = langStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        }
+                        break;
+                    case "-hotwords":
+                        if (i + 1 < args.Length)
+                        {
+                            string hotStr = args[++i];
+                            config["hotwords"] = hotStr.Split(',', StringSplitOptions.RemoveEmptyEntries);
+                        }
+                        break;
                     default:
                         throw new ArgumentException($"Unknown parameters: {args[i]}");
                 }
@@ -269,6 +285,9 @@ namespace ManySpeech.AliParaformerAsr.Examples
             string modelAccuracy = config["modelAccuracy"].ToString()!;
             int threads = (int)config["threads"];
             string[] files = (string[])config["files"];
+            string[]? languages = config["languages"] as string[];
+            string[]? hotwords = config["hotwords"] as string[];
+
             if (string.IsNullOrEmpty(modelBasePath))
             {
                 modelBasePath = applicationBase;
@@ -281,6 +300,13 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 await Task.Run(() => _modelPreparer.ProcessCloneModel(modelBasePath, modelName));
             PrintConfigInfo(modelBasePath, recognizerType, methodType, modelName, modelAccuracy,
                            threads, files);
+
+            // 打印语言和热词信息（如果提供）
+            if (languages?.Length > 0)
+                Console.WriteLine($"Languages: {string.Join(", ", languages)}");
+            if (hotwords?.Length > 0)
+                Console.WriteLine($"Hotwords: {string.Join(", ", hotwords)}");
+
             try
             {
                 // 调用对应的识别方法
@@ -302,7 +328,17 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     }
                     SetOfflineRecognizerCallbackForResult(recognizerType: recognizerType);
                     SetOfflineRecognizerCallbackForCompleted();
-                    OfflineAliParaformerAsrRecognizer.OfflineRecognizer(methodType, modelName, modelAccuracy, threads, files, modelBasePath);
+                    // 使用新签名，传递 languages 和 hotwords 参数
+                    OfflineAliParaformerAsrRecognizer.OfflineRecognizer(
+                        streamDecodeMethod: methodType,
+                        modelName: modelName,
+                        modelAccuracy: modelAccuracy,
+                        threadsNum: threads,
+                        mediaFilePaths: files,
+                        languages: languages,
+                        hotwords: hotwords,
+                        modelBasePath: modelBasePath
+                    );
                 }
                 else
                 {
@@ -466,9 +502,11 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 Console.WriteLine($"  -method <one/batch>       批量处理模式（默认: one，环境变量: {EnvBatchType}）");
                 Console.WriteLine($"  -base <可指定模型存放目录，或为空>   模型存放目录（环境变量: {EnvModelBasePath}）");
                 Console.WriteLine($"  -model <名称>            模型名称（默认: default-model，环境变量: {EnvModelName}）");
-                Console.WriteLine($"  -accuracy <fp32/int8>    模型名称（默认: int8，环境变量: {EnvModelAccuracy}）");
+                Console.WriteLine($"  -accuracy <fp32/int8>    模型精度（默认: int8，环境变量: {EnvModelAccuracy}）");
                 Console.WriteLine($"  -threads <数量>          线程数（默认: 2，环境变量: {EnvThreads}）");
                 Console.WriteLine("  -files <文件1> <文件2>    输入媒体文件列表(如不指定，默认:自动检查并识别模型目录下test_wavs中的文件)");
+                Console.WriteLine("  -languages <语言1,语言2>  指定识别语言（如 zh,en，逗号分隔）");
+                Console.WriteLine("  -hotwords <热词1,热词2>   指定热词列表（逗号分隔）");
                 Console.WriteLine("\n示例1:");
                 Console.WriteLine("  AliParaformerAsr.Examples.exe -type online -method one -base /path/to/directory -model my-model -accuracy int8 -threads 2 -files /path/to/0.wav /path/to/1.wav");
                 Console.WriteLine("\n示例2（使用默认method=one）:");
@@ -488,6 +526,8 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 Console.WriteLine($"  -accuracy <fp32/int8>    Precision (default: int8, environment variable: {EnvModelAccuracy})");
                 Console.WriteLine($"  -threads <count>         Number of threads (default: 2, environment variable: {EnvThreads})");
                 Console.WriteLine("  -files <file1> <file2>    List of input media files (if not specified, default: automatically check and recognize files in test_wavs under the model directory)");
+                Console.WriteLine("  -languages <lang1,lang2>  Specify recognition languages (e.g., zh,en, comma-separated)");
+                Console.WriteLine("  -hotwords <word1,word2>   Specify hotwords (comma-separated)");
                 Console.WriteLine("\nExample 1:");
                 Console.WriteLine("  AliParaformerAsr.Examples.exe -type online -method one -base /path/to/directory -model my-model -accuracy int8 -threads 2 -files /path/to/0.wav /path/to/1.wav");
                 Console.WriteLine("\nExample 2 (use default method=one):");

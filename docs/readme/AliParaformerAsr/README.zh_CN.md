@@ -155,21 +155,29 @@ dotnet add package ManySpeech.AliCTTransformerPunc
     - **Linux**：适用于 Linux 发行版，但需要满足特定的依赖关系（详见.NET 6 支持的 Linux 发行版列表）。
     - **Android**：支持 Android 5.0 (API 21) 及更高版本。
 
-## 七、模型下载（支持的 ONNX 模型）
+# 七、模型下载（支持的 ONNX 模型）
 以下是 ManySpeech.AliParaformerAsr 所支持的 ONNX 模型相关信息，包含模型名称、类型、支持语言、标点情况、时间戳情况以及下载地址等内容，方便根据具体需求选择合适的模型进行下载使用：
 
 | 模型名称 | 类型 | 支持语言 | 标点 | 时间戳 | 下载地址 |
 | ---- | ---- | ---- | ---- | ---- | ---- |
-| paraformer-large-zh-en-onnx-offline | 非流式 | 中文、英文 | 否 | 否 | [huggingface](https://huggingface.co/manyeyes/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx "huggingface"), [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-offline "modelscope") |
-| paraformer-large-zh-en-timestamp-onnx-offline | 非流式 | 中文、英文 | 否 | 是 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-timestamp-onnx-offline "modelscope") |
-| paraformer-large-en-onnx-offline | 非流式 | 英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-en-onnx-offline "modelscope") |
-| paraformer-large-zh-en-onnx-online | 流式 | 中文、英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-online "modelscope") |
-| paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805 | 非流式 | 中文、粤语、英文 | 否 | 是 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805 "modelscope") |
-| paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805 | 非流式 | 中文、粤语、英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805 "modelscope") |
-| paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208 | 流式 | 中文、粤语、英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208 "modelscope") |
-| paraformer-seaco-large-zh-timestamp-onnx-offline | 非流式 | 中文、热词 | 否 | 是 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-seaco-large-zh-timestamp-onnx-offline "modelscope") |
-| SenseVoiceSmall | 非流式 | 中文、粤语、英文、日语、韩语 | 是 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-onnx "modelscope"), [modelscope-split-embed](https://www.modelscope.cn/models/manyeyes/sensevoice-small-split-embed-onnx "modelscope-split-embed") |
-| sensevoice-small-wenetspeech-yue-int8-onnx | 非流式 | 粤语、中文、英文、日语、韩语 | 是 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-wenetspeech-yue-int8-onnx "modelscope") |
+| paraformer-large-zh-en-onnx-offline | 非流式 | 中文、英文 | 否 | 否 | [huggingface](https://huggingface.co/manyeyes/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx), [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-offline) |
+| paraformer-large-zh-en-timestamp-onnx-offline | 非流式 | 中文、英文 | 否 | 是 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-timestamp-onnx-offline) |
+| paraformer-large-en-onnx-offline | 非流式 | 英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-en-onnx-offline) |
+| paraformer-large-zh-en-onnx-online | 流式 | 中文、英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-online) |
+| paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805 | 非流式 | 中文、粤语、英文 | 否 | 是 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805) |
+| paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805 | 非流式 | 中文、粤语、英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805) |
+| paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208 | 流式 | 中文、粤语、英文 | 否 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208) |
+| paraformer-seaco-large-zh-timestamp-onnx-offline | 非流式 | 中文、热词 | 否 | 是 | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-seaco-large-zh-timestamp-onnx-offline) |
+| SenseVoiceSmall | 非流式 | 中文、粤语、英文、日语、韩语 | 是 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-onnx), [modelscope-split-embed](https://www.modelscope.cn/models/manyeyes/sensevoice-small-split-embed-onnx) |
+| sensevoice-small-wenetspeech-yue-int8-onnx | 非流式 | 粤语、中文、英文、日语、韩语 | 是 | 否 | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-wenetspeech-yue-int8-onnx) |
+| Fun-ASR-Nano-2512-LLM-onnx | 非流式 | 中、英、日，含7大方言及26种中文口音 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-onnx) |
+| Fun-ASR-Nano-2512-LLM-int8-onnx | 非流式 | 中、英、日，含7大方言及26种中文口音 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-int8-onnx) |
+| Fun-ASR-Nano-2512-LLM-split-adaptor-onnx | 非流式 | 中、英、日，含7大方言及26种中文口音 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-split-adaptor-onnx) |
+| Fun-ASR-Nano-2512-LLM-split-adaptor-int8-onnx | 非流式 | 中、英、日，含7大方言及26种中文口音 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-split-adaptor-int8-onnx) |
+| Fun-ASR-Nano-2512-CTC-onnx | 非流式 | 中、英、日，含7大方言及26种中文口音 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-CTC-onnx) |
+| Fun-ASR-Nano-2512-CTC-int8-onnx | 非流式 | 中、英、日，含7大方言及26种中文口音 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-CTC-int8-onnx) |
+| Fun-ASR-MLT-Nano-2512-onnx | 非流式 | 共31种语言：中、英、粤、日、韩、越、印尼、泰、马来、菲律宾、阿拉伯、印地及欧盟多国语言 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-MLT-Nano-2512-onnx) |
+| Fun-ASR-MLT-Nano-2512-int8-onnx | 非流式 | 共31种语言：中、英、粤、日、韩、越、印尼、泰、马来、菲律宾、阿拉伯、印地及欧盟多国语言 | 否 | 否 | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-MLT-Nano-2512-int8-onnx) |
 
 ## 八、模型介绍
 
