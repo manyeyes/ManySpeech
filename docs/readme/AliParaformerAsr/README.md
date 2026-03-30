@@ -1,4 +1,4 @@
- ([¼òÌåÖĞÎÄ](README.zh_CN.md) | English )
+ï»¿ ([ç®€ä½“ä¸­æ–‡](README.zh_CN.md) | English )
 
 # ManySpeech.AliParaformerAsr User Guide
 
@@ -76,11 +76,11 @@ List<OfflineRecognizerResultEntity> results = offlineRecognizer.GetResults(strea
 ```
 4. **Example of Output Results**
 ```
-»¶Ó­´ó¼ÒÀ´ÌåÑé´ïÄ¦ÔºÍÆ³öµÄÓïÒôÊ¶±ğÄ£ĞÍ
+æ¬¢è¿å¤§å®¶æ¥ä½“éªŒè¾¾æ‘©é™¢æ¨å‡ºçš„è¯­éŸ³è¯†åˆ«æ¨¡å‹
 
-·Ç³£µÄ·½±ãµ«ÊÇÏÖÔÚ²»Í¬°¡Ó¢¹úÍÑÅ·Å·ÃËÄÚ²¿ÍêÉÆµÄ²úÒµÁ´µÄºìÀûÈË
+éå¸¸çš„æ–¹ä¾¿ä½†æ˜¯ç°åœ¨ä¸åŒå•Šè‹±å›½è„±æ¬§æ¬§ç›Ÿå†…éƒ¨å®Œå–„çš„äº§ä¸šé“¾çš„çº¢åˆ©äºº
 
-he must be home now for the light is onËûÒ»¶¨ÔÚ¼ÒÒòÎªµÆÁÁ×Å¾ÍÊÇÓĞÒ»ÖÖÍÆÀí»òÕß½âÊÍµÄÄÇÖÖ¸Ğ¾õ
+he must be home now for the light is onä»–ä¸€å®šåœ¨å®¶å› ä¸ºç¯äº®ç€å°±æ˜¯æœ‰ä¸€ç§æ¨ç†æˆ–è€…è§£é‡Šçš„é‚£ç§æ„Ÿè§‰
 
 elapsed_milliseconds: 1502.8828125
 total_duration: 40525.6875
@@ -126,7 +126,7 @@ OnlineRecognizerResultEntity result = onlineRecognizer.GetResult(stream);
 4. **Example of Output Results**
 ```
 
-ÕıÊÇÒòÎª´æÔÚ¾ø¶ÔÕıÒåËùÒÔÎÒÎÒ½ÓÊÜÏÖÊµÊ½Ïà¶ÔÉúµ«ÊÇ²»ÒªÒòÒòÏÖÊµµÄÏà¶Ô¶ÔÕıÒåÃÇ¾Í¾ÍÈÏÎªÕâ¸öÊÀ½çÓĞÓĞÖ¤ÒòÎªÈç¹ûµ±ÄãÈÏÎªÕâÕâ¸ö½ç½ç
+æ­£æ˜¯å› ä¸ºå­˜åœ¨ç»å¯¹æ­£ä¹‰æ‰€ä»¥æˆ‘æˆ‘æ¥å—ç°å®å¼ç›¸å¯¹ç”Ÿä½†æ˜¯ä¸è¦å› å› ç°å®çš„ç›¸å¯¹å¯¹æ­£ä¹‰ä»¬å°±å°±è®¤ä¸ºè¿™ä¸ªä¸–ç•Œæœ‰æœ‰è¯å› ä¸ºå¦‚æœå½“ä½ è®¤ä¸ºè¿™è¿™ä¸ªç•Œç•Œ
 
 elapsed_milliseconds: 1389.3125
 total_duration: 13052
@@ -154,21 +154,29 @@ Specific calling examples can be referred to in the official documentation of th
     - **Linux**: Applicable to Linux distributions, but specific dependencies need to be met (see the list of Linux distributions supported by.NET 6 for details).
     - **Android**: Supports Android 5.0 (API 21) and higher versions.
 
-## VII. Model Download (Supported ONNX Models)
-The following is the information related to the ONNX models supported by ManySpeech.AliParaformerAsr, including model names, types, supported languages, punctuation status, timestamp status, and download addresses, which facilitates you to choose the appropriate model for download and use according to specific requirements:
+# VII. Model Download (Supported ONNX Models)
+Below is information about the ONNX models supported by ManySpeech.AliParaformerAsr, including model name, type, supported languages, punctuation support, timestamp support, and download links, to help you select the appropriate model for your needs:
 
-| Model Name | Type | Supported Languages | Punctuation | Timestamp | Download Address |
+| Model Name | Type | Supported Languages | Punctuation | Timestamp | Download Link |
 | ---- | ---- | ---- | ---- | ---- | ---- |
-| paraformer-large-zh-en-onnx-offline | Non-streaming | Chinese, English | No | No | [huggingface](https://huggingface.co/manyeyes/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx "huggingface"), [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-offline "modelscope") |
-| paraformer-large-zh-en-timestamp-onnx-offline | Non-streaming | Chinese, English | No | Yes | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-timestamp-onnx-offline "modelscope") |
-| paraformer-large-en-onnx-offline | Non-streaming | English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-en-onnx-offline "modelscope") |
-| paraformer-large-zh-en-onnx-online | Streaming | Chinese, English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-online "modelscope") |
-| paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805 | Non-streaming | Chinese, Cantonese, English | No | Yes | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805 "modelscope") |
-| paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805 | Non-streaming | Chinese, Cantonese, English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805 "modelscope") |
-| paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208 | Streaming | Chinese, Cantonese, English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208 "modelscope") |
-| paraformer-seaco-large-zh-timestamp-onnx-offline | Non-streaming | Chinese, Hotwords | No | Yes | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-seaco-large-zh-timestamp-onnx-offline "modelscope") |
-| SenseVoiceSmall | Non-streaming | Chinese, Cantonese, English, Japanese, Korean | Yes | No | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-onnx "modelscope"), [modelscope-split-embed](https://www.modelscope.cn/models/manyeyes/sensevoice-small-split-embed-onnx "modelscope-split-embed") |
-| sensevoice-small-wenetspeech-yue-int8-onnx | Non-streaming | Cantonese, Chinese, English, Japanese, Korean | Yes | No | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-wenetspeech-yue-int8-onnx "modelscope") |
+| paraformer-large-zh-en-onnx-offline | Non-streaming | Chinese, English | No | No | [huggingface](https://huggingface.co/manyeyes/speech_paraformer-large_asr_nat-zh-cn-16k-common-vocab8404-onnx), [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-offline) |
+| paraformer-large-zh-en-timestamp-onnx-offline | Non-streaming | Chinese, English | No | Yes | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-timestamp-onnx-offline) |
+| paraformer-large-en-onnx-offline | Non-streaming | English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-en-onnx-offline) |
+| paraformer-large-zh-en-onnx-online | Streaming | Chinese, English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-en-onnx-online) |
+| paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805 | Non-streaming | Chinese, Cantonese, English | No | Yes | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-timestamp-onnx-offline-dengcunqin-20240805) |
+| paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805 | Non-streaming | Chinese, Cantonese, English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-offline-dengcunqin-20240805) |
+| paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208 | Streaming | Chinese, Cantonese, English | No | No | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-large-zh-yue-en-onnx-online-dengcunqin-20240208) |
+| paraformer-seaco-large-zh-timestamp-onnx-offline | Non-streaming | Chinese, hotword support | No | Yes | [modelscope](https://www.modelscope.cn/models/manyeyes/paraformer-seaco-large-zh-timestamp-onnx-offline) |
+| SenseVoiceSmall | Non-streaming | Chinese, Cantonese, English, Japanese, Korean | Yes | No | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-onnx), [modelscope-split-embed](https://www.modelscope.cn/models/manyeyes/sensevoice-small-split-embed-onnx) |
+| sensevoice-small-wenetspeech-yue-int8-onnx | Non-streaming | Cantonese, Chinese, English, Japanese, Korean | Yes | No | [modelscope](https://www.modelscope.cn/models/manyeyes/sensevoice-small-wenetspeech-yue-int8-onnx) |
+| Fun-ASR-Nano-2512-LLM-onnx | Non-streaming | Chinese, English, Japanese; includes 7 dialects and 26 regional accents of Chinese | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-onnx) |
+| Fun-ASR-Nano-2512-LLM-int8-onnx | Non-streaming | Chinese, English, Japanese; includes 7 dialects and 26 regional accents of Chinese | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-int8-onnx) |
+| Fun-ASR-Nano-2512-LLM-split-adaptor-onnx | Non-streaming | Chinese, English, Japanese; includes 7 dialects and 26 regional accents of Chinese | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-split-adaptor-onnx) |
+| Fun-ASR-Nano-2512-LLM-split-adaptor-int8-onnx | Non-streaming | Chinese, English, Japanese; includes 7 dialects and 26 regional accents of Chinese | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-LLM-split-adaptor-int8-onnx) |
+| Fun-ASR-Nano-2512-CTC-onnx | Non-streaming | Chinese, English, Japanese; includes 7 dialects and 26 regional accents of Chinese | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-CTC-onnx) |
+| Fun-ASR-Nano-2512-CTC-int8-onnx | Non-streaming | Chinese, English, Japanese; includes 7 dialects and 26 regional accents of Chinese | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-Nano-2512-CTC-int8-onnx) |
+| Fun-ASR-MLT-Nano-2512-onnx | Non-streaming | 31 languages total: Chinese, English, Cantonese, Japanese, Korean, Vietnamese, Indonesian, Thai, Malay, Filipino, Arabic, Hindi, and major EU languages | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-MLT-Nano-2512-onnx) |
+| Fun-ASR-MLT-Nano-2512-int8-onnx | Non-streaming | 31 languages total: Chinese, English, Cantonese, Japanese, Korean, Vietnamese, Indonesian, Thai, Malay, Filipino, Arabic, Hindi, and major EU languages | No | No | [modelscope](https://modelscope.cn/models/manyeyes/Fun-ASR-MLT-Nano-2512-int8-onnx) |
 
 ## VIII. Model Introduction
 
