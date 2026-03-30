@@ -14,9 +14,12 @@ namespace ManySpeech.AliParaformerAsr
         private FrontendConf? _frontendConf;
         private OnlineFbank? _onlineFbank;
         private CmvnEntity? _cmvnEntity;
+        private int _sampleRate = 16000;
+        private int _speechLength = 30;
+        private bool _isPaddingSpeech = false;
+        private bool _isResizeAudioDuration = false;
 
-        //public WavFrontend(string mvnFilePath, FrontendConf frontendConfEntity)
-        public WavFrontend(FrontendConf? frontendConf = null, string? mvnFilePath=null)
+        public WavFrontend(FrontendConf? frontendConf = null, string? mvnFilePath = null, int sampleRate = 16000, int speechLength = 30, bool isResizeAudioDuration = false, bool isPaddingSpeech = false)
         {
             if (frontendConf != null)
             {
@@ -26,23 +29,70 @@ namespace ManySpeech.AliParaformerAsr
                     snip_edges: _frontendConf.snip_edges,
                     window_type: _frontendConf.window,
                     sample_rate: _frontendConf.fs,
-                    num_bins: _frontendConf.n_mels
+                    num_bins: _frontendConf.n_mels,
+                    energy_floor: _frontendConf.energy_floor,
+                    frame_length: _frontendConf.frame_length,
+                    frame_shift: _frontendConf.frame_shift
                     );
             }
             if (string.IsNullOrEmpty(mvnFilePath))
             {
                 _cmvnEntity = LoadCmvn(mvnFilePath);
             }
+            _sampleRate = sampleRate;
+            _speechLength = speechLength;
+            _isResizeAudioDuration = isResizeAudioDuration;
+            _isPaddingSpeech = isPaddingSpeech;
         }
 
         public float[] GetFeatures(float[] samples)
         {
+            samples = _isResizeAudioDuration ? ResizeAudioDuration(samples, _sampleRate * _speechLength, _isPaddingSpeech) : samples;
             float[] features = samples.Select((float x) => x * 32768f).ToArray();
             if (_onlineFbank != null)
             {
                 features = _onlineFbank.GetFbank(features);
             }
+            features = LfrCmvn(features);
             return features;
+        }
+        /// <summary>
+        /// Adjusts raw audio data to a fixed sample count by truncating or padding (with zeros).
+        /// (Truncates the audio if it's longer than the target length, pads with zeros if shorter and padding is enabled)
+        /// </summary>
+        /// <param name="raw">Raw audio PCM data in float format (16-bit PCM normalized to [-1.0, 1.0])</param>
+        /// <param name="targetSampleCount">Target fixed number of audio samples (0 = return original data)</param>
+        /// <param name="_isPaddingSpeech">If true, pad short audio with zeros to target length; if false, return original short audio without padding</param>
+        /// <returns>Normalized audio data with fixed sample count (truncated/padded with 0s or original data)</returns>
+        public float[] ResizeAudioDuration(float[] raw, int targetSampleCount, bool _isPaddingSpeech)
+        {
+            // Return original data if target sample count is 0 (no resizing needed)
+            if (targetSampleCount == 0) return raw;
+
+            float[] processedAudio;
+
+            if (raw.Length >= targetSampleCount)
+            {
+                // Truncate to target sample count - copy the first N samples from raw audio
+                processedAudio = new float[targetSampleCount];
+                Array.Copy(raw, 0, processedAudio, 0, targetSampleCount);
+            }
+            else
+            {
+                if (_isPaddingSpeech)
+                {
+                    // Pad with zeros to reach target sample count: copy original audio to the start, remaining values default to 0.0f
+                    processedAudio = new float[targetSampleCount];
+                    Array.Copy(raw, 0, processedAudio, 0, raw.Length);
+                }
+                else
+                {
+                    // Do not pad, directly return the original shorter audio data
+                    processedAudio = raw;
+                }
+            }
+
+            return processedAudio;
         }
 
         public float[] LfrCmvn(float[] fbanks)
@@ -121,9 +171,10 @@ namespace ManySpeech.AliParaformerAsr
             }
             return LFR_outputs;
         }
+
         private CmvnEntity? LoadCmvn(string? mvnFilePath)
         {
-            if(string.IsNullOrEmpty(mvnFilePath) || !File.Exists(mvnFilePath))
+            if (string.IsNullOrEmpty(mvnFilePath) || !File.Exists(mvnFilePath))
             {
                 return null;
             }

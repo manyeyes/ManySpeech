@@ -2,7 +2,6 @@
 // Copyright (c)  2023 by manyeyes
 using ManySpeech.AliParaformerAsr.Model;
 using Microsoft.ML.OnnxRuntime;
-using YamlDotNet.Core.Tokens;
 //using System.Reflection;
 
 namespace ManySpeech.AliParaformerAsr
@@ -13,60 +12,80 @@ namespace ManySpeech.AliParaformerAsr
         private bool _disposed;
 
         private InferenceSession? _modelSession;
+        private InferenceSession? _encoderSession;
+        private InferenceSession? _decoderSession;
         private InferenceSession? _embedSession;
+        private InferenceSession? _adaptorSession;
         private string? _mvnFilePath;
-        private string[]? _tokens;
-        private ConfEntity? _confEntity;
-        private List<int[]>? _hotwords = null;
+        private string _tokensFilePath;
+        private ConfEntity _confEntity;
+        private string[]? _hotwords = null;
 
         private int _blank_id = 0;
         private int _sos_eos_id = 1;
         private int _unk_id = 2;
+
         private int _featureDim = 80;
         private int _sampleRate = 16000;
-        private bool _use_itn = false;
+        private bool _useITN = false;
 
         private string _method = "greedy";
         private int _beamWidth = 3;
 
-        public OfflineModel( string tokensFilePath, string configFilePath, string? modelFilePath,string? mvnFilePath = null, string? hotwordFilePath = null, string? embedFilePath = null, int threadsNum = 2)
+        public OfflineModel(string tokensFilePath, string configFilePath, string? modelFilePath, string? mvnFilePath = null, string? hotwordFilePath = null, string? embedFilePath = null, int threadsNum = 2)
         {
             _modelSession = initModel(modelFilePath, threadsNum);
             _embedSession = initModel(embedFilePath, threadsNum);
             _confEntity = LoadConf(configFilePath);
             if (_confEntity != null)
             {
-                _use_itn = _confEntity.use_itn;
-            }
-            _mvnFilePath = mvnFilePath;
-            _tokens = Utils.PreloadHelper.ReadTokens(tokensFilePath);
-            if (_tokens == null || _tokens.Length == 0)
-            {
-                throw new Exception("tokens invalid");
+                _useITN = _confEntity.use_itn;
             }
             if (!string.IsNullOrEmpty(hotwordFilePath))
             {
-                List<int[]>? hotwords = GetHotwords(_tokens, hotwordFilePath);
-                _hotwords = hotwords;
+                _hotwords = GetHotwords(hotwordFilePath);
             }
+            _mvnFilePath = mvnFilePath;
+            _tokensFilePath = tokensFilePath;
+        }
+        public OfflineModel(string tokensFilePath, string configFilePath, string? encoderFilePath, string? decoderFilePath, string? adaptorFilePath = null, string? embedFilePath = null, string? mvnFilePath = null, string? hotwordFilePath = null, int threadsNum = 2)
+        {
+            _encoderSession = initModel(encoderFilePath, threadsNum);
+            _decoderSession = initModel(decoderFilePath, threadsNum);
+            _embedSession = initModel(embedFilePath, threadsNum);
+            _adaptorSession = initModel(adaptorFilePath, threadsNum);
+            _confEntity = LoadConf(configFilePath);
+            if (_confEntity != null)
+            {
+                _useITN = _confEntity.use_itn;
+            }
+            if (!string.IsNullOrEmpty(hotwordFilePath))
+            {
+                _hotwords = GetHotwords(hotwordFilePath);
+            }
+            _mvnFilePath = mvnFilePath;
+            _tokensFilePath = tokensFilePath;
         }
 
-        public InferenceSession ModelSession { get => _modelSession; set => _modelSession = value; }
+        public InferenceSession? ModelSession { get => _modelSession; set => _modelSession = value; }
+        public InferenceSession? EncoderSession { get => _encoderSession; set => _encoderSession = value; }
+        public InferenceSession? AdaptorSession { get => _adaptorSession; set => _adaptorSession = value; }
+        public InferenceSession? DecoderSession { get => _decoderSession; set => _decoderSession = value; }
         public InferenceSession? EmbedSession { get => _embedSession; set => _embedSession = value; }
         public int Blank_id { get => _blank_id; set => _blank_id = value; }
         public int Sos_eos_id { get => _sos_eos_id; set => _sos_eos_id = value; }
         public int Unk_id { get => _unk_id; set => _unk_id = value; }
         public int FeatureDim { get => _featureDim; set => _featureDim = value; }
         public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
-        public bool Use_itn { get => _use_itn; set => _use_itn = value; }
-        public List<int[]>? Hotwords { get => _hotwords; set => _hotwords = value; }
+        public bool UseITN { get => _useITN; set => _useITN = value; }
+        public string[]? Hotwords { get => _hotwords; set => _hotwords = value; }
         public ConfEntity ConfEntity { get => _confEntity; set => _confEntity = value; }
-        public string[] Tokens { get => _tokens; set => _tokens = value; }
-        public string MvnFilePath { get => _mvnFilePath; set => _mvnFilePath = value; }
+        public string? MvnFilePath { get => _mvnFilePath; set => _mvnFilePath = value; }
         public string Method { get => _method; set => _method = value; }
         public int BeamWidth { get => _beamWidth; set => _beamWidth = value; }
+        public string TokensFilePath { get => _tokensFilePath; set => _tokensFilePath = value; }
 
-        public InferenceSession? initModel(string? modelFilePath, int threadsNum = 2)
+        internal InferenceSession initModel(string modelFilePath, int threadsNum = 2)
         {
             if (string.IsNullOrEmpty(modelFilePath) || !File.Exists(modelFilePath))
             {
@@ -75,23 +94,27 @@ namespace ManySpeech.AliParaformerAsr
             Microsoft.ML.OnnxRuntime.SessionOptions options = new Microsoft.ML.OnnxRuntime.SessionOptions();
             //options.LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_INFO;
             options.LogSeverityLevel = OrtLoggingLevel.ORT_LOGGING_LEVEL_FATAL;
-            options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL; // 启用所有图优化
             //options.AppendExecutionProvider_DML(0);
             options.AppendExecutionProvider_CPU(0);
             //options.AppendExecutionProvider_CUDA(0);
             //options.AppendExecutionProvider_MKLDNN();
             //options.AppendExecutionProvider_ROCm(0);
             if (threadsNum > 0)
-                options.InterOpNumThreads = threadsNum;
+            {
+                options.IntraOpNumThreads = threadsNum;
+                options.InterOpNumThreads = Math.Max(1, Math.Min(threadsNum / 2, 4));
+            }
             else
-                options.InterOpNumThreads = System.Environment.ProcessorCount;
+            {
+                options.IntraOpNumThreads = System.Environment.ProcessorCount;
+            }
             // 启用CPU内存计划
             options.EnableMemoryPattern = true;
             // 设置其他优化选项            
             options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
 
             InferenceSession onnxSession = null;
-            if (!string.IsNullOrEmpty(modelFilePath) && modelFilePath.IndexOf("/") < 0 && modelFilePath.IndexOf("\\") < 0)
+            if (modelFilePath.IndexOf("/") < 0 && modelFilePath.IndexOf("\\") < 0)
             {
                 byte[] model = ReadEmbeddedResourceAsBytes(modelFilePath);
                 onnxSession = new InferenceSession(model, options);
@@ -102,7 +125,6 @@ namespace ManySpeech.AliParaformerAsr
             }
             return onnxSession;
         }
-
         private static byte[] ReadEmbeddedResourceAsBytes(string resourceName)
         {
             //var assembly = Assembly.GetExecutingAssembly();
@@ -111,7 +133,6 @@ namespace ManySpeech.AliParaformerAsr
                          throw new FileNotFoundException($"Embedded resource '{resourceName}' not found.");
             byte[] bytes = new byte[stream.Length];
             stream.Read(bytes, 0, bytes.Length);
-            // 设置当前流的位置为流的开始 
             stream.Seek(0, SeekOrigin.Begin);
             stream.Close();
             stream.Dispose();
@@ -136,22 +157,12 @@ namespace ManySpeech.AliParaformerAsr
             }
             return confJsonEntity;
         }
-        private List<int[]>? GetHotwords(string[] tokens, string hotwordFilePath)
+        private string[]? GetHotwords(string hotwordFilePath)
         {
-            List<int[]>? hotwords = new List<int[]>();
+            string[]? hotwords = null;
             if (File.Exists(hotwordFilePath))
             {
-                string[] sentences = File.ReadAllLines(hotwordFilePath);
-                foreach (string sentence in sentences)
-                {
-                    string[] wordList = new string[] { sentence };//TODO:分词
-                    foreach (string word in wordList)
-                    {
-                        List<int> ids = word.ToCharArray().Select(x => Array.IndexOf(tokens, x.ToString())).Where(x => x != -1).ToList();
-                        hotwords.Add(ids.ToArray());
-                    }
-                }
-                hotwords.Add(new int[] { _sos_eos_id });
+                hotwords = File.ReadAllLines(hotwordFilePath);
             }
             return hotwords;
         }
@@ -165,9 +176,21 @@ namespace ManySpeech.AliParaformerAsr
                     {
                         _modelSession.Dispose();
                     }
-                    if (_tokens != null)
+                    if (_encoderSession != null)
                     {
-                        _tokens = null;
+                        _encoderSession.Dispose();
+                    }
+                    if (_decoderSession != null)
+                    {
+                        _decoderSession.Dispose();
+                    }
+                    if (_adaptorSession != null)
+                    {
+                        _adaptorSession.Dispose();
+                    }
+                    if (_embedSession != null)
+                    {
+                        _embedSession.Dispose();
                     }
                 }
                 _disposed = true;

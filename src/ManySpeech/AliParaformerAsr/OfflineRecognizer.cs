@@ -2,6 +2,7 @@
 // Copyright (c)  2023 by manyeyes
 using ManySpeech.AliParaformerAsr.Model;
 using System.Text.RegularExpressions;
+using YamlDotNet.Core.Tokens;
 
 namespace ManySpeech.AliParaformerAsr
 {
@@ -14,23 +15,51 @@ namespace ManySpeech.AliParaformerAsr
 
         private IOfflineProj _offlineProj;
 
-        public OfflineRecognizer(string modelFilePath, string configFilePath, string mvnFilePath, string tokensFilePath, string embedFilePath = "", string hotwordFilePath = "", int threadsNum = 1)
+        public OfflineRecognizer(string tokensFilePath, string modelFilePath = "", string encoderFilePath = "", string decoderFilePath = "", string adaptorFilePath = "", string ctcFilePath = "", string embedFilePath = "", string configFilePath = "", string mvnFilePath = "", string hotwordFilePath = "", int threadsNum = 1)
         {
-            OfflineModel offlineModel = new OfflineModel(modelFilePath: modelFilePath, tokensFilePath: tokensFilePath, mvnFilePath: mvnFilePath, configFilePath: configFilePath, hotwordFilePath: hotwordFilePath, embedFilePath: embedFilePath, threadsNum: threadsNum);
-            switch (offlineModel.ConfEntity.model.ToLower())
+            OfflineModel offlineModel = null;
+            try
             {
-                case "paraformer":
-                    _offlineProj = new OfflineProjOfParaformer(offlineModel);
-                    break;
-                case "sensevoicesmall":
-                    _offlineProj = new OfflineProjOfSenseVoiceSmall(offlineModel);
-                    break;
-                case "seacoparaformer":
-                    _offlineProj = new OfflineProjOfSeacoParaformer(offlineModel);
-                    break;
-                default:
-                    _offlineProj = new OfflineProjOfParaformer(offlineModel);
-                    break;
+                if (!string.IsNullOrEmpty(encoderFilePath) && !string.IsNullOrEmpty(decoderFilePath))
+                {
+                    offlineModel = new OfflineModel(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, adaptorFilePath: adaptorFilePath, tokensFilePath: tokensFilePath, mvnFilePath: mvnFilePath, configFilePath: configFilePath, hotwordFilePath: hotwordFilePath, embedFilePath: embedFilePath, threadsNum: threadsNum);
+                }
+                else if (!string.IsNullOrEmpty(modelFilePath))
+                {
+                    offlineModel = new OfflineModel(modelFilePath: modelFilePath, tokensFilePath: tokensFilePath, mvnFilePath: mvnFilePath, configFilePath: configFilePath, hotwordFilePath: hotwordFilePath, embedFilePath: embedFilePath, threadsNum: threadsNum);
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new InvalidOperationException("Model initialization failed:" + ex.Message, ex);
+            }
+            if (offlineModel != null)
+            {
+                string model = offlineModel.ConfEntity.model.ToLower();
+                switch (model.Replace("-", "").Replace("_", ""))
+                {
+                    case "paraformer":
+                        _offlineProj = new OfflineProjOfParaformer(offlineModel);
+                        break;
+                    case "sensevoicesmall":
+                        _offlineProj = new OfflineProjOfSenseVoiceSmall(offlineModel);
+                        break;
+                    case "seacoparaformer":
+                        _offlineProj = new OfflineProjOfSeacoParaformer(offlineModel);
+                        break;
+                    case "funasrnanoctc":
+                        _offlineProj = new OfflineProjOfFunAsrNanoCtc(offlineModel);
+                        break;
+                    case "funasrnanollm":
+                        _offlineProj = new OfflineProjOfFunAsrNanoLLM(offlineModel);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported model:" + model + "");
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("The model initialization result is empty. Please check whether the file path is correct or the file is corrupted!");
             }
         }
 
@@ -65,7 +94,7 @@ namespace ManySpeech.AliParaformerAsr
             {
                 return;
             }
-            List<OfflineInputEntity> modelInputs = new List<OfflineInputEntity>();  
+            List<OfflineInputEntity> modelInputs = new List<OfflineInputEntity>();
             List<List<int>> tokenIdsList = new List<List<int>>();
             List<List<int[]>> timestampsList = new List<List<int[]>>();
             foreach (OfflineStream stream in streams)
@@ -83,7 +112,7 @@ namespace ManySpeech.AliParaformerAsr
                     stream.Timestamps = timestampsList[streamIndex];
                     stream.RemoveChunk();
                     streamIndex++;
-                }                
+                }
             }
             catch (Exception ex)
             {
@@ -94,7 +123,6 @@ namespace ManySpeech.AliParaformerAsr
         private List<OfflineRecognizerResultEntity> DecodeMulti(List<OfflineStream> streams)
         {
             List<OfflineRecognizerResultEntity> offlineRecognizerResultEntities = new List<OfflineRecognizerResultEntity>();
-            List<string> text_results = new List<string>();
 #pragma warning disable CS8602 // 解引用可能出现空引用。
 
             foreach (var stream in streams)
@@ -103,22 +131,25 @@ namespace ManySpeech.AliParaformerAsr
                 string text_result = "";
                 string lastToken = "";
                 int[] lastTimestamp = null;
+                string[] currTokens = _offlineProj.Tokenizer.Decode(stream.TokenIds.ToArray());
 #if NET6_0_OR_GREATER
-                foreach (var result in stream.TokenIds.Zip<int, int[]>(stream.Timestamps))
+                foreach (var result in stream.TokenIds.Zip<int, int[],string?>(stream.Timestamps,currTokens))
                 {
                     int tokenId = result.First;
                     int[] timestamp = result.Second;
+                    string currText = result.Third ?? "";
 #else
-                for (int i = 0; i < stream.Tokens.Count && i < stream.Timestamps.Count; i++)
+                for (int i = 0; i < stream.Tokens.Count && i < stream.Timestamps.Count && i < currTokens.Count(); i++)
                 {
                     int tokenId = stream.TokenIds[i];
                     int[] timestamp = stream.Timestamps[i];
+                    string currText = currTokens[i] ?? "";
 #endif
                     if (tokenId == 2)
                     {
                         break;
                     }
-                    string currText = _offlineProj.OfflineModel.Tokens[tokenId].Split('\t')[0];
+                    currText = currText.Split('\t')[0];
                     if (currText != "</s>" && currText != "<s>" && currText != "<blank>" && currText != "<unk>")
                     {
                         if (IsChinese(currText, true))
@@ -195,10 +226,13 @@ namespace ManySpeech.AliParaformerAsr
                     text_result = text_result.Replace("@@▁▁", "").Replace("▁▁", " ").Replace("@@", " ").Replace("▁", " ");
                 }
                 else
-                {
+                {  
                     text_result = text_result.Replace("▁▁▁", " ").Replace("▁▁", "").Replace("▁", "");
                 }
-                text_results.Add(text_result);
+                if (string.IsNullOrWhiteSpace(text_result))
+                {
+                    text_result = _offlineProj.Tokenizer.DecodeToText(stream.TokenIds.ToArray());
+                }
                 offlineRecognizerResultEntity.Region = stream.Region;
                 offlineRecognizerResultEntity.Language = stream.Language;
                 //offlineRecognizerResultEntity.TokenIds = stream.TokenIds;

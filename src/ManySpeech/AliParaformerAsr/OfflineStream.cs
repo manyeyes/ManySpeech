@@ -1,7 +1,6 @@
 ﻿// See https://github.com/manyeyes for more information
 // Copyright (c)  2023 by manyeyes
 using ManySpeech.AliParaformerAsr.Model;
-using ManySpeech.MoonshineAsr;
 
 namespace ManySpeech.AliParaformerAsr
 {
@@ -24,7 +23,7 @@ namespace ManySpeech.AliParaformerAsr
         {
             _offlineInputEntity = new OfflineInputEntity();
 
-            _wavFrontend = new WavFrontend(offlineProj.OfflineModel.ConfEntity.frontend_conf, offlineProj.OfflineModel.MvnFilePath);
+            _wavFrontend = new WavFrontend(offlineProj.OfflineModel.ConfEntity.frontend_conf, offlineProj.OfflineModel.MvnFilePath, offlineProj.SampleRate, offlineProj.SpeechLength,offlineProj.IsResizeAudioDuration, offlineProj.IsPaddingSpeech);
             _tokenIds = new List<int> { offlineProj.OfflineModel.Blank_id, offlineProj.OfflineModel.Blank_id };
             for (int i = 0; i < _tokenIds.Count; i++)
             {
@@ -44,8 +43,7 @@ namespace ManySpeech.AliParaformerAsr
         {
             lock (obj)
             {
-                float[] fbanks = _wavFrontend.GetFeatures(samples);
-                float[] features = _wavFrontend.LfrCmvn(fbanks);
+                float[] features = _wavFrontend.GetFeatures(samples);
                 int oLen = 0;
                 if (OfflineInputEntity.SpeechLength > 0)
                 {
