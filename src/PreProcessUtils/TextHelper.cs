@@ -237,5 +237,17 @@ namespace PreProcessUtils
             }
             return false;
         }
+        /// <summary>
+        /// 将单引号包裹的中文标点，替换为标点本身
+        /// </summary>
+        /// <param name="input"></param>
+        /// <returns></returns>
+        public static string RemoveQuoteAroundPunctuation(string input)
+        {
+            // 正则表达式：匹配单引号包裹的中文标点
+            string pattern = @"'([,，.。!！?？;；:：""''（）[\]【】<>《》/\、·])'";
+            // 替换为捕获到的标点本身
+            return Regex.Replace(input, pattern, "$1");
+        }
     }
 }
