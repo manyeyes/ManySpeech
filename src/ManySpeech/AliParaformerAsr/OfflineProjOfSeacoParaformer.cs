@@ -21,6 +21,8 @@ namespace ManySpeech.AliParaformerAsr
         private int _speechLength = 30;
         private bool _isResizeAudioDuration = false;
         private bool _isPaddingSpeech = false;
+        private string[] _hotwords;
+        private List<int[]>? _hotwordIds = new List<int[]>();
 
         public OfflineProjOfSeacoParaformer(OfflineModel offlineModel)
         {
@@ -28,6 +30,23 @@ namespace ManySpeech.AliParaformerAsr
             _modelSession = offlineModel.ModelSession;
             _embedSession = offlineModel.EmbedSession;
             _tokenizer = AutoTokenizer.Create(type: TokenizerType.Textoken, vocabFilePath: offlineModel.TokensFilePath);
+            _hotwords = new string[] { "魔搭" };
+            if (_offlineModel.Hotwords?.Length > 0)
+            {
+                _hotwords = _offlineModel.Hotwords;
+            }
+            if (_hotwords.Length > 0)
+            {
+                foreach (string word in _hotwords)
+                {
+                    int[]? ids = _tokenizer.Encode(word);
+                    if (ids != null)
+                    {
+                        _hotwordIds.Add(ids);
+                    }
+                }
+                _hotwordIds.Add(new int[] { OfflineModel.Sos_eos_id });
+            }
         }
         public OfflineModel OfflineModel { get => _offlineModel; set => _offlineModel = value; }
         public ITokenizer Tokenizer { get => _tokenizer; set => _tokenizer = value; }
@@ -222,28 +241,28 @@ namespace ManySpeech.AliParaformerAsr
         {
             int batchSize = modelInputs.Count;
             Tensor<float>? hotwordsEmbed = null;
-            List<int[]>? hotwordIds = modelInputs.SelectMany(x => x.Hotwords).ToList();
-            if (hotwordIds != null && hotwordIds?.Count > 0)
+
+            var hotwordList = modelInputs.SelectMany(x => x.Hotwords).ToList();
+            string[]? hotwords = hotwordList.Count > 0 ? hotwordList.ToArray() : null;
+            List<int[]>? hotwordIds = new List<int[]>();
+            if (hotwords != null && hotwords.Length > 0)
             {
-                hotwordsEmbed = EmbedProj(hotwordIds);
+                foreach (string word in hotwords)
+                {
+                    int[]? ids = _tokenizer.Encode(word);
+                    if (ids != null)
+                    {
+                        hotwordIds.Add(ids);
+                    }
+                }
+                hotwordIds.Add(new int[] { OfflineModel.Sos_eos_id });
             }
             else
             {
-                string[] hotwords = _offlineModel.Hotwords;
-                if (hotwords.Length>0)
-                {
-                    foreach (string word in hotwords)
-                    {
-                        int[]? ids=_tokenizer.Encode(word);
-                        if (ids != null)
-                        {
-                            hotwordIds.Add(ids);
-                        }
-                    }
-                    hotwordIds.Add(new int[] { OfflineModel.Sos_eos_id });
-                }
-                hotwordsEmbed = EmbedProj(hotwordIds);
+                hotwordIds = _hotwordIds;
             }
+            hotwordsEmbed = EmbedProj(hotwordIds);
+
             float[] padSequence = PadHelper.PadSequence(modelInputs);
             var inputMeta = _modelSession.InputMetadata;
             var container = new List<NamedOnnxValue>();

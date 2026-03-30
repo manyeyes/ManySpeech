@@ -424,15 +424,64 @@ namespace ManySpeech.AliParaformerAsr
         }
 
         public void Infer(List<OfflineInputEntity> modelInputs, List<List<int>> tokenIdsList,
-                          List<List<int[]>> timestampsList, List<string>? languages = null,
-                          List<string>? regions = null)
+                  List<List<int[]>> timestampsList, List<string>? languages = null,
+                  List<string>? regions = null)
         {
             if (modelInputs == null || modelInputs.Count == 0)
                 return;
 
+            // 保存每个输入对应的结果，按原始索引存放
+            var allTokenIds = new List<List<int>>(new List<int>[modelInputs.Count]);
+            var allTimestamps = new List<List<int[]>>(new List<int[]>[modelInputs.Count]);
+
+            // 为每个输入添加索引，便于分组后还原顺序
+            var indexedInputs = modelInputs.Select((input, idx) => new { input, idx }).ToList();
+
+            // 按 Language 分组（null 也作为一组）
+            var groups = indexedInputs.GroupBy(x => x.input.Language);
+
+            foreach (var group in groups)
+            {
+                var groupInputs = group.Select(x => x.input).ToList();
+                var groupIndices = group.Select(x => x.idx).ToList();
+
+                // 处理当前分组
+                ProcessBatch(groupInputs, out var batchTokenIds, out var batchTimestamps);
+
+                // 将结果存回对应索引位置
+                for (int i = 0; i < groupIndices.Count; i++)
+                {
+                    int origIndex = groupIndices[i];
+                    allTokenIds[origIndex] = batchTokenIds[i];
+                    allTimestamps[origIndex] = batchTimestamps[i];
+                }
+            }
+            tokenIdsList.Clear();
+            timestampsList.Clear();
+            tokenIdsList.AddRange(allTokenIds);
+            timestampsList.AddRange(allTimestamps);
+        }
+
+        // 处理一个 batch
+        private void ProcessBatch(List<OfflineInputEntity> batchInputs,
+                                  out List<List<int>> batchTokenIds,
+                                  out List<List<int[]>> batchTimestamps)
+        {
+            // 1. 热词
             string[] hotwords = new string[] { "开放时间" };
+            List<string>? hotwordList = batchInputs.SelectMany(x => x.Hotwords).ToList();
+            if (hotwordList != null && hotwordList.Count > 0)
+            {
+                hotwords = hotwordList.ToArray();
+            }
+            else if (_offlineModel.Hotwords?.Length > 0)
+            {
+                hotwords = _offlineModel.Hotwords;
+            }
+
             string hotwordsStr = string.Join(",", hotwords);
-            string lang = "中文";
+            // 根据分组语言动态设置 lang
+            string lang = batchInputs.FirstOrDefault()?.Language ?? "中文";
             string prompt = "请结合上下文信息，更加准确地完成语音转写任务。如果没有相关信息，我们会留空。\n\n\n**上下文信息：**\n\n\n";
             if (!string.IsNullOrWhiteSpace(hotwordsStr))
                 prompt += $"热词列表：[{hotwordsStr}]\n";
@@ -443,13 +492,14 @@ namespace ManySpeech.AliParaformerAsr
 
             var promptEmbed = EmbedPrompt(prompt);
 
-            var encoderOutput = EncoderProj(modelInputs);
+            // 2. 编码
+            var encoderOutput = EncoderProj(batchInputs);
             if (_adaptorSession != null)
             {
                 encoderOutput = AdaptorProj(encoderOutput);
             }
             var audioEmbedTensor = encoderOutput.EncOut;
-            int batchSize = modelInputs.Count;
+            int batchSize = batchInputs.Count;
             int audioTimeDim = audioEmbedTensor.Dimensions[1];
             int hiddenDim = audioEmbedTensor.Dimensions[2];
 
@@ -473,10 +523,13 @@ namespace ManySpeech.AliParaformerAsr
 
             var batchGenerated = DecodeBatch(initHidden, initLens);
 
+            // 输出
+            batchTokenIds = new List<List<int>>(batchSize);
+            batchTimestamps = new List<List<int[]>>(batchSize);
             for (int b = 0; b < batchSize; b++)
             {
-                tokenIdsList.Add(batchGenerated[b]);
-                timestampsList.Add(new List<int[]>());
+                batchTokenIds.Add(batchGenerated[b]);
+                batchTimestamps.Add(new List<int[]>());
             }
         }
 

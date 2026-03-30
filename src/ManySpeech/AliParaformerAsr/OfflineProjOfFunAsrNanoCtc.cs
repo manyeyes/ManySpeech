@@ -44,15 +44,15 @@ namespace ManySpeech.AliParaformerAsr
             {
                 Tensor<float>? logitsTensor = decoderOutputEntity.LogitsTensor;
                 string method = _offlineModel.Method;
-                // 2. 根据解码策略执行对应逻辑
+                // Execute the corresponding logic according to the decoding strategy
                 if (string.Equals(method, "greedy", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 调用对齐原逻辑的贪心搜索
+                    // Invoke greedy search aligned with the original logic
                     ExecuteGreedySearch(logitsTensor, tokenIdsList, timestampsList);
                 }
                 else if (string.Equals(method, "beam", StringComparison.OrdinalIgnoreCase))
                 {
-                    // 调用束搜索
+                    // Invoke beam search
                     ExecuteBeamSearch(logitsTensor, tokenIdsList, timestampsList, _offlineModel.BeamWidth);
                 }
                 else
@@ -75,7 +75,7 @@ namespace ManySpeech.AliParaformerAsr
         }
 
         /// <summary>
-        /// 执行贪心搜索解码
+        /// Executes greedy search decoding
         /// </summary>
         private void ExecuteGreedySearch(Tensor<float>? logitsTensor,
                                                List<List<int>> tokenIdsList,
@@ -84,15 +84,15 @@ namespace ManySpeech.AliParaformerAsr
             if (logitsTensor == null) return;
             for (int batchIndex = 0; batchIndex < logitsTensor.Dimensions[0]; batchIndex++)
             {
-                // 存储单个批次的Token ID序列
+                // Store the Token ID sequence for a single batch
                 int[] batchTokenIds = new int[logitsTensor.Dimensions[1]];
-                // 存储单个批次的Token时间戳
+                // Store the Token timestamps for a single batch
                 List<int[]> batchTokenTimestamps = new List<int[]>();
                 for (int sequenceStep = 0; sequenceStep < logitsTensor.Dimensions[1]; sequenceStep++)
                 {
-                    // 当前序列位置的最优Token ID
+                    // The optimal Token ID at the current sequence position
                     int bestTokenId = 0;
-                    // 逐一遍历Token，保留概率更大的Token ID
+                    // Iterate through Tokens one by one and retain Token IDs with higher probabilities
                     for (int tokenIndex = 1; tokenIndex < logitsTensor.Dimensions[2]; tokenIndex++)
                     {
                         bestTokenId = logitsTensor[batchIndex, sequenceStep, bestTokenId] > logitsTensor[batchIndex, sequenceStep, tokenIndex]
@@ -104,15 +104,15 @@ namespace ManySpeech.AliParaformerAsr
                     batchTokenTimestamps.Add(new int[] { 0, 0 });
                 }
 
-                tokenIdsList.Add(RemoveDuplicatesAndBlank(batchTokenIds));  
+                tokenIdsList.Add(RemoveDuplicatesAndBlank(batchTokenIds));
                 timestampsList.Add(batchTokenTimestamps);
             }
         }
 
         /// <summary>
-        /// 执行束搜索解码（核心逻辑：维护Top-N候选序列，选整体最优）
+        /// Executes beam search decoding (maintains Top-N candidate sequences and selects the globally optimal one)
         /// </summary>
-        /// <param name="beamWidth">束宽度（越大精度越高，性能越低）</param>
+        /// <param name="beamWidth">Beam width (higher = better accuracy, lower performance)</param>
         private void ExecuteBeamSearch(Tensor<float> logitsTensor,
                                              List<List<int>> tokenIdsList,
                                              List<List<int[]>> timestampsList,
@@ -120,48 +120,48 @@ namespace ManySpeech.AliParaformerAsr
         {
             for (int batchIdx = 0; batchIdx < logitsTensor.Dimensions[0]; batchIdx++)
             {
-                // 初始化束：保存(序列, 累计概率)，初始为空序列
+                // Initialize beam: stores (sequence, cumulative probability), starting with empty sequence
                 var beam = new List<(List<int> sequence, float totalProb)> { (new List<int>(), 0f) };
 
                 for (int seqIdx = 0; seqIdx < logitsTensor.Dimensions[1]; seqIdx++)
                 {
                     var candidates = new List<(List<int> sequence, float totalProb)>();
 
-                    // 遍历当前束中的所有候选序列
+                    // Iterate all candidate sequences in the current beam
                     foreach (var (currentSeq, currentProb) in beam)
                     {
-                        // 为当前序列的下一个位置生成所有可能的Token及概率
+                        // Generate all possible Tokens and their probabilities for the next position of the current sequence
                         var tokenProbs = new List<(int tokenId, float prob)>();
                         for (int tokenIdx = 0; tokenIdx < logitsTensor.Dimensions[2]; tokenIdx++)
                         {
                             tokenProbs.Add((tokenIdx, logitsTensor[batchIdx, seqIdx, tokenIdx]));
                         }
 
-                        // 按概率排序，取Top-BeamWidth个Token
+                        // Sort by probability and take top BeamWidth Tokens
                         var topTokens = tokenProbs.OrderByDescending(t => t.prob).Take(beamWidth);
                         foreach (var (tokenId, prob) in topTokens)
                         {
-                            // 生成新序列并累加概率（这里用加法，实际可改用对数概率避免下溢）
+                            // Create new sequence and accumulate probability (addition used here; log probability can be used to avoid underflow in practice)
                             var newSeq = new List<int>(currentSeq) { tokenId };
                             float newProb = currentProb + prob;
                             candidates.Add((newSeq, newProb));
                         }
                     }
 
-                    // 从所有候选中选Top-BeamWidth个，更新束
+                    // Select top BeamWidth candidates and update the beam
                     beam = candidates.OrderByDescending(c => c.totalProb).Take(beamWidth).ToList();
                 }
 
-                // 取束中概率最大的序列作为最终结果
+                // Select the sequence with the highest probability as the final result
                 var bestSequence = beam.OrderByDescending(b => b.totalProb).First().sequence;
-                // 补全序列长度（与贪心搜索结果维度对齐）
+                // Pad sequence length to match dimensions with greedy search results
                 while (bestSequence.Count < logitsTensor.Dimensions[1])
                 {
-                    bestSequence.Add(0); // 补零
+                    bestSequence.Add(0); // Pad with zero
                 }
 
                 tokenIdsList.Add(RemoveDuplicatesAndBlank(bestSequence.ToArray()));
-                // 初始化时间戳
+                // Initialize timestamps
                 timestampsList.Add(Enumerable.Repeat(new int[] { 0, 0 }, logitsTensor.Dimensions[1]).ToList());
             }
         }
