@@ -1,9 +1,7 @@
 ﻿using ManySpeech.AliParaformerAsr.Examples.Base;
 using ManySpeech.AliParaformerAsr.Examples.Entities;
 using ManySpeech.AliParaformerAsr.Model;
-using NAudio.Utils;
 using PreProcessUtils;
-using System.Text;
 
 namespace ManySpeech.AliParaformerAsr.Examples
 {
@@ -19,10 +17,13 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     return null;
                 }
                 string modelFilePath = modelBasePath + "./" + modelName + "/model.int8.onnx";
+                string encoderFilePath = modelBasePath + "./" + modelName + "/encoder.int8.onnx";
+                string adaptorFilePath = modelBasePath + "./" + modelName + "/adaptor.int8.onnx";
+                string decoderFilePath = modelBasePath + "./" + modelName + "/decoder.int8.onnx";
+                string embedFilePath = modelBasePath + "./" + modelName + "/embed.int8.onnx";
                 string configFilePath = modelBasePath + "./" + modelName + "/asr.yaml";
                 string mvnFilePath = modelBasePath + "./" + modelName + "/am.mvn";
                 string tokensFilePath = modelBasePath + "./" + modelName + "/tokens.txt";
-                string embedFilePath = modelBasePath + "./" + modelName + "/embed.int8.onnx";
                 string hotwordFilePath = modelBasePath + "./" + modelName + "/hotword.txt";
                 try
                 {
@@ -50,6 +51,7 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     var modelCandidates = fileInfos
                         .Where(f => f.FileName.StartsWith("model") && !f.FileName.Contains("_eb"))
                         .ToList();
+                    modelFilePath = "";
                     if (modelCandidates.Any())
                     {
                         // Prioritize selecting files that contain the specified model accuracy
@@ -58,10 +60,50 @@ namespace ManySpeech.AliParaformerAsr.Examples
                         modelFilePath = preferredModel?.TargetPath ?? modelCandidates.Last().TargetPath;
                     }
 
+                    // Process encoder path (priority: containing encoderAccuracy>last one that matches prefix)
+                    var encoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("encoder"))
+                        .ToList();
+                    encoderFilePath = "";
+                    if (encoderCandidates.Any())
+                    {
+                        // Prioritize selecting files that contain the specified model accuracy
+                        var preferredEncoder = encoderCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        encoderFilePath = preferredEncoder?.TargetPath ?? encoderCandidates.Last().TargetPath;
+                    }
+
+                    // Process adaptor path (priority: containing adaptorAccuracy>last one that matches prefix)
+                    var adaptorCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("adaptor"))
+                        .ToList();
+                    adaptorFilePath = "";
+                    if (adaptorCandidates.Any())
+                    {
+                        // Prioritize selecting files that contain the specified model accuracy
+                        var preferredAdaptor = adaptorCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        adaptorFilePath = preferredAdaptor?.TargetPath ?? adaptorCandidates.Last().TargetPath;
+                    }
+
+                    // Process decoder path (priority: containing modelAccuracy>last one that matches prefix)
+                    var decoderCandidates = fileInfos
+                        .Where(f => f.FileName.StartsWith("decoder"))
+                        .ToList();
+                    decoderFilePath = "";
+                    if (decoderCandidates.Any())
+                    {
+                        // Prioritize selecting files that contain the specified model accuracy
+                        var preferredDecoder = decoderCandidates
+                            .LastOrDefault(f => f.FileName.Contains($".{modelAccuracy}."));
+                        decoderFilePath = preferredDecoder?.TargetPath ?? decoderCandidates.Last().TargetPath;
+                    }
+
                     // Process embed path
                     var embedCandidates = fileInfos
                         .Where(f => f.FileName.StartsWith("model_eb") || f.FileName.StartsWith("embed"))
                         .ToList();
+                    embedFilePath = "";
                     if (embedCandidates.Any())
                     {
                         var preferredModeleb = embedCandidates
@@ -81,20 +123,26 @@ namespace ManySpeech.AliParaformerAsr.Examples
 
                     // Process token paths (take the last one that matches the prefix)
                     tokensFilePath = fileInfos
-                        .LastOrDefault(f => f.FileName.StartsWith("tokens") && f.FileName.EndsWith(".txt"))
+                        .LastOrDefault(f => f.FileName.EndsWith(".tiktoken"))
                         ?.TargetPath ?? "";
+                    if (string.IsNullOrEmpty(tokensFilePath))
+                    {
+                        tokensFilePath = fileInfos
+                            .LastOrDefault(f => f.FileName.StartsWith("tokens") && f.FileName.EndsWith(".txt"))
+                            ?.TargetPath ?? "";
+                    }
 
                     // Process hotword paths (take the last one that matches the prefix)
                     hotwordFilePath = fileInfos
                         .LastOrDefault(f => f.FileName.StartsWith("hotword") && f.FileName.EndsWith(".txt"))
                         ?.TargetPath ?? "";
 
-                    if (string.IsNullOrEmpty(modelFilePath) || string.IsNullOrEmpty(tokensFilePath))
+                    if (string.IsNullOrEmpty(configFilePath) || string.IsNullOrEmpty(tokensFilePath))
                     {
                         return null;
                     }
                     TimeSpan start_time = new TimeSpan(DateTime.Now.Ticks);
-                    _offlineRecognizer = new OfflineRecognizer(modelFilePath: modelFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, embedFilePath: embedFilePath, hotwordFilePath: hotwordFilePath, threadsNum: threadsNum);
+                    _offlineRecognizer = new OfflineRecognizer(modelFilePath: modelFilePath, encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, mvnFilePath: mvnFilePath, tokensFilePath: tokensFilePath, embedFilePath: embedFilePath, adaptorFilePath: adaptorFilePath, hotwordFilePath: hotwordFilePath, threadsNum: threadsNum);
                     TimeSpan end_time = new TimeSpan(DateTime.Now.Ticks);
                     double elapsed_milliseconds_init = end_time.TotalMilliseconds - start_time.TotalMilliseconds;
                     Console.WriteLine("init_models_elapsed_milliseconds:{0}", elapsed_milliseconds_init.ToString());
@@ -114,7 +162,7 @@ namespace ManySpeech.AliParaformerAsr.Examples
             }
             return _offlineRecognizer;
         }
-        public static void OfflineRecognizer(string streamDecodeMethod = "one", string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string? modelBasePath = null)
+        public static void OfflineRecognizer(string streamDecodeMethod = "one", string modelName = "paraformer-seaco-large-zh-timestamp-onnx-offline", string modelAccuracy = "int8", int threadsNum = 2, string[]? mediaFilePaths = null, string[]? languages = null, string[]? hotwords = null, string? modelBasePath = null)
         {
             if (string.IsNullOrEmpty(modelBasePath))
             {
@@ -169,6 +217,8 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 return;
             }
             Console.WriteLine("Automatic speech recognition in progress!");
+            if (languages == null)
+                languages = new string[] { "中文" };
             DateTime processStartTime = DateTime.Now;
             streamDecodeMethod = string.IsNullOrEmpty(streamDecodeMethod) ? "batch" : streamDecodeMethod;//one ,batch
             if (streamDecodeMethod == "one")
@@ -181,8 +231,16 @@ namespace ManySpeech.AliParaformerAsr.Examples
                     foreach (var sample in samples)
                     {
                         OfflineStream stream = offlineRecognizer.CreateOfflineStream();
-                        // Modify the logic here to dynamically modify hot words
-                        //stream.Hotwords = Utils.TextHelper.GetHotwords(Path.Combine(modelBasePath, modelName, "tokens.txt"), new string[] {"魔搭" });  
+                        //This is a test,
+                        //please set hot words and language according to actual business needs
+                        if (hotwords == null)
+                            stream.Hotwords = new List<string> { "魔搭", "开放时间" };
+                        else
+                            stream.Hotwords = hotwords.ToList();
+                        if (languages.Length - 1 >= n)
+                            stream.Language = languages[n];
+                        else
+                            stream.Language = languages.LastOrDefault();
                         stream.AddSamples(sample);
                         OfflineRecognizerResultEntity nativeResult = offlineRecognizer.GetResult(stream);
                         var processingTime = (DateTime.Now - processStartTime).TotalMilliseconds;
@@ -204,14 +262,26 @@ namespace ManySpeech.AliParaformerAsr.Examples
                 Console.WriteLine("Recognition results:\r\n");
                 try
                 {
-                    int n = 0;
+                    int m = 0;
                     List<OfflineStream> streams = new List<OfflineStream>();
                     foreach (var sample in samples)
                     {
                         OfflineStream stream = offlineRecognizer.CreateOfflineStream();
+                        //This is a test,
+                        //please set hot words and language according to actual business needs
+                        if (hotwords == null)
+                            stream.Hotwords = new List<string> { "魔搭", "开放时间" };
+                        else
+                            stream.Hotwords = hotwords.ToList();
+                        if (languages.Length - 1 >= m)
+                            stream.Language = languages[m];
+                        else
+                            stream.Language = languages.LastOrDefault();
                         stream.AddSamples(sample);
                         streams.Add(stream);
+                        m++;
                     }
+                    int n = 0;
                     List<OfflineRecognizerResultEntity> nativeResults = offlineRecognizer.GetResults(streams);
                     foreach (OfflineRecognizerResultEntity nativeResult in nativeResults)
                     {
