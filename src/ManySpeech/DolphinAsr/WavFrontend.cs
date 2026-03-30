@@ -86,7 +86,10 @@ namespace ManySpeech.DolphinAsr
         }
         public void InputFinished()
         {
-            _onlineFbank.InputFinished();
+            if (_onlineFbank != null)
+            {
+                _onlineFbank.InputFinished();
+            }
         }
 
         protected virtual void Dispose(bool disposing)

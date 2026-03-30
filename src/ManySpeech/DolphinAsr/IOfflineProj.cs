@@ -1,4 +1,5 @@
 ﻿using ManySpeech.DolphinAsr.Model;
+using ManySpeech.SeqUnit;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 
@@ -19,8 +20,13 @@ namespace ManySpeech.DolphinAsr
         OfflineModel OfflineModel
         {
             get;
-            set;
-        }        
+            //set;
+        }
+        ITokenizer Tokenizer
+        {
+            get;
+            //set; 
+        }
         List<float[]> stack_states(List<List<float[]>> statesList);
         List<List<float[]>> unstack_states(List<float[]> states);
         internal EncoderOutputEntity EncoderProj(List<OfflineInputEntity> modelInputs);
