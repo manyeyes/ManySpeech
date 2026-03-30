@@ -16,7 +16,7 @@ namespace ManySpeech.AliParaformerAsr
         private List<int> _tokenIds = new List<int>();
         private List<string>? _tokens = new List<string>();
         private List<int[]>? _timestamps = new List<int[]>();
-        private List<int[]>? _hotwords = new List<int[]>();
+        private List<string>? _hotwords = new List<string>();
 
         private static object obj = new object();
         internal OfflineStream(IOfflineProj offlineProj)
@@ -35,7 +35,7 @@ namespace ManySpeech.AliParaformerAsr
         public List<int> TokenIds { get => _tokenIds; set => _tokenIds = value; }
         public List<string>? Tokens { get => _tokens; set => _tokens = value; }
         public List<int[]> Timestamps { get => _timestamps; set => _timestamps = value; }
-        public List<int[]>? Hotwords { get => _hotwords; set => _hotwords = value; }
+        public List<string>? Hotwords { get => _hotwords; set => _hotwords = value; }
         public string? Region { get => _region; set => _region = value; }
         public string? Language { get => _language; set => _language = value; }
 
@@ -58,6 +58,8 @@ namespace ManySpeech.AliParaformerAsr
                 OfflineInputEntity.Speech = featuresTemp;
                 OfflineInputEntity.SpeechLength = featuresTemp.Length;
                 OfflineInputEntity.Hotwords = Hotwords;
+                OfflineInputEntity.Language= Language;
+                OfflineInputEntity.Region = Region;
             }
         }
         public OfflineInputEntity GetDecodeChunk()
@@ -67,6 +69,8 @@ namespace ManySpeech.AliParaformerAsr
                 if (OfflineInputEntity.Speech != null && OfflineInputEntity.SpeechLength > 0)
                 {
                     OfflineInputEntity.Hotwords = Hotwords;
+                    OfflineInputEntity.Language = Language;
+                    OfflineInputEntity.Region = Region;
                 }
                 return OfflineInputEntity;
             }

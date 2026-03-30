@@ -1,5 +1,5 @@
 ﻿// See https://github.com/manyeyes for more information
-// Copyright (c)  2023 by manyeyes
+// Copyright (c)  2026 by manyeyes
 using ManySpeech.AliParaformerAsr.Model;
 using ManySpeech.AliParaformerAsr.Utils;
 using ManySpeech.SeqUnit;
@@ -8,45 +8,26 @@ using Microsoft.ML.OnnxRuntime.Tensors;
 
 namespace ManySpeech.AliParaformerAsr
 {
-    internal class OfflineProjOfSeacoParaformer : IOfflineProj, IDisposable
+    internal class OfflineProjOfFunAsrNanoCtc : IOfflineProj, IDisposable
     {
         // To detect redundant calls
         private bool _disposed;
 
-        private InferenceSession? _modelSession;
-        private InferenceSession? _embedSession;
+        private InferenceSession? _encoderSession;
+        private InferenceSession? _decoderSession;
         private OfflineModel _offlineModel;
         private ITokenizer _tokenizer;
         private int _sampleRate = 16000;
         private int _speechLength = 30;
         private bool _isResizeAudioDuration = false;
         private bool _isPaddingSpeech = false;
-        private string[] _hotwords;
-        private List<int[]>? _hotwordIds = new List<int[]>();
 
-        public OfflineProjOfSeacoParaformer(OfflineModel offlineModel)
+        public OfflineProjOfFunAsrNanoCtc(OfflineModel offlineModel)
         {
             _offlineModel = offlineModel;
-            _modelSession = offlineModel.ModelSession;
-            _embedSession = offlineModel.EmbedSession;
-            _tokenizer = AutoTokenizer.Create(type: TokenizerType.Textoken, vocabFilePath: offlineModel.TokensFilePath);
-            _hotwords = new string[] { "魔搭" };
-            if (_offlineModel.Hotwords?.Length > 0)
-            {
-                _hotwords = _offlineModel.Hotwords;
-            }
-            if (_hotwords.Length > 0)
-            {
-                foreach (string word in _hotwords)
-                {
-                    int[]? ids = _tokenizer.Encode(word);
-                    if (ids != null)
-                    {
-                        _hotwordIds.Add(ids);
-                    }
-                }
-                _hotwordIds.Add(new int[] { OfflineModel.Sos_eos_id });
-            }
+            _encoderSession = offlineModel.EncoderSession;
+            _decoderSession = offlineModel.DecoderSession;
+            _tokenizer = AutoTokenizer.Create(type: TokenizerType.Tiktoken, vocabFilePath: offlineModel.TokensFilePath, encodingName: "multilingual");
         }
         public OfflineModel OfflineModel { get => _offlineModel; set => _offlineModel = value; }
         public ITokenizer Tokenizer { get => _tokenizer; set => _tokenizer = value; }
@@ -57,10 +38,11 @@ namespace ManySpeech.AliParaformerAsr
 
         public void Infer(List<OfflineInputEntity> modelInputs, List<List<int>> tokenIdsList, List<List<int[]>> timestampsList, List<string>? languages = null, List<string>? regions = null)
         {
-            ModelOutputEntity modelOutputEntity = ModelProj(modelInputs);
-            if (modelOutputEntity != null)
+            EncoderOutputEntity encoderOutputEntity = EncoderProj(modelInputs);
+            DecoderOutputEntity decoderOutputEntity = DecoderProj(encoderOutputEntity);
+            if (decoderOutputEntity != null)
             {
-                Tensor<float>? logitsTensor = modelOutputEntity.ModelOut;
+                Tensor<float>? logitsTensor = decoderOutputEntity.LogitsTensor;
                 string method = _offlineModel.Method;
                 // Execute the corresponding logic according to the decoding strategy
                 if (string.Equals(method, "greedy", StringComparison.OrdinalIgnoreCase))
@@ -77,18 +59,18 @@ namespace ManySpeech.AliParaformerAsr
                 {
                     throw new ArgumentException($"Unsupported decode method: {method}, only 'greedy' or 'beam' is allowed");
                 }
-                if (modelOutputEntity.CifPeak != null)
-                {
-                    timestampsList = new List<List<int[]>>();
-                    Tensor<float> cifPeak = modelOutputEntity.CifPeak;
-                    for (int i = 0; i < cifPeak.Dimensions[0]; i++)
-                    {
-                        float[] usCifPeak = new float[cifPeak.Dimensions[1]];
-                        Array.Copy(cifPeak.ToArray(), i * usCifPeak.Length, usCifPeak, 0, usCifPeak.Length);
-                        List<int[]> timestamps = ComputeHelper.TimestampLfr6(usCifPeak, tokenIdsList[i].ToArray());
-                        timestampsList.Add(timestamps);
-                    }
-                }
+                //if (modelOutputEntity.CifPeak != null)
+                //{
+                //    timestampsList = new List<List<int[]>>();
+                //    Tensor<float> cifPeak = modelOutputEntity.CifPeak;
+                //    for (int i = 0; i < cifPeak.Dimensions[0]; i++)
+                //    {
+                //        float[] usCifPeak = new float[cifPeak.Dimensions[1]];
+                //        Array.Copy(cifPeak.ToArray(), i * usCifPeak.Length, usCifPeak, 0, usCifPeak.Length);
+                //        List<int[]> timestamps = ComputeHelper.TimestampLfr6(usCifPeak, tokenIdsList[i].ToArray());
+                //        timestampsList.Add(timestamps);
+                //    }
+                //}
             }
         }
 
@@ -122,7 +104,7 @@ namespace ManySpeech.AliParaformerAsr
                     batchTokenTimestamps.Add(new int[] { 0, 0 });
                 }
 
-                tokenIdsList.Add(batchTokenIds.ToList());
+                tokenIdsList.Add(RemoveDuplicatesAndBlank(batchTokenIds));
                 timestampsList.Add(batchTokenTimestamps);
             }
         }
@@ -178,93 +160,48 @@ namespace ManySpeech.AliParaformerAsr
                     bestSequence.Add(0); // Pad with zero
                 }
 
-                tokenIdsList.Add(bestSequence);
+                tokenIdsList.Add(RemoveDuplicatesAndBlank(bestSequence.ToArray()));
                 // Initialize timestamps
                 timestampsList.Add(Enumerable.Repeat(new int[] { 0, 0 }, logitsTensor.Dimensions[1]).ToList());
             }
         }
 
-        public Tensor<float>? EmbedProj(List<int[]>? hotwords)
+        /// <summary>
+        /// Removes duplicate tokens and blank tokens from the sequence
+        /// </summary>
+        /// <param name="yseq">Original token sequence</param>
+        /// <param name="blank_id">The identifier for blank token (default: 0)</param>
+        /// <returns>List of tokens with duplicates and blank tokens removed</returns>
+        public List<int> RemoveDuplicatesAndBlank(int[] yseq, int blank_id = 0)
         {
-            if (hotwords == null || hotwords.Count == 0)
+            // Null and empty check to avoid exceptions caused by null array
+            if (yseq == null || yseq.Length == 0)
             {
-                return null;
+                return new List<int>();
             }
-            //float[] y=new float[0];
-            Tensor<float>? hwEmbed = null;
-            int numHotwords = hotwords.Count;
-            int maxLength = 10;
-            int[] hotwords_pad = PadList(hotwords, 0, maxLength);
-            var inputMeta = _embedSession.InputMetadata;
-            var container = new List<NamedOnnxValue>();
-            foreach (var name in inputMeta.Keys)
+
+            int prev_token = -1;
+            List<int> decoded_tokens = new List<int>();
+
+            // Iterate through the token sequence to remove duplicates and blank tokens
+            foreach (int token in yseq)
             {
-                if (name == "hotword")
+                // Only keep: current token != previous token AND current token != blank token
+                if (token != prev_token && token != blank_id)
                 {
-                    int[] dim = new int[] { numHotwords, 10 };
-                    var tensor = new DenseTensor<int>(hotwords_pad, dim, false);
-                    container.Add(NamedOnnxValue.CreateFromTensor<int>(name, tensor));
+                    decoded_tokens.Add(token);
                 }
+                prev_token = token;
             }
-            IDisposableReadOnlyCollection<DisposableNamedOnnxValue>? results = null;
-            try
-            {
-                results = _embedSession.Run(container);
-                if (results != null)
-                {
-                    var resultsArray = results.ToArray();
-                    hwEmbed = resultsArray[0].AsTensor<float>();
-                }
-            }
-            catch (Exception ex)
-            {
-                throw new Exception("SeACo Paraformer Embed infer failed", ex.InnerException);
-            }
-            return hwEmbed;
-        }
-        private int[] PadList(List<int[]> hotwords, int paddingValue, int maxLength = 0)
-        {
-            List<int[]> hotwordsPadList = new List<int[]>(hotwords);
-            if (maxLength == 0)
-            {
-                maxLength = hotwords.Select(x => x.Length).Max();
-            }
-            for (int i = 0; i < hotwordsPadList.Count; i++)
-            {
-                hotwordsPadList[i] = hotwordsPadList[i].Length > maxLength ? hotwordsPadList[i].Take(maxLength).ToArray() : hotwordsPadList[i].Concat(Enumerable.Repeat(paddingValue, maxLength - hotwordsPadList[i].Length)).ToArray();
-            }
-            int[] hotwordsPad = hotwordsPadList.SelectMany(x => x).ToArray();
-            return hotwordsPad;
+
+            return decoded_tokens;
         }
 
-        public ModelOutputEntity ModelProj(List<OfflineInputEntity> modelInputs)
+        private EncoderOutputEntity EncoderProj(List<OfflineInputEntity> modelInputs)
         {
             int batchSize = modelInputs.Count;
-            Tensor<float>? hotwordsEmbed = null;
-
-            var hotwordList = modelInputs.SelectMany(x => x.Hotwords).ToList();
-            string[]? hotwords = hotwordList.Count > 0 ? hotwordList.ToArray() : null;
-            List<int[]>? hotwordIds = new List<int[]>();
-            if (hotwords != null && hotwords.Length > 0)
-            {
-                foreach (string word in hotwords)
-                {
-                    int[]? ids = _tokenizer.Encode(word);
-                    if (ids != null)
-                    {
-                        hotwordIds.Add(ids);
-                    }
-                }
-                hotwordIds.Add(new int[] { OfflineModel.Sos_eos_id });
-            }
-            else
-            {
-                hotwordIds = _hotwordIds;
-            }
-            hotwordsEmbed = EmbedProj(hotwordIds);
-
             float[] padSequence = PadHelper.PadSequence(modelInputs);
-            var inputMeta = _modelSession.InputMetadata;
+            var inputMeta = _encoderSession?.InputMetadata;
             var container = new List<NamedOnnxValue>();
             foreach (var name in inputMeta.Keys)
             {
@@ -277,66 +214,75 @@ namespace ManySpeech.AliParaformerAsr
                 if (name == "speech_lengths")
                 {
                     int[] dim = new int[] { batchSize };
-                    int[] speech_lengths = new int[batchSize];
+                    Int64[] speech_lengths = new Int64[batchSize];
                     for (int i = 0; i < batchSize; i++)
                     {
                         speech_lengths[i] = padSequence.Length / 560 / batchSize;
                     }
-                    var tensor = new DenseTensor<int>(speech_lengths, dim, false);
-                    container.Add(NamedOnnxValue.CreateFromTensor<int>(name, tensor));
-                }
-                if (name == "bias_embed")
-                {
-                    int[] dim = new int[] { batchSize, 0, 512 };
-                    float[] biasEmbed = new float[0];
-                    if (hotwordsEmbed != null)
-                    {
-                        long _hwEmbedLength = hotwordsEmbed.Length;
-                        biasEmbed = new float[_hwEmbedLength * batchSize];
-                        List<float[]> ebList = new List<float[]>();
-                        for (int n = 0; n < hotwordsEmbed.Dimensions[1]; n++)
-                        {
-                            float[] eb = new float[10 * 512];
-                            for (int j = 0; j < hotwordsEmbed.Dimensions[0]; j++)
-                            {
-                                int k = hotwordsEmbed.Dimensions[2];
-                                Array.Copy(hotwordsEmbed.ToArray(), j * hotwordsEmbed.Dimensions[1] * k + n * k, eb, j * k, k);
-                            }
-                            ebList.Add(eb);
-                        }
-                        float[] biasEmbedTemp = ebList.SelectMany(x => x).ToArray(); // hwEmbed.ToArray();// 
-                        for (int i = 0; i < batchSize; i++)
-                        {
-                            Array.Copy(biasEmbedTemp, 0, biasEmbed, i * biasEmbedTemp.Length, biasEmbedTemp.Length);
-                        }
-                        dim = new int[] { batchSize, biasEmbed.Length / 512 / batchSize, 512 };
-                    }
-                    var tensor = new DenseTensor<float>(biasEmbed, dim, false);
-                    container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
+                    var tensor = new DenseTensor<Int64>(speech_lengths, dim, false);
+                    container.Add(NamedOnnxValue.CreateFromTensor<Int64>(name, tensor));
                 }
             }
-            ModelOutputEntity modelOutputEntity = new ModelOutputEntity();
+            EncoderOutputEntity encoderOutputEntity = new EncoderOutputEntity();
             try
             {
-                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = _modelSession.Run(container);
+                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = _encoderSession.Run(container);
 
                 if (results != null)
                 {
                     var resultsArray = results.ToArray();
-                    modelOutputEntity.ModelOut = resultsArray[0].AsTensor<float>();
-                    modelOutputEntity.ModelOutLens = resultsArray[1].AsEnumerable<int>().ToArray();
-                    if (resultsArray.Length >= 4)
-                    {
-                        Tensor<float> cifPeak = resultsArray[3].AsTensor<float>();
-                        modelOutputEntity.CifPeak = cifPeak;
-                    }
+                    encoderOutputEntity.EncOut = resultsArray[0].AsTensor<float>();
+                    encoderOutputEntity.EncOutLens = resultsArray[1].AsEnumerable<Int64>().ToArray();
                 }
             }
             catch (Exception ex)
             {
-                throw new Exception("ModelProj failed", ex);
+                throw new Exception("EncoderProj failed", ex);
             }
-            return modelOutputEntity;
+            return encoderOutputEntity;
+        }
+        private DecoderOutputEntity DecoderProj(EncoderOutputEntity encoderOutputEntity)
+        {
+            int batchSize = encoderOutputEntity.EncOut.Dimensions[0];
+            var inputMeta = _decoderSession?.InputMetadata;
+            var container = new List<NamedOnnxValue>();
+            foreach (var name in inputMeta.Keys)
+            {
+                if (name == "encoder_out")
+                {
+                    int[] dim = new int[] { batchSize, encoderOutputEntity.EncOut.ToArray().Length / 512 / batchSize, 512 };
+                    var tensor = new DenseTensor<float>(encoderOutputEntity.EncOut.ToArray(), dim, false);
+                    container.Add(NamedOnnxValue.CreateFromTensor<float>(name, tensor));
+                }
+                if (name == "encoder_out_lens")
+                {
+                    int[] dim = new int[] { batchSize };
+                    Int64[] encoder_out_lens = new Int64[batchSize];
+                    for (int i = 0; i < batchSize; i++)
+                    {
+                        encoder_out_lens[i] = encoderOutputEntity.EncOut.ToArray().Length / 512 / batchSize;
+                    }
+                    var tensor = new DenseTensor<Int64>(encoder_out_lens, dim, false);
+                    container.Add(NamedOnnxValue.CreateFromTensor<Int64>(name, tensor));
+                }
+            }
+            DecoderOutputEntity decoderOutputEntity = new DecoderOutputEntity();
+            try
+            {
+                IDisposableReadOnlyCollection<DisposableNamedOnnxValue> results = _decoderSession.Run(container);
+
+                if (results != null)
+                {
+                    var resultsArray = results.ToArray();
+                    decoderOutputEntity.LogitsTensor = resultsArray[0].AsTensor<float>();
+                    decoderOutputEntity.DecOutLens = resultsArray[1].AsEnumerable<Int64>().ToArray();
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("DecoderProj failed", ex);
+            }
+            return decoderOutputEntity;
         }
         protected virtual void Dispose(bool disposing)
         {
@@ -344,13 +290,9 @@ namespace ManySpeech.AliParaformerAsr
             {
                 if (disposing)
                 {
-                    if (_modelSession != null)
+                    if (_offlineModel != null)
                     {
-                        _modelSession.Dispose();
-                    }
-                    if (_embedSession != null)
-                    {
-                        _embedSession.Dispose();
+                        _offlineModel.Dispose();
                     }
                 }
                 _disposed = true;
@@ -362,7 +304,7 @@ namespace ManySpeech.AliParaformerAsr
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-        ~OfflineProjOfSeacoParaformer()
+        ~OfflineProjOfFunAsrNanoCtc()
         {
             Dispose(_disposed);
         }
