@@ -12,13 +12,11 @@ namespace ManySpeech.DolphinAsr
     {
         private bool _disposed;
 
-        private string[] _tokens;
         private IOfflineProj _offlineProj;
 
         public LanguageID(string encoderFilePath, string decoderFilePath, string tokensFilePath, string configFilePath = "", int threadsNum = 1)
         {
-            OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
-            _tokens = File.ReadAllLines(tokensFilePath);
+            OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, tokensFilePath: tokensFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
             _offlineProj = new OfflineProjOfDolphin(offlineModel);
         }
 
@@ -139,20 +137,23 @@ namespace ManySpeech.DolphinAsr
             {
                 OfflineRecognizerResultEntity offlineRecognizerResultEntity = new OfflineRecognizerResultEntity();
                 string lastToken = "";
+                string[] currTokens = _offlineProj.Tokenizer.Decode(stream.TokenIds.ToArray());
 #if NET6_0_OR_GREATER
-                foreach (var result in stream.TokenIds)
+                foreach (var result in stream.TokenIds.Zip<int,string?>(currTokens))
                 {
-                    int tokenId = result;
+                    int tokenId = result.First;
+                    string currText = result.Second ?? "";
 #else
-                for (int i = 0; i < stream.TokenIds.Count; i++)
+                for (int i = 0; i < stream.TokenIds.Count && i < currTokens.Count(); i++)
                 {
                     int tokenId = stream.TokenIds[i];
+                    string currText = currTokens[i] ?? "";
 #endif
                     if (tokenId == 2)
                     {
                         break;
                     }
-                    string currText = _tokens[tokenId].Split(new char[] { '\t', ' ' })[0];
+                    currText = currText.Split('\t')[0];//.Split(new char[] { '\t', ' ' })[0];
                     if (currText != "</s>" && currText != "<s>" && currText != "<sos/eos>" && currText != "<blank>" && currText != "<unk>" && currText != "<sos>" && currText != "<eos>" && currText != "<pad>")
                     {
                         offlineRecognizerResultEntity.Tokens.Add(currText);
@@ -182,10 +183,6 @@ namespace ManySpeech.DolphinAsr
                     if (_offlineProj != null)
                     {
                         _offlineProj.Dispose();
-                    }
-                    if (_tokens != null)
-                    {
-                        _tokens = null;
                     }
                 }
                 _disposed = true;

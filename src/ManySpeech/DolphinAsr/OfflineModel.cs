@@ -3,12 +3,16 @@ using ManySpeech.DolphinAsr.Model;
 
 namespace ManySpeech.DolphinAsr
 {
-    internal class OfflineModel
+    internal class OfflineModel : IDisposable
     {
+        // To detect redundant calls
+        private bool _disposed;
+
         private InferenceSession _encoderSession;
         private InferenceSession _decoderSession;
         private CustomMetadata _customMetadata;
         private ConfEntity? _confEntity;
+        private string _tokensFilePath;
 
         private int _firstLangId = 7; //<ab>
         private int _lastLangId = 144; //<zu>
@@ -25,12 +29,16 @@ namespace ManySpeech.DolphinAsr
         private int _shiftLength = 0;
         private int _requiredCacheSize = 0;
 
-        public OfflineModel(string encoderFilePath, string decoderFilePath, string configFilePath = "", int threadsNum = 2)
+        public OfflineModel(string encoderFilePath, string decoderFilePath, string tokensFilePath, string configFilePath = "", int threadsNum = 2)
         {
             _encoderSession = initModel(encoderFilePath, threadsNum);
             _decoderSession = initModel(decoderFilePath, threadsNum);
             _confEntity = LoadConf(configFilePath);
-            _speechLength = _confEntity?.preprocessor_conf.speech_length ?? 0;
+            if (_confEntity != null)
+            {
+                _speechLength = _confEntity?.preprocessor_conf.speech_length ?? 0;
+            }
+            _tokensFilePath = tokensFilePath;
 
             _customMetadata = new CustomMetadata();
             var encoder_meta = _encoderSession.ModelMetadata.CustomMetadataMap;
@@ -187,6 +195,7 @@ namespace ManySpeech.DolphinAsr
         public int RequiredCacheSize { get => _requiredCacheSize; set => _requiredCacheSize = value; }
         internal ConfEntity ConfEntity { get => _confEntity; set => _confEntity = value; }
         public int FeatureDim { get => _featureDim; set => _featureDim = value; }
+        public string TokensFilePath { get => _tokensFilePath; set => _tokensFilePath = value; }
 
         internal InferenceSession initModel(string modelFilePath, int threadsNum = 2)
         {
@@ -259,6 +268,34 @@ namespace ManySpeech.DolphinAsr
                 }
             }
             return confJsonEntity;
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!_disposed)
+            {
+                if (disposing)
+                {
+                    if (_encoderSession != null)
+                    {
+                        _encoderSession.Dispose();
+                    }
+                    if (_decoderSession != null)
+                    {
+                        _decoderSession.Dispose();
+                    }
+                }
+                _disposed = true;
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+        ~OfflineModel()
+        {
+            Dispose(_disposed);
         }
     }
 }

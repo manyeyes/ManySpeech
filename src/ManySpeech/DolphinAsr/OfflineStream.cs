@@ -130,9 +130,21 @@ namespace ManySpeech.DolphinAsr
                     {
                         _wavFrontend.Dispose();
                     }
+                    if (_offlineInputEntity != null)
+                    {
+                        _offlineInputEntity = null;
+                    }
+                    if (_tokenIds != null)
+                    {
+                        _tokenIds = null;
+                    }
                     if (_tokens != null)
                     {
                         _tokens = null;
+                    }
+                    if (_timestamps != null)
+                    {
+                        _timestamps = null;
                     }
                 }
                 _disposed = true;

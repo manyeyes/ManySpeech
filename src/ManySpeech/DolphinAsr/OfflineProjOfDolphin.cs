@@ -1,9 +1,10 @@
-﻿using Microsoft.ML.OnnxRuntime;
-using Microsoft.ML.OnnxRuntime.Tensors;
-using System.Diagnostics;
-using ManySpeech.DolphinAsr.Model;
+﻿using ManySpeech.DolphinAsr.Model;
 using ManySpeech.DolphinAsr.Utils;
+using ManySpeech.SeqUnit;
+using Microsoft.ML.OnnxRuntime;
+using Microsoft.ML.OnnxRuntime.Tensors;
 using System;
+using System.Diagnostics;
 
 namespace ManySpeech.DolphinAsr
 {
@@ -16,16 +17,20 @@ namespace ManySpeech.DolphinAsr
         private InferenceSession _decoderSession;
         private CustomMetadata _customMetadata;
         private OfflineModel _offlineModel;
+        private ITokenizer _tokenizer;
+
         public OfflineProjOfDolphin(OfflineModel offlineModel)
         {
+            _offlineModel = offlineModel;
             _encoderSession = offlineModel.EncoderSession;
             _decoderSession = offlineModel.DecoderSession;
             _customMetadata = offlineModel.CustomMetadata;
-            _offlineModel = offlineModel;
+            _tokenizer = AutoTokenizer.Create(type: TokenizerType.Textoken, vocabFilePath: offlineModel.TokensFilePath);
         }
         public InferenceSession EncoderSession { get => _encoderSession; set => _encoderSession = value; }
         public InferenceSession DecoderSession { get => _decoderSession; set => _decoderSession = value; }
         public OfflineModel OfflineModel { get => _offlineModel; set => _offlineModel = value; }
+        public ITokenizer Tokenizer { get => _tokenizer; set => _tokenizer = value; }
 
         public List<float[]> stack_states(List<List<float[]>> statesList)
         {

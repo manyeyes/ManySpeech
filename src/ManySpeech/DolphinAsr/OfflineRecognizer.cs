@@ -14,13 +14,11 @@ namespace ManySpeech.DolphinAsr
     {
         private bool _disposed;
 
-        private string[] _tokens;
         private IOfflineProj _offlineProj;
 
         public OfflineRecognizer(string encoderFilePath, string decoderFilePath, string tokensFilePath, string configFilePath = "", int threadsNum = 2)
         {
-            OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
-            _tokens = File.ReadAllLines(tokensFilePath);
+            OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, tokensFilePath: tokensFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
             _offlineProj = new OfflineProjOfDolphin(offlineModel);
         }
 
@@ -72,8 +70,8 @@ namespace ManySpeech.DolphinAsr
                 // If specified language and region.
                 if (stream.TokenIds.Count == 1 && !string.IsNullOrEmpty(stream.Language) && !string.IsNullOrEmpty(stream.Region))
                 {
-                    int langId = Array.IndexOf(_tokens, $"<{stream.Language.ToLower()}>");
-                    int regionId = Array.IndexOf(_tokens, $"<{stream.Region.ToUpper()}>");
+                    int langId = _offlineProj.Tokenizer.Encode($"<{stream.Language.ToLower()}>").FirstOrDefault();
+                    int regionId = _offlineProj.Tokenizer.Encode($"<{stream.Region.ToUpper()}>").FirstOrDefault();
                     if (langId > 0 && regionId > 0)
                     {
                         stream.TokenIds.Add(langId);
@@ -110,7 +108,7 @@ namespace ManySpeech.DolphinAsr
                     // detect language
                     DecoderOutputEntity decoderOutputEntity = _offlineProj.DecoderProj(tokenIdsList, encoder_outputs);
                     List<List<int>> detectLangIdsList = _offlineProj.DetectLanguage(decoderOutputEntity.LogitsTensor);
-                    for(int i = 0;i< detectLangIdsList.Count; i++)
+                    for (int i = 0; i < detectLangIdsList.Count; i++)
                     {
                         tokenIdsList[i].Add(detectLangIdsList[i][0]);
                     }
@@ -123,7 +121,7 @@ namespace ManySpeech.DolphinAsr
                     }
                     // Add elements (fixed format)
                     tokenIdsList = tokenIdsList.Select(inner => inner.Concat(new[] { _offlineProj.OfflineModel.AsrId }).ToList()).ToList();
-                }               
+                }
                 // conf args
                 int beamSize = 1;
                 int nbest = 1;
@@ -136,7 +134,7 @@ namespace ManySpeech.DolphinAsr
                 int H = 512;
                 int Ti = encoderOutputEntity.Output.Length / N / H;
                 int maxlen = decodeMaxLen > 0 ? decodeMaxLen : Ti;
-                
+
                 // decoder
                 if (_offlineProj.DecoderSession != null)
                 {
@@ -198,22 +196,25 @@ namespace ManySpeech.DolphinAsr
                 string text_result = "";
                 string lastToken = "";
                 int[] lastTimestamp = null;
+                string[] currTokens = _offlineProj.Tokenizer.Decode(stream.TokenIds.ToArray());
 #if NET6_0_OR_GREATER
-                foreach (var result in stream.TokenIds.Zip<int, int[]>(stream.Timestamps))
+                foreach (var result in stream.TokenIds.Zip<int, int[],string?>(stream.Timestamps,currTokens))
                 {
                     int tokenId = result.First;
                     int[] timestamp = result.Second;
+                    string currText = result.Third ?? "";
 #else
-                for (int i = 0; i < stream.TokenIds.Count && i < stream.Timestamps.Count; i++)
+                for (int i = 0; i < stream.TokenIds.Count && i < stream.Timestamps.Count && i < currTokens.Count(); i++)
                 {
                     int tokenId = stream.TokenIds[i];
                     int[] timestamp = stream.Timestamps[i];
+                    string currText = currTokens[i] ?? "";
 #endif
                     if (tokenId == 2)
                     {
                         break;
                     }
-                    string currText = _tokens[tokenId].Split(new char[] { '\t', ' ' })[0];
+                    currText = currText.Split('\t')[0];//.Split(new char[] { '\t', ' ' })[0];
                     offlineRecognizerResultEntity.Tokens.Add(currText);
                     if (currText != "</s>" && currText != "<s>" && currText != "<sos/eos>" && currText != "<blank>" && currText != "<unk>" && currText != "<sos>" && currText != "<eos>" && currText != "<pad>")
                     {
@@ -297,6 +298,7 @@ namespace ManySpeech.DolphinAsr
                 text_results.Add(text_result);
                 offlineRecognizerResultEntity.Region = stream.Region;
                 offlineRecognizerResultEntity.Language = stream.Language;
+                //offlineRecognizerResultEntity.TokenIds = stream.TokenIds;
                 offlineRecognizerResultEntity.Timestamps = stream.Timestamps;
                 offlineRecognizerResultEntity.Text = text_result;
                 offlineRecognizerResultEntities.Add(offlineRecognizerResultEntity);
@@ -341,10 +343,6 @@ namespace ManySpeech.DolphinAsr
                     if (_offlineProj != null)
                     {
                         _offlineProj.Dispose();
-                    }
-                    if (_tokens != null)
-                    {
-                        _tokens = null;
                     }
                 }
                 _disposed = true;
