@@ -1,7 +1,6 @@
 ﻿using ManySpeech.DolphinAsr.Model;
 using PreProcessUtils;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace ManySpeech.DolphinAsr.Examples
 {
@@ -9,22 +8,22 @@ namespace ManySpeech.DolphinAsr.Examples
     {
         public static OfflineRecognizer initOfflineRecognizer(string modelName)
         {
-            string encoderFilePath = applicationBase + "./" + modelName + "/encoder.onnx";
+            string encoderFilePath = applicationBase + "./" + modelName + "/encoder.int8.onnx";
             string decoderFilePath = applicationBase + "./" + modelName + "/decoder.int8.onnx";
             string configFilePath = applicationBase + "./" + modelName + "/conf.json"; // or conf.yaml
             string tokensFilePath = applicationBase + "./" + modelName + "/tokens.txt";
-            OfflineRecognizer offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: 2);
+            OfflineRecognizer offlineRecognizer = new OfflineRecognizer(encoderFilePath: encoderFilePath, decoderFilePath: decoderFilePath, configFilePath: configFilePath, tokensFilePath: tokensFilePath, threadsNum: 1);
             return offlineRecognizer;
         }
 
         public static void OfflineRecognizer(List<float[]>? samples = null)
         {
-            string modelName = "DolphinAsr-base-int8-onnx";
+            string modelName = "DolphinAsr-base-int8-onnx-opt";
             TimeSpan totalDuration = new TimeSpan(0L);
             List<List<float[]>> samplesList = new List<List<float[]>>();
             if (samples == null)
             {
-                for (int i = 0; i < 1; i++)
+                for (int i = 0; i < 2; i++)
                 {
                     string wavFilePath = string.Format(applicationBase + "./" + modelName + "./test_wavs/{0}.wav", i.ToString());
                     if (!File.Exists(wavFilePath))
@@ -62,7 +61,7 @@ namespace ManySpeech.DolphinAsr.Examples
             foreach (var stream in streams)
             {
                 OfflineRecognizerResultEntity result = offlineRecognizer.GetResult(stream);
-                Console.WriteLine(RemoveAngleBracketContent(RemoveQuoteAroundPunctuation(result.Text)));
+                Console.WriteLine(AEDEmojiHelper.ReplaceTagsWithEmpty2(TextHelper.RemoveQuoteAroundPunctuation(result.Text)));
                 StringBuilder r= new StringBuilder();
                 r.AppendLine("{");
                 r.AppendLine($"\"text\": \"{result.Text}\",");
@@ -88,25 +87,5 @@ namespace ManySpeech.DolphinAsr.Examples
             Console.WriteLine("Total duration milliseconds:{0}", totalDuration.TotalMilliseconds.ToString());
             Console.WriteLine("Rtf:{1}", "0".ToString(), (elapsedMilliseconds / totalDuration.TotalMilliseconds).ToString());
         }
-        public static string RemoveQuoteAroundPunctuation(string input)
-        {
-            // 正则表达式：匹配单引号包裹的中文标点
-            string pattern = @"'([,，.。!！?？;；:：""''（）[\]【】<>《》/\、·])'";
-            // 替换为捕获到的标点本身
-            return Regex.Replace(input, pattern, "$1");
-        }
-        public static string RemoveAngleBracketContent(string input)
-        {
-            if (string.IsNullOrEmpty(input))
-            {
-                return input;
-            }
-
-            // 核心正则表达式：匹配 < 开头、> 结尾的任意字符（非贪婪匹配）
-            // \< 转义匹配 <，\> 转义匹配 >，.*? 非贪婪匹配中间任意字符
-            string pattern = @"\<.*?\>";
-            return Regex.Replace(input, pattern, string.Empty, RegexOptions.Compiled);
-        }
-
     }
 }
