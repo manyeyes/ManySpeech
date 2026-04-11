@@ -22,7 +22,7 @@ namespace ManySpeech.FireRedAsr
         private int _featureDim = 80;
 
         private CustomMetadata _customMetadata;
-        private List<Int64> _tokens = new List<Int64>();
+        private List<int> _tokens = new List<int>();
         private string? _language;
         private List<int[]> _timestamps = new List<int[]>();
         private List<float[]> _caches = new List<float[]>();
@@ -42,23 +42,23 @@ namespace ManySpeech.FireRedAsr
                 {
                     _offset = _required_cache_size;
                 }
+
+                _asrInputEntity = new OfflineInputEntity();
+                _frontendConfEntity = new FrontendConfEntity();
+                _frontendConfEntity.fs = _sampleRate;
+                _frontendConfEntity.n_mels = _featureDim;
+
+                _wavFrontend = new WavFrontend(mvnFilePath, _frontendConfEntity, offlineProj.ConfEntity.model);
+                //_hyp = new Int64[] { _sos_id };
+                _caches = GetDecoderInitCaches();
+                _states = GetDecoderInitCaches();
+                _tokens = new List<int> { _sos_id };
             }
-
-            _asrInputEntity = new OfflineInputEntity();
-            _frontendConfEntity = new FrontendConfEntity();
-            _frontendConfEntity.fs = _sampleRate;
-            _frontendConfEntity.n_mels = _featureDim;
-
-            _wavFrontend = new WavFrontend(mvnFilePath,_frontendConfEntity);
-            //_hyp = new Int64[] { _sos_id };
-            _caches = GetDecoderInitCaches();
-            _states = GetDecoderInitCaches();
-            _tokens = new List<Int64> { _sos_id };
         }
 
         public OfflineInputEntity AsrInputEntity { get => _asrInputEntity; set => _asrInputEntity = value; }
         //public long[] Hyp { get => _hyp; set => _hyp = value; }
-        public List<Int64> Tokens { get => _tokens; set => _tokens = value; }
+        public List<int> Tokens { get => _tokens; set => _tokens = value; }
         public List<int[]> Timestamps { get => _timestamps; set => _timestamps = value; }
         public List<float[]> States { get => _states; set => _states = value; }
         public int Offset { get => _offset; set => _offset = value; }

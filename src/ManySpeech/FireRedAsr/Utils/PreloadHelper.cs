@@ -2,48 +2,51 @@
 // Copyright (c)  2024 by manyeyes
 using System.Reflection;
 using System.Text.Json;
-//using System.Text.Json.Serialization;
-//using YamlDotNet.Serialization;
+using System.Text.Json.Serialization;
+using YamlDotNet.Serialization;
+using YamlDotNet.Serialization.NamingConventions;
 
 namespace ManySpeech.FireRedAsr.Utils
 {
     // 源生成器的上下文配置
-    //[JsonSourceGenerationOptions(WriteIndented = true)] // 配置序列化选项
-    //[JsonSerializable(typeof(Model.ConfEntity))] // 指定需要序列化的类型
-    //public partial class AppJsonContext : JsonSerializerContext
-    //{
-    //    // 生成器会自动填充实现
-    //}
-    /// <summary>
-    /// PreloadHelper
-    /// Copyright (c)  2024 by manyeyes
-    /// </summary>
+    [JsonSourceGenerationOptions(WriteIndented = true)] // 配置序列化选项
+    [JsonSerializable(typeof(Model.ConfEntity))] // 指定需要序列化的类型
+    public partial class FireRedAsrJsonContext : JsonSerializerContext
+    {
+        // 生成器会自动填充实现
+    }
+
     internal class PreloadHelper
     {
         public static T? ReadYaml<T>(string yamlFilePath)
         {
             T? info = default(T);
-            ////Deserializer yamlDeserializer = new Deserializer();
-            //IDeserializer yamlDeserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNamingConvention(UnderscoredNamingConvention.Instance).Build();
-            if (!string.IsNullOrEmpty(yamlFilePath) && yamlFilePath.IndexOf("/") < 0 && yamlFilePath.IndexOf("\\") < 0)
+            try
             {
-                var assembly = Assembly.GetExecutingAssembly();
-                var stream = assembly.GetManifestResourceStream(yamlFilePath) ??
-                             throw new FileNotFoundException($"Embedded resource '{yamlFilePath}' not found.");
-                using (var yamlReader = new StreamReader(stream))
+                IDeserializer yamlDeserializer = new StaticDeserializerBuilder(new YamlStaticContext()).WithNamingConvention(UnderscoredNamingConvention.Instance).IgnoreUnmatchedProperties().Build();
+                if (!string.IsNullOrEmpty(yamlFilePath) && yamlFilePath.IndexOf("/") < 0 && yamlFilePath.IndexOf("\\") < 0)
                 {
-                    //info = yamlDeserializer.Deserialize<T>(yamlReader);
-                    yamlReader.Close();
+                    var assembly = Assembly.GetExecutingAssembly();
+                    var stream = assembly.GetManifestResourceStream(yamlFilePath) ??
+                                 throw new FileNotFoundException($"Embedded resource '{yamlFilePath}' not found.");
+                    using (var yamlReader = new StreamReader(stream))
+                    {
+                        info = yamlDeserializer.Deserialize<T>(yamlReader);
+                        yamlReader.Close();
+                    }
+                }
+                else if (File.Exists(yamlFilePath))
+                {
+                    using (var yamlReader = File.OpenText(yamlFilePath))
+                    {
+                        info = yamlDeserializer.Deserialize<T>(yamlReader);
+                        yamlReader.Close();
+                    }
                 }
             }
-            else if (File.Exists(yamlFilePath))
+            catch (Exception ex)
             {
-                //StreamReader yamlReader = File.OpenText(yamlFilePath);
-                using (var yamlReader = File.OpenText(yamlFilePath))
-                {
-                    //info = yamlDeserializer.Deserialize<T>(yamlReader);
-                    yamlReader.Close();
-                }
+                throw new Exception("Failed to create YAML deserializer with static context.", ex);
             }
             return info;
         }
@@ -72,23 +75,56 @@ namespace ManySpeech.FireRedAsr.Utils
             }
             return info;
         }
+        /// <summary>
+        /// ReadJson for ConfEntity (To compile for AOT)
+        /// </summary>
+        /// <param name="jsonFilePath"></param>
+        /// <returns></returns>
+        /// <exception cref="FileNotFoundException"></exception>
+        public static Model.ConfEntity? ReadJson(string jsonFilePath)
+        {
+            Model.ConfEntity? info = new Model.ConfEntity();
+            if (!string.IsNullOrEmpty(jsonFilePath) && jsonFilePath.IndexOf("/") < 0 && jsonFilePath.IndexOf("\\") < 0)
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                var stream = assembly.GetManifestResourceStream(jsonFilePath) ??
+                             throw new FileNotFoundException($"Embedded resource '{jsonFilePath}' not found.");
+                using (var jsonReader = new StreamReader(stream))
+                {
+                    info = JsonSerializer.Deserialize(jsonReader.ReadToEnd(), FireRedAsrJsonContext.Default.ConfEntity);
+                    jsonReader.Close();
+                }
+            }
+            else if (File.Exists(jsonFilePath))
+            {
+                using (var jsonReader = File.OpenText(jsonFilePath))
+                {
+                    info = JsonSerializer.Deserialize(jsonReader.ReadToEnd(), FireRedAsrJsonContext.Default.ConfEntity);
+                    jsonReader.Close();
+                }
+            }
+            return info;
+        }
 
         public static string[] ReadTokens(string tokensFilePath)
         {
             string[] tokens = null;
-            if (!string.IsNullOrEmpty(tokensFilePath) && tokensFilePath.IndexOf("/") < 0 && tokensFilePath.IndexOf("\\") < 0)
+            if (!string.IsNullOrEmpty(tokensFilePath))
             {
-                var assembly = Assembly.GetExecutingAssembly();
-                var stream = assembly.GetManifestResourceStream(tokensFilePath) ??
-                             throw new FileNotFoundException($"Embedded resource '{tokensFilePath}' not found.");
-                using (var reader = new StreamReader(stream))
+                if (tokensFilePath.IndexOf("/") < 0 && tokensFilePath.IndexOf("\\") < 0)
                 {
-                    tokens = reader.ReadToEnd().Split('\n');//Environment.NewLine
+                    var assembly = Assembly.GetExecutingAssembly();
+                    var stream = assembly.GetManifestResourceStream(tokensFilePath) ??
+                                 throw new FileNotFoundException($"Embedded resource '{tokensFilePath}' not found.");
+                    using (var reader = new StreamReader(stream))
+                    {
+                        tokens = reader.ReadToEnd().Split('\n');//Environment.NewLine
+                    }
                 }
-            }
-            else
-            {
-                tokens = File.ReadAllLines(tokensFilePath);
+                else
+                {
+                    tokens = File.ReadAllLines(tokensFilePath);
+                }
             }
             return tokens;
         }
