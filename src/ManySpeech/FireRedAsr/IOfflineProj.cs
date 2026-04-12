@@ -75,10 +75,16 @@ namespace ManySpeech.FireRedAsr
             get;
             set;
         }
+        ConfEntity ConfEntity
+        {
+            get;
+            set;
+        }
         List<float[]> stack_states(List<List<float[]>> statesList);
         List<List<float[]>> unstack_states(List<float[]> states);
         internal EncoderOutputEntity EncoderProj(List<OfflineInputEntity> modelInputs);
-        internal DecoderOutputEntity DecoderProj(List<List<Int64>> tokensList, float[] encoder_outputs, bool[] src_mask, List<float[]> cacheList);
+        internal DecoderOutputEntity DecoderProj(List<List<int>> tokensList, float[] encoder_outputs, bool[] src_mask, List<float[]> cacheList);
+        internal (List<List<int>> tokens, List<float[]> newCaches, List<int> cacheLengths) DecoderProj(List<List<int>> initialTokens, bool[] src_mask, List<float[]> crossKVList, List<float[]> stackedSelfCaches, int batchSize);
         internal CtcOutputEntity CtcProj(float[] encoder_outputs, int batchSize = 1);
         internal void Dispose();
     }

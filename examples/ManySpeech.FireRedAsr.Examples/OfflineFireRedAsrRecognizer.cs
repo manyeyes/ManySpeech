@@ -81,9 +81,9 @@ namespace ManySpeech.FireRedAsr.Examples
                     }
 
                     // Process config paths (take the last one that matches the prefix)
-                    //configFilePath = fileInfos
-                    //    .LastOrDefault(f => f.FileName.StartsWith("asr") && (f.FileName.EndsWith(".json")))
-                    //    ?.TargetPath ?? "";
+                    configFilePath = fileInfos
+                        .LastOrDefault(f => (f.FileName.StartsWith("asr.") || f.FileName.StartsWith("conf.")) && (f.FileName.EndsWith(".json") || f.FileName.EndsWith(".yaml")))
+                        ?.TargetPath ?? "";
 
                     // Process mvn paths (take the last one that matches the prefix)
                     mvnFilePath = fileInfos

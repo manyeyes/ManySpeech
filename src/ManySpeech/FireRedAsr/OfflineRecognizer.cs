@@ -5,10 +5,7 @@ using System.Text.RegularExpressions;
 
 namespace ManySpeech.FireRedAsr
 {
-    /// <summary>
-    /// offline recognizer package
-    /// Copyright (c)  2025 by manyeyes
-    /// </summary>
+    public delegate void ForwardOffline(List<OfflineStream> streams);
     public class OfflineRecognizer : IDisposable
     {
         private bool _disposed;
@@ -16,13 +13,35 @@ namespace ManySpeech.FireRedAsr
         private string[] _tokens;
         private string _mvnFilePath;
         private IOfflineProj _offlineProj;
+        private ForwardOffline? _forward;
 
         public OfflineRecognizer(string encoderFilePath, string decoderFilePath, string mvnFilePath, string tokensFilePath, string configFilePath = "", string ctcFilePath = "", int threadsNum = 1)
         {
             _mvnFilePath = mvnFilePath;
             OfflineModel offlineModel = new OfflineModel(encoderFilePath, decoderFilePath, ctcFilePath, configFilePath: configFilePath, threadsNum: threadsNum);
             _tokens = File.ReadAllLines(tokensFilePath);
-            _offlineProj = new AsrProjOfAED(offlineModel);
+            if (offlineModel != null)
+            {
+                string model = offlineModel.ConfEntity.model.ToLower();
+                switch (model.Replace("-", "").Replace("_", ""))
+                {
+                    case "fireredasraed":
+                        _forward = new ForwardOffline(this.Forward);
+                        _offlineProj = new OfflineProjOfFireRedASRAED(offlineModel);
+                        break;
+                    case "fireredasraedkv":
+                    case "fireredasraedselfcrosskv":
+                        _forward = new ForwardOffline(this.ForwardWithKV);
+                        _offlineProj = new OfflineProjOfFireRedASRAEDKV(offlineModel);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Unsupported model:" + model + "");
+                }
+            }
+            else
+            {
+                throw new InvalidOperationException("The model initialization result is empty. Please check whether the file path is correct or the file is corrupted!");
+            }
         }
 
         public OfflineStream CreateOfflineStream()
@@ -41,7 +60,7 @@ namespace ManySpeech.FireRedAsr
         public List<OfflineRecognizerResultEntity> GetResults(List<OfflineStream> streams)
         {
             //this._logger.LogInformation("get features begin");
-            this.Forward(streams);
+            _forward.Invoke(streams);
             List<OfflineRecognizerResultEntity> offlineRecognizerResultEntities = this.DecodeMulti(streams);
             return offlineRecognizerResultEntities;
         }
@@ -57,7 +76,7 @@ namespace ManySpeech.FireRedAsr
             List<OfflineInputEntity> modelInputs = new List<OfflineInputEntity>();
             List<List<float[]>> statesList = new List<List<float[]>>();
             //List<Int64[]> hypList = new List<Int64[]>();
-            List<List<Int64>> tokensList = new List<List<Int64>>();
+            List<List<int>> tokensList = new List<List<int>>();
             List<List<int[]>> timestampsList = new List<List<int[]>>();
             List<OfflineStream> streamsTemp = new List<OfflineStream>();
             foreach (OfflineStream stream in streams)
@@ -102,10 +121,10 @@ namespace ManySpeech.FireRedAsr
                 // Init
                 int N = batchSize;
                 int H = 1280;
-                int Ti = encoderOutputEntity.Output.Length / N / H;
+                int Ti = encoderOutputEntity.EncOut.Count() / N / H;
                 int maxlen = decode_max_len > 0 ? decode_max_len : Ti;
                 // encoder
-                float[] encoder_outputs = encoderOutputEntity.Output;
+                float[] encoder_outputs = encoderOutputEntity.EncOut.ToArray();
                 bool[] src_mask = encoderOutputEntity.Mask;
                 // decoder
                 if (_offlineProj.DecoderSession != null)
@@ -157,7 +176,155 @@ namespace ManySpeech.FireRedAsr
                                 item[j] = (int)token_num;
                             }
                             tokens = RemoveDuplicatesAndBlank(item);
-                            tokensList[i].AddRange(tokens.Select(x => (Int64)x).ToArray());
+                            tokensList[i].AddRange(tokens.Select(x => (int)x).ToArray());
+                        }
+                        (List<double> startTimes, List<double> endTimes) = GetCtcTimestamp(ctcLogits, tokens, blankId: _offlineProj.Blank_id, frameShift: frameShift);
+                        timestampsList.Add(ConvertToMilliseconds(startTimes, endTimes));
+                    }
+                    else
+                    {
+                        List<int[]> timestamps = new List<int[]>();
+                        for (int j = 0; j < tokens.Count; j++)
+                        {
+                            timestamps.Add(new int[2]);
+                        }
+                        timestampsList.Add(timestamps);
+                    }
+                }
+                List<List<float[]>> next_statesList = new List<List<float[]>>();
+                int streamIndex = 0;
+                foreach (OfflineStream stream in streamsWorking)
+                {
+                    stream.Tokens = tokensList[streamIndex].ToList();
+                    stream.Timestamps.AddRange(timestampsList[streamIndex]);
+                    stream.RemoveDecodedChunk();
+                    streamIndex++;
+                }
+            }
+            catch (Exception ex)
+            {
+                throw new Exception("Offline recognition failed", ex);
+            }
+
+        }
+
+        private void ForwardWithKV(List<OfflineStream> streams)
+        {
+            if (streams.Count == 0)
+            {
+                return;
+            }
+            List<OfflineStream> streamsWorking = new List<OfflineStream>();
+            int contextSize = 1;
+            List<OfflineInputEntity> modelInputs = new List<OfflineInputEntity>();
+            List<List<float[]>> statesList = new List<List<float[]>>();
+            List<List<int>> tokensList = new List<List<int>>();
+            List<List<int[]>> timestampsList = new List<List<int[]>>();
+            List<OfflineStream> streamsTemp = new List<OfflineStream>();
+            foreach (OfflineStream stream in streams)
+            {
+                OfflineInputEntity asrInputEntity = new OfflineInputEntity();
+
+                asrInputEntity.Speech = stream.GetDecodeChunk();
+                if (asrInputEntity.Speech == null)
+                {
+                    streamsTemp.Add(stream);
+                    continue;
+                }
+                asrInputEntity.SpeechLength = asrInputEntity.Speech.Length;
+                modelInputs.Add(asrInputEntity);
+                //hypList.Add(stream.Hyp);
+                List<float[]> cachesList = new List<float[]>();
+                for (int i = 0; i < 2 * 16; i++)
+                    cachesList.Add(new float[0]);
+                statesList.Add(cachesList);
+                tokensList.Add(stream.Tokens);
+                streamsWorking.Add(stream);
+            }
+            if (modelInputs.Count == 0)
+            {
+                return;
+            }
+            foreach (OfflineStream stream in streamsTemp)
+            {
+                streams.Remove(stream);
+            }
+            try
+            {
+                int batchSize = modelInputs.Count;
+                int offset = streams[0].Offset;
+                List<float[]> stackStatesList = new List<float[]>();
+                stackStatesList = _offlineProj.stack_states(statesList);
+                EncoderOutputEntity encoderOutputEntity = _offlineProj.EncoderProj(modelInputs);
+                // conf args
+                int beamSize = 1;
+                int nbest = 1;
+                int decode_max_len = 0;
+                float softmax_smoothing = 1.25F;
+                float length_penalty = 0.6F;
+                float eos_penalty = 1.0F;
+                // Init
+                int N = batchSize;
+                int H = 1280;
+                int Ti = encoderOutputEntity.EncOut.Count() / N / H;
+                int maxlen = decode_max_len > 0 ? decode_max_len : Ti;
+                // encoder
+                float[] encoder_outputs = encoderOutputEntity.EncOut.ToArray();
+                bool[] src_mask = encoderOutputEntity.Mask;
+                List<float[]> crossKVList = encoderOutputEntity.CrossKVList;
+                // decoder
+                if (_offlineProj.DecoderSession != null)
+                {
+                    var (tokens, newStackedSelfCaches, cacheLengths) = _offlineProj.DecoderProj(
+                        tokensList, src_mask, crossKVList, stackStatesList,batchSize);
+                    for (int b = 0; b < batchSize; b++)
+                    {
+                        tokensList[b].Clear();
+                        tokensList[b].AddRange(tokens[b]);
+                    }
+                    // 更新 statesList（self KV 缓存）
+                    var newStatesList = _offlineProj.unstack_states(newStackedSelfCaches);
+                    if (statesList != null)
+                    {
+                        statesList.Clear();
+                        statesList.AddRange(newStatesList);
+                    }
+                }
+                for (int i = 0; i < batchSize; i++)
+                {
+                    List<int> tokens = tokensList[i].Select(x => (int)x).ToList();
+                    tokens = tokens.Skip(1).ToList();
+                    // 找到第一个 Eos_id 的索引
+                    int eosIndex = tokens.FindIndex(t => t == _offlineProj.Eos_id) + 1;
+                    // 如果找到 Eos_id，移除它及其后面的所有元素
+                    if (eosIndex != -1)
+                    {
+                        tokens.RemoveRange(eosIndex, tokens.Count - eosIndex);
+                    }
+                    if (_offlineProj.CtcSession != null)
+                    {
+                        double frameShift = 0.04; // 40ms
+                        CtcOutputEntity ctcOutputEntity = _offlineProj.CtcProj(encoder_outputs, batchSize: batchSize);
+                        List<float[]> ctcLogits = ctcOutputEntity.LogitsList[i];
+                        if (tokens.Count == 0)
+                        {
+                            int t = ctcLogits.Count;
+                            int[] item = new int[ctcLogits.Count];
+                            for (int j = 0; j < ctcLogits.Count; j++)
+                            {
+                                if (j > t - t / 30 && ctcLogits[j].Average() / ctcLogits[j][0] > 100000)
+                                {
+                                    ctcLogits[j][0] = ctcLogits[j][0] < -0.000001f && ctcLogits[j][0] > -0.0001f ? ctcLogits[j][0] * 10000000 : ctcLogits[j][0];
+                                }
+                                int token_num = 0;
+                                for (int k = 1; k < ctcLogits[j].Length; k++)
+                                {
+                                    token_num = ctcLogits[j][token_num] > ctcLogits[j][k] ? token_num : k;
+                                }
+                                item[j] = (int)token_num;
+                            }
+                            tokens = RemoveDuplicatesAndBlank(item);
+                            tokensList[i].AddRange(tokens.Select(x => (int)x).ToArray());
                         }
                         (List<double> startTimes, List<double> endTimes) = GetCtcTimestamp(ctcLogits, tokens, blankId: _offlineProj.Blank_id, frameShift: frameShift);
                         timestampsList.Add(ConvertToMilliseconds(startTimes, endTimes));
@@ -327,14 +494,14 @@ namespace ManySpeech.FireRedAsr
                 string lastToken = "";
                 int[] lastTimestamp = null;
 #if NET6_0_OR_GREATER
-                foreach (var result in stream.Tokens.Zip<Int64, int[]>(stream.Timestamps))
+                foreach (var result in stream.Tokens.Zip<int, int[]>(stream.Timestamps))
                 {
-                    Int64 token = result.First;
+                    int token = result.First;
                     int[] timestamp = result.Second;
 #else
                 for (int i = 0; i < stream.Tokens.Count && i < stream.Timestamps.Count; i++)
                 {
-                    Int64 token = stream.Tokens[i];
+                    int token = stream.Tokens[i];
                     int[] timestamp = stream.Timestamps[i];
 #endif
                     if (token == 2)

@@ -8,6 +8,7 @@ namespace ManySpeech.FireRedAsr
         private InferenceSession _encoderSession;
         private InferenceSession _decoderSession;
         private InferenceSession _ctcSession;
+        private ConfEntity? _confEntity;
         private CustomMetadata _customMetadata;
         private int _blank_id = 0;
         private int _unk_id = 1;
@@ -23,9 +24,10 @@ namespace ManySpeech.FireRedAsr
 
         public OfflineModel(string encoderFilePath, string decoderFilePath, string ctcFilePath = "", string configFilePath = "", int threadsNum = 2)
         {
-            _encoderSession = initModel(encoderFilePath, threadsNum);
-            _decoderSession = initModel(decoderFilePath, threadsNum);
-            _ctcSession = initModel(ctcFilePath, threadsNum);
+            _encoderSession = InitModel(encoderFilePath, threadsNum);
+            _decoderSession = InitModel(decoderFilePath, threadsNum);
+            _ctcSession = InitModel(ctcFilePath, threadsNum); 
+            _confEntity = LoadConf(configFilePath);
 
             _customMetadata = new CustomMetadata();
             var encoder_meta = _encoderSession.ModelMetadata.CustomMetadataMap;
@@ -179,8 +181,9 @@ namespace ManySpeech.FireRedAsr
         public int FeatureDim { get => _featureDim; set => _featureDim = value; }
         public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
         public int Required_cache_size { get => _required_cache_size; set => _required_cache_size = value; }
+        public ConfEntity? ConfEntity { get => _confEntity; set => _confEntity = value; }
 
-        public InferenceSession initModel(string modelFilePath, int threadsNum = 2)
+        internal InferenceSession? InitModel(string? modelFilePath, int threadsNum = 2)
         {
             if (string.IsNullOrEmpty(modelFilePath) || !File.Exists(modelFilePath))
             {
@@ -195,16 +198,21 @@ namespace ManySpeech.FireRedAsr
             //options.AppendExecutionProvider_MKLDNN();
             //options.AppendExecutionProvider_ROCm(0);
             if (threadsNum > 0)
-                options.InterOpNumThreads = threadsNum;
+            {
+                options.IntraOpNumThreads = threadsNum;
+                options.InterOpNumThreads = Math.Max(1, Math.Min(threadsNum / 2, 4));
+            }
             else
-                options.InterOpNumThreads = System.Environment.ProcessorCount;
+            {
+                options.IntraOpNumThreads = System.Environment.ProcessorCount;
+            }
             // 启用CPU内存计划
             options.EnableMemoryPattern = true;
             // 设置其他优化选项            
             options.GraphOptimizationLevel = GraphOptimizationLevel.ORT_ENABLE_ALL;
 
             InferenceSession onnxSession = null;
-            if (!string.IsNullOrEmpty(modelFilePath) && modelFilePath.IndexOf("/") < 0 && modelFilePath.IndexOf("\\") < 0)
+            if (modelFilePath.IndexOf("/") < 0 && modelFilePath.IndexOf("\\") < 0)
             {
                 byte[] model = ReadEmbeddedResourceAsBytes(modelFilePath);
                 onnxSession = new InferenceSession(model, options);
@@ -228,6 +236,23 @@ namespace ManySpeech.FireRedAsr
             stream.Dispose();
 
             return bytes;
+        }
+        private ConfEntity? LoadConf(string configFilePath)
+        {
+            ConfEntity? confJsonEntity = new ConfEntity();
+            if (!string.IsNullOrEmpty(configFilePath))
+            {
+                if (configFilePath.ToLower().EndsWith(".json"))
+                {
+                    //confJsonEntity = Utils.PreloadHelper.ReadJson<ConfEntity>(configFilePath);
+                    confJsonEntity = Utils.PreloadHelper.ReadJson(configFilePath); // To compile for AOT
+                }
+                else if (configFilePath.ToLower().EndsWith(".yaml"))
+                {
+                    confJsonEntity = Utils.PreloadHelper.ReadYaml<ConfEntity>(configFilePath);
+                }
+            }
+            return confJsonEntity;
         }
     }
 }

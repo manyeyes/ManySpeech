@@ -55,7 +55,7 @@ namespace ManySpeech.FireRedAsr
             int contextSize = 1;
             List<OfflineInputEntity> modelInputs = new List<OfflineInputEntity>();
             List<List<float[]>> statesList = new List<List<float[]>>();
-            List<List<Int64>> tokensList = new List<List<Int64>>();
+            List<List<int>> tokensList = new List<List<int>>();
             List<List<int[]>> timestampsList = new List<List<int[]>>();
             List<OfflineStream> streamsTemp = new List<OfflineStream>();
             foreach (OfflineStream stream in streams)
@@ -99,10 +99,10 @@ namespace ManySpeech.FireRedAsr
                 // Init
                 int N = batchSize;
                 int H = 1280;
-                int Ti = encoderOutputEntity.Output.Length / N / H;
+                int Ti = encoderOutputEntity.EncOut.Count() / N / H;
                 int maxlen = decode_max_len > 0 ? decode_max_len : Ti;
                 // encoder
-                float[] encoder_outputs = encoderOutputEntity.Output;
+                float[] encoder_outputs = encoderOutputEntity.EncOut.ToArray();
                 bool[] src_mask = encoderOutputEntity.Mask;
                 // decoder
                 if (_offlineProj.DecoderSession != null)

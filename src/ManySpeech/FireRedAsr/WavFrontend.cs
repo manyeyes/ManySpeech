@@ -15,8 +15,9 @@ namespace ManySpeech.FireRedAsr
         private FrontendConfEntity _frontendConfEntity;
         private OnlineFbank _onlineFbank;
         private CmvnEntity _cmvnEntity;
+        private string _model = "";
 
-        public WavFrontend(string mvnFilePath, FrontendConfEntity frontendConfEntity)
+        public WavFrontend(string mvnFilePath, FrontendConfEntity frontendConfEntity,string model="")
         {
             _frontendConfEntity = frontendConfEntity;
             _onlineFbank = new OnlineFbank(
@@ -27,6 +28,7 @@ namespace ManySpeech.FireRedAsr
                 window_type: _frontendConfEntity.window
                 );
             _cmvnEntity = LoadCmvn(mvnFilePath);
+            _model = model;
         }
 
         public float[] GetFbank(float[] samples)
@@ -94,16 +96,19 @@ namespace ManySpeech.FireRedAsr
                     }
                 }
             }
-            double count = means_list.Last();
-            double floor = 1e-20;
+            if (_model == "fireredasraed_")
+            {
+                double count = means_list.Last();
+                double floor = 1e-20;
 #if NETSTANDARD2_0 || NET461_OR_GREATER
-            means_list = means_list.Select(x => x / count).ToList().SkipLastOne().ToList();
+                means_list = means_list.Select(x => x / count).ToList().SkipLastOne().ToList();
 #else
             means_list = means_list.Select(x => x / count).SkipLast(1).ToList();
 #endif
-            vars_list = vars_list.Zip(means_list, (a, b) => a / count - b * b).ToList();
-            vars_list = vars_list.Select(x => (double)(x < floor ? floor : x)).ToList();
-            vars_list = vars_list.Select(x => (double)(1.0F / Math.Sqrt(x))).ToList();
+                vars_list = vars_list.Zip(means_list, (a, b) => a / count - b * b).ToList();
+                vars_list = vars_list.Select(x => (double)(x < floor ? floor : x)).ToList();
+                vars_list = vars_list.Select(x => (double)(1.0F / Math.Sqrt(x))).ToList();
+            }
             CmvnEntity cmvnEntity = new CmvnEntity();
             cmvnEntity.Means = means_list;
             cmvnEntity.Vars = vars_list;

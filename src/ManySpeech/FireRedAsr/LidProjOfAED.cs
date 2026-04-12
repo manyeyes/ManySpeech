@@ -15,6 +15,7 @@ namespace ManySpeech.FireRedAsr
         private InferenceSession _decoderSession;
         private InferenceSession _ctcSession;
         private CustomMetadata _customMetadata;
+        private ConfEntity? _confEntity;
         private int _blank_id = 0;
         private int _unk_id = 1;
         private int _pad_id = 2;
@@ -42,6 +43,7 @@ namespace ManySpeech.FireRedAsr
             _chunkLength = offlineModel.ChunkLength;
             _shiftLength = offlineModel.ShiftLength;
             _required_cache_size = offlineModel.Required_cache_size;
+            _confEntity = offlineModel.ConfEntity;
         }
         public InferenceSession EncoderSession { get => _encoderSession; set => _encoderSession = value; }
         public InferenceSession DecoderSession { get => _decoderSession; set => _decoderSession = value; }
@@ -57,6 +59,7 @@ namespace ManySpeech.FireRedAsr
         public int FeatureDim { get => _featureDim; set => _featureDim = value; }
         public int SampleRate { get => _sampleRate; set => _sampleRate = value; }
         public int Required_cache_size { get => _required_cache_size; set => _required_cache_size = value; }
+        public ConfEntity ConfEntity { get => _confEntity; set => _confEntity = value; }
 
         public List<float[]> stack_states(List<List<float[]>> statesList)
         {
@@ -145,8 +148,8 @@ namespace ManySpeech.FireRedAsr
                     var outputTensor = encoderResultsArray[0].AsTensor<float>();
                     var outputLengthsTensor = encoderResultsArray[1].AsTensor<Int64>();
                     var maskTensor = encoderResultsArray[2].AsTensor<bool>();
-                    encoderOutput.Output = outputTensor.ToArray();
-                    encoderOutput.OutputLengths = outputLengthsTensor.ToArray();
+                    encoderOutput.EncOut = outputTensor;
+                    encoderOutput.EncOutLens = outputLengthsTensor.ToArray();
                     encoderOutput.Mask = maskTensor.ToArray();
                 }
             }
@@ -157,10 +160,10 @@ namespace ManySpeech.FireRedAsr
             return encoderOutput;
         }
 
-        public DecoderOutputEntity DecoderProj(List<List<Int64>> tokensList, float[] encoder_outputs, bool[] src_mask, List<float[]> cacheList)
+        public DecoderOutputEntity DecoderProj(List<List<int>> tokensList, float[] encoder_outputs, bool[] src_mask, List<float[]> cacheList)
         {
             List<Int64[]> ys = new List<Int64[]>();
-            ys = tokensList.Select(x => x.ToArray()).ToList();
+            ys = tokensList.Select(x => x.Select(y => (Int64)y).ToArray()).ToList();
             int batchSize = ys.Count;
             CustomMetadata customMetadata = _customMetadata;
             DecoderOutputEntity decoderOutputEntity = new DecoderOutputEntity();
@@ -234,7 +237,7 @@ namespace ManySpeech.FireRedAsr
                     {
                         cacheList.Add(cache.AsTensor<float>().ToArray());
                     }
-                    decoderOutputEntity.TokensList = item.Select(x => new List<Int64> { (Int64)x }).ToList(); ;
+                    decoderOutputEntity.TokensList = item.Select(x => new List<int> { (int)x }).ToList(); ;
                     decoderOutputEntity.CacheList = cacheList;
                 }
             }
@@ -244,6 +247,15 @@ namespace ManySpeech.FireRedAsr
             }
             return decoderOutputEntity;
         }
+        public (List<List<int>> tokens, List<float[]> newCaches, List<int> cacheLengths) DecoderProj(
+            List<List<int>> initialTokens,
+            bool[] src_mask, List<float[]> crossKVList,
+            List<float[]> stackedSelfCaches,
+            int batchSize)
+        {
+            return (null, null, null);
+        }
+
 
         public CtcOutputEntity CtcProj(float[] encoder_outputs, int batchSize = 1)
         {
