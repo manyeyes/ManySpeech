@@ -3,6 +3,12 @@
 namespace ManySpeech
 {
     [YamlStaticContext]
+    [YamlSerializable(typeof(ASR.Model.ConfEntity))] // 指定需要序列化的类型
+    [YamlSerializable(typeof(ASR.Model.FrontendConf))]
+    [YamlSerializable(typeof(ASR.Model.ModelConf))]
+    [YamlSerializable(typeof(ASR.Model.EncoderConf))]
+    [YamlSerializable(typeof(ASR.Model.DecoderConf))]
+    [YamlSerializable(typeof(ASR.Model.PredictorConf))]
     [YamlSerializable(typeof(AliParaformerAsr.Model.ConfEntity))] // 指定需要序列化的类型
     [YamlSerializable(typeof(AliParaformerAsr.Model.FrontendConf))]
     [YamlSerializable(typeof(AliParaformerAsr.Model.ModelConf))]

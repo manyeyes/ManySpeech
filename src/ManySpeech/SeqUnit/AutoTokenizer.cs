@@ -13,7 +13,17 @@
         /// <summary>
         /// BPE-based tokenizer using Tiktoken
         /// </summary>
-        Tiktoken
+        Tiktoken,
+
+        /// <summary>
+        /// BPE-based tokenizer using Tiktoken
+        /// </summary>
+        Whisper,
+
+        /// <summary>
+        /// BPE-based tokenizer using Tiktoken
+        /// </summary>
+        Qwen3
     }
 
     /// <summary>
@@ -29,7 +39,7 @@
         /// <param name="encodingName">Encoding name (only required for Tiktoken, default is "multilingual").</param>
         /// <returns>ITokenizer instance.</returns>
         /// <exception cref="ArgumentException">Thrown when parameters are invalid.</exception>
-        public static ITokenizer Create(TokenizerType type, string vocabFilePath, string encodingName = "multilingual")
+        public static ITokenizer Create(TokenizerType type, string vocabFilePath, string encodingName = "multilingual", int numLanguages = 99)
         {
             if (string.IsNullOrWhiteSpace(vocabFilePath))
                 throw new ArgumentException("Vocabulary file path cannot be empty.", nameof(vocabFilePath));
@@ -37,7 +47,7 @@
             return type switch
             {
                 TokenizerType.Textoken => new Textoken(vocabFilePath),
-                TokenizerType.Tiktoken => new Tiktoken(encodingName, vocabFilePath),
+                TokenizerType.Tiktoken => new Tiktoken(encodingName, vocabFilePath, numLanguages),
                 _ => throw new NotSupportedException($"Unsupported tokenizer type: {type}")
             };
         }

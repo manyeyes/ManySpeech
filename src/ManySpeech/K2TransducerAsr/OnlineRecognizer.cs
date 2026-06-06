@@ -180,7 +180,7 @@ namespace ManySpeech.K2TransducerAsr
                         {
                             timestamps[m] = new List<int>();
                         }
-                        if (y != _onlineProj.Blank_id && y != _onlineProj.Unk_id && y != 1)
+                        if (y != _onlineProj.Blank_id && y != _onlineProj.Unk_id && y != _onlineProj.Sos_eos_id)
                         {
                             tokens[m].Add(y);
                             timestamps[m].Add(t);
