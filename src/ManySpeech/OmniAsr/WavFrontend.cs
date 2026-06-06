@@ -1,9 +1,5 @@
 ﻿// See https://github.com/manyeyes for more information
 // Copyright (c)  2026 by manyeyes
-using ManySpeech.OmniAsr.Model;
-using SpeechFeatures;
-//using KaldiNativeFbankSharp;
-
 namespace ManySpeech.OmniAsr
 {
     /// <summary>

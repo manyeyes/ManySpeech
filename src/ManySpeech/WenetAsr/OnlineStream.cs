@@ -64,7 +64,6 @@ namespace ManySpeech.WenetAsr
             _frame_sample_length = 25 * 16000 / 1000;
             _frame_shift_sample_length = 10 * 16000 / 1000;
             _cacheInput = new float[320];
-            _cacheInput = _cacheInput.Select(x => x == 0 ? -23.025850929940457F : x).ToArray();
         }
 
         public AsrInputEntity AsrInputEntity { get => _asrInputEntity; set => _asrInputEntity = value; }

@@ -14,22 +14,22 @@ namespace ManySpeech.SeqUnit
         /// </summary>
         /// <param name="encodingName">Name of the encoding model, e.g., "multilingual, gpt2, qwen3".</param>
         /// <param name="vocabFilePath">Path to the vocabulary file. (Required for all models except multilingual and gpt2)</param>
-        /// <exception cref="ArgumentNullException">Thrown when a required parameter is null or empty.</exception>
+        /// <param name="numLanguages"></param>
+        /// <exception cref="ArgumentNullException">Thrown when a parameter is null or empty.</exception>
         /// <exception cref="Exception">Thrown when vocabulary loading fails (thrown by GptEncoding.GetEncoding).</exception>
-        public Tiktoken(string encodingName, string? vocabFilePath = null)
+        public Tiktoken(string encodingName, string? vocabFilePath = null, int numLanguages = 99)
         {
             if (string.IsNullOrWhiteSpace(encodingName))
                 throw new ArgumentNullException(nameof(encodingName));
 
-            _encoding = GptEncoding.GetEncoding(encodingName, vocabFilePath);
+            _encoding = GptEncoding.GetEncoding(encodingName, vocabFilePath, numLanguages: numLanguages);
         }
 
         /// <summary>
-        /// Encodes input text into an array of token IDs.
+        /// Encodes text into an array of token IDs.
         /// </summary>
-        /// <param name="text">Input text to encode.</param>
-        /// <param name="isUseSpecial">Whether to allow special tokens during encoding.</param>
-        /// <returns>Array of token IDs; returns an empty array if the input text is empty.</returns>
+        /// <param name="text">Input text.</param>
+        /// <returns>Array of token IDs; returns an empty array if the text is null or empty.</returns>
         public int[]? Encode(string text, bool isUseSpecial = false)
         {
             if (string.IsNullOrEmpty(text))
@@ -39,20 +39,15 @@ namespace ManySpeech.SeqUnit
         }
 
         /// <summary>
-        /// Decodes an array of token IDs into an array of individual token strings.
+        /// Decodes an array of token IDs into an array of token texts.
         /// </summary>
-        /// <param name="tokenIds">Array of token IDs to decode.</param>
-        /// <returns>Array of decoded token strings; returns an empty array if the input is null or empty.</returns>
+        /// <param name="tokenIds">Array of token IDs.</param>
+        /// <returns>Decoded array of token texts; returns an empty array if the input is null or empty.</returns>
         public string[] Decode(int[] tokenIds)
         {
             return new string[tokenIds.Length];
         }
 
-        /// <summary>
-        /// Decodes an array of token IDs directly into a complete text string.
-        /// </summary>
-        /// <param name="tokenIds">Array of token IDs to decode.</param>
-        /// <returns>Complete decoded text string.</returns>
         public string DecodeToText(int[] tokenIds)
         {
             if (tokenIds == null || tokenIds.Length == 0)
