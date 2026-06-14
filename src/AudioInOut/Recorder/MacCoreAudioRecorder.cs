@@ -123,7 +123,6 @@ namespace AudioInOut.Recorder
             }
         }
 
-        // private delegate void AudioQueueInputCallback(nint inUserData, nint inAQ, nint inBuffer, nint inStartTime, ulong inNumPackets, nint inPacketDesc);
         private void AudioInputCallback(nint inUserData, nint inAQ, nint inBuffer, nint inStartTime, ulong inNumPackets, nint inPacketDesc)
         {
             // 如果处于暂停状态，仍然重新提交缓冲区但不处理数据
@@ -190,57 +189,6 @@ namespace AudioInOut.Recorder
             _audioChunkQueue.Enqueue(null);
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已停止");
         }
-
-        //public override void PauseCapture()
-        //{
-        //    lock (_pauseLock)
-        //    {
-        //        if (!_isCapturing || _isPaused) return;
-
-        //        if (_audioQueue != default(nint))
-        //        {
-        //            // 停止 AudioQueue，但不清空缓冲区
-        //            int result = CoreAudioNative.AudioQueueStop(_audioQueue, true);
-        //            if (result != 0)
-        //            {
-        //                Console.WriteLine($"CoreAudio pause stop failed: {result}");
-        //            }
-
-        //            _isPaused = true;
-        //            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已暂停");
-        //        }
-        //    }
-        //}
-
-        //public override void ResumeCapture()
-        //{
-        //    lock (_pauseLock)
-        //    {
-        //        if (!_isCapturing || !_isPaused) return;
-
-        //        if (_audioQueue != default(nint))
-        //        {
-        //            // 确保缓冲区被正确重新提交（如果有必要）
-        //            // 注意：AudioQueueStop 会清除队列中的所有缓冲区，需要重新入队
-
-        //            // 获取当前队列中的缓冲区数量
-        //            // 由于 AudioQueueStop 会清空队列，我们需要重新提交所有缓冲区
-
-        //            // 方法1：重新设置缓冲区（简单但可能丢失数据）
-        //            // 由于 AudioQueueStop 已经清空了缓冲区，直接重新启动即可
-
-        //            // 重新启动 AudioQueue
-        //            int result = CoreAudioNative.AudioQueueStart(_audioQueue, default(nint));
-        //            if (result != 0)
-        //            {
-        //                throw new InvalidOperationException($"CoreAudio resume failed: {result}");
-        //            }
-
-        //            _isPaused = false;
-        //            Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已恢复");
-        //        }
-        //    }
-        //}
 
         public override void PauseCapture()
         {
