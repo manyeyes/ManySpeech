@@ -15,11 +15,16 @@ namespace AudioInOut.Recorder
     {
         private bool _disposed = false;
         private readonly object _disposeLock = new object();
+        private readonly object _pauseLock = new object();
 
         private nint _waveInHandle = default(nint);
         private readonly List<nint> _bufferPointers = new();
         private readonly List<nint> _headerPointers = new();
         private readonly ConcurrentQueue<float[]> _audioChunkQueue;
+
+        private bool _isPaused = false;
+        // 是否已暂停
+        public bool IsPaused => _isPaused;
 
         public bool IsCapturing { get; private set; }
         public const int BitsPerSample = 16;
@@ -256,6 +261,7 @@ namespace AudioInOut.Recorder
             lock (_disposeLock)
             {
                 IsCapturing = false;
+                _isPaused = false;  // 重置暂停状态
 
                 // 停止录音
                 var stopResult = waveInStop(_waveInHandle);
@@ -264,13 +270,95 @@ namespace AudioInOut.Recorder
                     Console.WriteLine($"Warning: Stop failed. Error: {stopResult}");
                 }
                 waveInReset(_waveInHandle); // 清空驱动队列
-                // 清理缓冲区
+                                            // 清理缓冲区
                 CleanupBuffers();
 
                 // 发送结束信号
                 _audioChunkQueue.Enqueue(null);
 
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 麦克风实时采集已停止");
+            }
+        }
+
+        public override void PauseCapture()
+        {
+            lock (_pauseLock)
+            {
+                if (!IsCapturing || _isPaused) return;
+
+                lock (_disposeLock)
+                {
+                    if (_disposed) throw new ObjectDisposedException(nameof(WindowsWaveInRecorder));
+
+                    // 停止录音（但不清空缓冲区）
+                    var stopResult = waveInStop(_waveInHandle);
+                    if (stopResult != MMSYSERR_NOERROR)
+                    {
+                        Console.WriteLine($"Warning: Pause - Stop failed. Error: {stopResult}");
+                    }
+
+                    // 重置驱动队列，但不清除缓冲区
+                    var resetResult = waveInReset(_waveInHandle);
+                    if (resetResult != MMSYSERR_NOERROR)
+                    {
+                        Console.WriteLine($"Warning: Pause - Reset failed. Error: {resetResult}");
+                    }
+
+                    _isPaused = true;
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 麦克风采集已暂停");
+                }
+            }
+        }
+
+        public override void ResumeCapture()
+        {
+            lock (_pauseLock)
+            {
+                if (!IsCapturing || !_isPaused) return;
+
+                lock (_disposeLock)
+                {
+                    if (_disposed) throw new ObjectDisposedException(nameof(WindowsWaveInRecorder));
+
+                    // 重新提交所有缓冲区（确保缓冲区仍在队列中）
+                    foreach (var headerPtr in _headerPointers)
+                    {
+                        if (headerPtr != default(nint))
+                        {
+                            // 获取header信息
+                            var header = Marshal.PtrToStructure<WaveHeader>(headerPtr);
+
+                            // 重置header的标志位
+                            header.dwFlags = 0;
+                            header.dwBytesRecorded = 0;
+                            Marshal.StructureToPtr(header, headerPtr, true);
+
+                            // 重新准备header（如果之前被unprepare了）
+                            var prepareResult = waveInPrepareHeader(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
+                            if (prepareResult != MMSYSERR_NOERROR)
+                            {
+                                Console.WriteLine($"Warning: Resume - Prepare header failed. Error: {prepareResult}");
+                            }
+
+                            // 重新添加缓冲区
+                            var addResult = waveInAddBuffer(_waveInHandle, headerPtr, Marshal.SizeOf<WaveHeader>());
+                            if (addResult != MMSYSERR_NOERROR)
+                            {
+                                Console.WriteLine($"Warning: Resume - Add buffer failed. Error: {addResult}");
+                            }
+                        }
+                    }
+
+                    // 重新启动录音
+                    var startResult = waveInStart(_waveInHandle);
+                    if (startResult != MMSYSERR_NOERROR)
+                    {
+                        throw new InvalidOperationException($"Failed to resume recording. Error: {startResult}");
+                    }
+
+                    _isPaused = false;
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] 麦克风采集已恢复");
+                }
             }
         }
 
@@ -307,7 +395,8 @@ namespace AudioInOut.Recorder
         {
             try
             {
-                while (IsCapturing && _audioChunkQueue.IsEmpty)
+                // 等待时有数据或暂停时等待恢复
+                while (IsCapturing && _audioChunkQueue.IsEmpty || (IsCapturing && _isPaused))
                 {
                     if (cancellationToken.IsCancellationRequested) return null;
                     await Task.Delay(10, cancellationToken);
@@ -326,14 +415,12 @@ namespace AudioInOut.Recorder
                 if (cancellationToken.IsCancellationRequested)
                 {
                     // 正常取消：返回null，符合原有逻辑
-                    //Console.WriteLine("GetNextMicChunkAsync: 任务被正常取消，返回null");
                     Console.WriteLine("The task of get mic data: cancelled normally，return null");
                     return null;
                 }
                 else
                 {
                     // 意外取消（如其他令牌）：重新抛出异常
-                    //Console.WriteLine($"GetNextMicChunkAsync: 意外取消 - {ex.Message}");
                     Console.WriteLine($"The task of get mic data: cancelled unexpectedly - {ex.Message}");
                     throw;
                 }
@@ -341,7 +428,6 @@ namespace AudioInOut.Recorder
             catch (Exception ex)
             {
                 // 其他异常（如队列操作异常）：按需处理
-                //Console.WriteLine($"GetNextMicChunkAsync: 其他异常 - {ex.Message}");
                 Console.WriteLine($"The task of get mic data: other exceptions - {ex.Message}");
                 return null;
             }

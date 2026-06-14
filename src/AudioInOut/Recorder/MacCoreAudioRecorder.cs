@@ -13,7 +13,7 @@ namespace AudioInOut.Recorder
     public delegate void AudioQueueInputCallback(nint inUserData, nint inAQ, nint inBuffer,
         nint inStartTime, ulong inNumPackets, nint inPacketDesc);
 
-    public class MacCoreAudioRecorder : BaseRecorder, IDisposable
+    internal class MacCoreAudioRecorder : BaseRecorder, IDisposable
     {
         private nint _audioQueue = default(nint);
         private bool _isCapturing = false;
@@ -25,7 +25,13 @@ namespace AudioInOut.Recorder
         public const int BitsPerSample = 16;
         public const int Channels = 1;
 
-
+        private bool _isPaused = false;
+        private readonly object _pauseLock = new object();
+        private List<nint> _bufferList = new List<nint>(); // 保存缓冲区列表
+        /// <summary>
+        /// 是否已暂停
+        /// </summary>
+        public bool IsPaused => _isPaused;
 
         public MacCoreAudioRecorder(int bufferMilliseconds = 100)
         {
@@ -82,6 +88,7 @@ namespace AudioInOut.Recorder
                 }
 
                 _isCapturing = true;
+                _isPaused = false;
                 Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已启动");
             }
             catch (Exception ex)
@@ -95,6 +102,7 @@ namespace AudioInOut.Recorder
         {
             int bufferSize = SampleRate * _bufferMilliseconds * (BitsPerSample / 8) * Channels / 1000;
             const int bufferCount = 3;
+            _bufferList.Clear();
 
             for (int i = 0; i < bufferCount; i++)
             {
@@ -110,30 +118,35 @@ namespace AudioInOut.Recorder
                 {
                     throw new InvalidOperationException($"CoreAudio buffer enqueue failed: {result}");
                 }
+
+                _bufferList.Add(bufferPtr); // 保存缓冲区指针
             }
         }
 
-        // private delegate void AudioQueueInputCallback(nint inUserData, nint inAQ, nint inBuffer, nint inStartTime, ulong inNumPackets, nint inPacketDesc);
         private void AudioInputCallback(nint inUserData, nint inAQ, nint inBuffer, nint inStartTime, ulong inNumPackets, nint inPacketDesc)
         {
+            // 如果处于暂停状态，仍然重新提交缓冲区但不处理数据
             if (!_isCapturing) return;
 
             try
             {
-                // 获取音频数据
-                nint audioDataPtr = CoreAudioNative.AudioQueueBufferGetAudioData(inBuffer);
-                uint dataByteSize = CoreAudioNative.AudioQueueBufferGetAudioDataByteSize(inBuffer);
-
-                if (dataByteSize > 0)
+                if (!_isPaused)
                 {
-                    byte[] audioData = new byte[dataByteSize];
-                    Marshal.Copy(audioDataPtr, audioData, 0, (int)dataByteSize);
+                    // 获取音频数据
+                    nint audioDataPtr = CoreAudioNative.AudioQueueBufferGetAudioData(inBuffer);
+                    uint dataByteSize = CoreAudioNative.AudioQueueBufferGetAudioDataByteSize(inBuffer);
 
-                    float[] normalizedSamples = ConvertToFloatSamples(audioData, (int)dataByteSize);
-                    _audioChunkQueue.Enqueue(normalizedSamples);
+                    if (dataByteSize > 0)
+                    {
+                        byte[] audioData = new byte[dataByteSize];
+                        Marshal.Copy(audioDataPtr, audioData, 0, (int)dataByteSize);
+
+                        float[] normalizedSamples = ConvertToFloatSamples(audioData, (int)dataByteSize);
+                        _audioChunkQueue.Enqueue(normalizedSamples);
+                    }
                 }
 
-                // 重新提交缓冲区
+                // 始终重新提交缓冲区以保持队列运行
                 CoreAudioNative.AudioQueueEnqueueBuffer(_audioQueue, inBuffer, 0, default(nint));
             }
             catch (Exception ex)
@@ -163,6 +176,7 @@ namespace AudioInOut.Recorder
         public override void StopCapture()
         {
             _isCapturing = false;
+            _isPaused = false;
 
             if (_audioQueue != default(nint))
             {
@@ -171,24 +185,90 @@ namespace AudioInOut.Recorder
                 _audioQueue = default(nint);
             }
 
+            _bufferList.Clear();
             _audioChunkQueue.Enqueue(null);
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已停止");
         }
 
+        public override void PauseCapture()
+        {
+            lock (_pauseLock)
+            {
+                if (!_isCapturing || _isPaused) return;
+
+                if (_audioQueue != default(nint))
+                {
+                    // 使用 AudioQueuePause 如果可用，或者使用带缓冲区的停止
+                    // 注意：标准 AudioQueue API 没有直接提供 Pause 方法
+
+                    // 方法：标记为暂停，在回调中停止处理数据
+                    _isPaused = true;
+
+                    // 可选：临时停止 AudioQueue 但不释放资源
+                    int result = CoreAudioNative.AudioQueueStop(_audioQueue, false);
+                    if (result != 0)
+                    {
+                        Console.WriteLine($"CoreAudio pause stop failed: {result}");
+                    }
+
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已暂停");
+                }
+            }
+        }
+
+        public override void ResumeCapture()
+        {
+            lock (_pauseLock)
+            {
+                if (!_isCapturing || !_isPaused) return;
+
+                if (_audioQueue != default(nint))
+                {
+                    // 如果之前调用了 AudioQueueStop(false)，现在只需要重新启动
+                    int result = CoreAudioNative.AudioQueueStart(_audioQueue, default(nint));
+                    if (result != 0)
+                    {
+                        throw new InvalidOperationException($"CoreAudio resume failed: {result}");
+                    }
+
+                    _isPaused = false;
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] macOS CoreAudio 麦克风采集已恢复");
+                }
+            }
+        }
+
         public override async Task<List<List<float[]>>?> GetNextMicChunkAsync(CancellationToken cancellationToken)
         {
-            while (_isCapturing && _audioChunkQueue.IsEmpty)
+            try
             {
-                if (cancellationToken.IsCancellationRequested) return null;
-                await Task.Delay(10, cancellationToken);
-            }
+                // 等待时有数据或暂停时等待恢复
+                while ((_isCapturing && _audioChunkQueue.IsEmpty) || (_isCapturing && _isPaused))
+                {
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    await Task.Delay(10, cancellationToken);
+                }
 
-            if (!_audioChunkQueue.TryDequeue(out float[]? chunk) || cancellationToken.IsCancellationRequested)
+                if (!_audioChunkQueue.TryDequeue(out float[]? chunk) || cancellationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                return chunk == null ? null : new List<List<float[]>> { new List<float[]> { chunk } };
+            }
+            catch (TaskCanceledException)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Console.WriteLine("The task of get mic data: cancelled normally, return null");
+                    return null;
+                }
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"The task of get mic data: other exceptions - {ex.Message}");
                 return null;
             }
-
-            return chunk == null ? null : new List<List<float[]>> { new List<float[]> { chunk } };
         }
 
         //public void Dispose()
