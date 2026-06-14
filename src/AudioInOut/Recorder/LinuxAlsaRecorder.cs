@@ -8,7 +8,7 @@ using AudioInOut.Base;
 
 namespace AudioInOut.Recorder
 {
-    public class LinuxAlsaRecorder : BaseRecorder, IDisposable
+    internal class LinuxAlsaRecorder : BaseRecorder, IDisposable
     {
         private nint _pcmHandle = default(nint);//nint.Zero;
         private bool _isCapturing = false;
@@ -16,6 +16,12 @@ namespace AudioInOut.Recorder
         private readonly ConcurrentQueue<float[]> _audioChunkQueue;
         private readonly int _bufferMilliseconds;
 
+        private bool _isPaused = false;
+        private readonly object _pauseLock = new object();
+        /// <summary>
+        /// 是否已暂停
+        /// </summary>
+        public bool IsPaused => _isPaused;
         public bool IsCapturing => _isCapturing;
         public const int SampleRate = 16000;
         public const int BitsPerSample = 16;
@@ -110,6 +116,13 @@ namespace AudioInOut.Recorder
 
             while (_isCapturing && _pcmHandle != default(nint))//nint.Zero;
             {
+                // 如果处于暂停状态，等待恢复
+                if (_isPaused)
+                {
+                    Thread.Sleep(10);
+                    continue;
+                }
+
                 try
                 {
                     // 读取音频数据
@@ -163,6 +176,8 @@ namespace AudioInOut.Recorder
         public override void StopCapture()
         {
             _isCapturing = false;
+            _isPaused = false;  // 重置暂停状态
+
             _captureThread?.Join(1000);
             _captureThread = null;
 
@@ -176,20 +191,99 @@ namespace AudioInOut.Recorder
             Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Linux ALSA 麦克风采集已停止");
         }
 
+        public override void PauseCapture()
+        {
+            lock (_pauseLock)
+            {
+                if (!_isCapturing || _isPaused) return;
+
+                if (_pcmHandle != default(nint))
+                {
+                    // 使用 ALSA 的 pause 功能（启用暂停）
+                    int result = AlsaNative.snd_pcm_pause(_pcmHandle, 1);
+                    if (result < 0)
+                    {
+                        // 如果不支持 pause，使用 drop 方式
+                        Console.WriteLine($"ALSA pause failed: {AlsaNative.GetErrorString(result)}, trying drop method");
+                        result = AlsaNative.snd_pcm_drop(_pcmHandle);
+                        if (result < 0)
+                        {
+                            Console.WriteLine($"ALSA drop failed: {AlsaNative.GetErrorString(result)}");
+                        }
+                    }
+
+                    _isPaused = true;
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Linux ALSA 麦克风采集已暂停");
+                }
+            }
+        }
+
+        public override void ResumeCapture()
+        {
+            lock (_pauseLock)
+            {
+                if (!_isCapturing || !_isPaused) return;
+
+                if (_pcmHandle != default(nint))
+                {
+                    int result;
+
+                    // 尝试使用 prepare 恢复
+                    result = AlsaNative.snd_pcm_prepare(_pcmHandle);
+                    if (result < 0)
+                    {
+                        Console.WriteLine($"ALSA prepare failed: {AlsaNative.GetErrorString(result)}");
+
+                        // 如果 prepare 失败，尝试重新设置参数
+                        try
+                        {
+                            SetHardwareParameters();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"Failed to reset hardware parameters: {ex.Message}");
+                            throw;
+                        }
+                    }
+
+                    _isPaused = false;
+                    Console.WriteLine($"[{DateTime.Now:HH:mm:ss}] Linux ALSA 麦克风采集已恢复");
+                }
+            }
+        }
+
         public override async Task<List<List<float[]>>?> GetNextMicChunkAsync(CancellationToken cancellationToken)
         {
-            while (_isCapturing && _audioChunkQueue.IsEmpty)
+            try
             {
-                if (cancellationToken.IsCancellationRequested) return null;
-                await Task.Delay(10, cancellationToken);
-            }
+                // 等待时有数据或暂停时等待恢复
+                while ((_isCapturing && _audioChunkQueue.IsEmpty) || (_isCapturing && _isPaused))
+                {
+                    if (cancellationToken.IsCancellationRequested) return null;
+                    await Task.Delay(10, cancellationToken);
+                }
 
-            if (!_audioChunkQueue.TryDequeue(out float[]? chunk) || cancellationToken.IsCancellationRequested)
+                if (!_audioChunkQueue.TryDequeue(out float[]? chunk) || cancellationToken.IsCancellationRequested)
+                {
+                    return null;
+                }
+
+                return chunk == null ? null : new List<List<float[]>> { new List<float[]> { chunk } };
+            }
+            catch (TaskCanceledException)
             {
+                if (cancellationToken.IsCancellationRequested)
+                {
+                    Console.WriteLine("The task of get mic data: cancelled normally, return null");
+                    return null;
+                }
+                throw;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"The task of get mic data: other exceptions - {ex.Message}");
                 return null;
             }
-
-            return chunk == null ? null : new List<List<float[]>> { new List<float[]> { chunk } };
         }
 
         //public override void Dispose()
@@ -246,6 +340,15 @@ namespace AudioInOut.Recorder
 
         [DllImport("libasound.so.2")]
         public static extern nint snd_strerror(int errnum);
+
+        [DllImport("libasound.so.2")]
+        public static extern int snd_pcm_pause(nint pcm, int enable);
+
+        [DllImport("libasound.so.2")]
+        public static extern int snd_pcm_drop(nint pcm);
+
+        [DllImport("libasound.so.2")]
+        public static extern int snd_pcm_prepare(nint pcm);
 
         public static string GetErrorString(int errorCode)
         {

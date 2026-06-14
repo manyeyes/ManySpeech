@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace AudioInOut.Base
 {
-    public abstract class BaseRecorder: IRecorder,IDisposable
+    public abstract class BaseRecorder : IRecorder, IDisposable
     {
         public bool IsCapturing { get; private set; }
         public int SampleRate => 16000;
@@ -15,6 +15,10 @@ namespace AudioInOut.Base
 
         public abstract Task StartCapture();
         public abstract void StopCapture();
+
+        public abstract void PauseCapture();
+
+        public abstract void ResumeCapture();
         public abstract Task<List<List<float[]>>?> GetNextMicChunkAsync(CancellationToken cancellationToken);
 
         public virtual void Dispose()

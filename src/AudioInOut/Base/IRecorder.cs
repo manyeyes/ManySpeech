@@ -42,6 +42,16 @@ namespace AudioInOut.Base
         void StopCapture();
 
         /// <summary>
+        /// 暂停音频采集
+        /// </summary>
+        void PauseCapture();
+
+        /// <summary>
+        /// 恢复音频采集（从暂停状态继续采集）
+        /// </summary>
+        void ResumeCapture();
+
+        /// <summary>
         /// 获取下一个音频数据块
         /// </summary>
         /// <param name="cancellationToken">取消令牌</param>
