@@ -1,0 +1,265 @@
+﻿// See https://github.com/manyeyes for more information
+// Copyright (c)  2023 by manyeyes
+using ManySpeech.ASR.Model;
+using SpeechFeatures;
+
+namespace ManySpeech.ASR
+{
+    /// <summary>
+    /// WavFrontend
+    /// Copyright (c)  2023 by manyeyes
+    /// </summary>
+    internal class WavFrontend
+    {
+        private FrontendConf? _frontendConf;
+        private PreprocessorConf? _preprocessorConf;
+        private CmvnEntity? _cmvnEntity;
+        private OnlineFbank? _onlineFbank;
+        private int _sampleRate = 16000;
+        private int _speechLength = 30;
+        private bool _isPaddingSpeech = false;
+        private bool _isResizeAudioDuration = false;
+        private bool _isSampleScalingRequired = true;
+
+        public WavFrontend(FrontendConf? frontendConf = null, string? mvnFilePath = null, int sampleRate = 16000, int speechLength = 30, bool isResizeAudioDuration = false, bool isPaddingSpeech = false, bool isSampleScalingRequired = true)
+        {
+            if (frontendConf != null)
+            {
+                _frontendConf = frontendConf;
+                //_onlineFbank = new OnlineFbank(
+                //    dither: _frontendConf.dither,
+                //    snip_edges: _frontendConf.snip_edges,
+                //    window_type: _frontendConf.window,
+                //    sample_rate: _frontendConf.fs,
+                //    num_bins: _frontendConf.n_mels,
+                //    energy_floor: _frontendConf.energy_floor,
+                //    frame_length: _frontendConf.frame_length,
+                //    frame_shift: _frontendConf.frame_shift
+                //    );
+                _onlineFbank = new OnlineFbank(
+                    dither: _frontendConf.dither,
+                    snip_edges: _frontendConf.snip_edges,
+                    sample_rate: _frontendConf.fs,
+                    num_bins: _frontendConf.n_mels,
+                    window_type: _frontendConf.window,
+                    energy_floor: _frontendConf.energy_floor,
+                    frame_length: _frontendConf.frame_length,
+                    frame_shift: _frontendConf.frame_shift,
+                    is_librosa: _frontendConf.is_librosa,
+                    htk_mode: _frontendConf.htk_mode,
+                    low_freq: _frontendConf.low_freq,
+                    norm: _frontendConf.norm,
+                    remove_dc_offset: _frontendConf.remove_dc_offset,
+                    preemph_coeff: _frontendConf.preemph_coeff,
+                    use_log_fbank: _frontendConf.use_log_fbank
+                    );
+            }
+            if (string.IsNullOrEmpty(mvnFilePath))
+            {
+                _cmvnEntity = LoadCmvn(mvnFilePath);
+            }
+            _sampleRate = sampleRate;
+            _speechLength = speechLength;
+            _isResizeAudioDuration = isResizeAudioDuration;
+            _isPaddingSpeech = isPaddingSpeech;
+            _isSampleScalingRequired = isSampleScalingRequired;
+        }
+
+        public float[] GetFeatures(float[] samples)
+        {
+            samples = _isResizeAudioDuration ? ResizeAudioDuration(samples, _sampleRate * _speechLength, _isPaddingSpeech) : samples;
+            float[] features = _isSampleScalingRequired ? samples.Select((float x) => x * 32768f).ToArray() : samples;
+            if (_onlineFbank != null)
+            {
+                features = _onlineFbank.GetFbank(features);
+            }
+            features = LfrCmvn(features);
+            return features;
+        }
+        /// <summary>
+        /// Adjusts raw audio data to a fixed sample count by truncating or padding (with zeros).
+        /// (Truncates the audio if it's longer than the target length, pads with zeros if shorter and padding is enabled)
+        /// </summary>
+        /// <param name="raw">Raw audio PCM data in float format (16-bit PCM normalized to [-1.0, 1.0])</param>
+        /// <param name="targetSampleCount">Target fixed number of audio samples (0 = return original data)</param>
+        /// <param name="_isPaddingSpeech">If true, pad short audio with zeros to target length; if false, return original short audio without padding</param>
+        /// <returns>Normalized audio data with fixed sample count (truncated/padded with 0s or original data)</returns>
+        public float[] ResizeAudioDuration(float[] raw, int targetSampleCount, bool _isPaddingSpeech)
+        {
+            // Return original data if target sample count is 0 (no resizing needed)
+            if (targetSampleCount == 0) return raw;
+
+            float[] processedAudio;
+
+            if (raw.Length >= targetSampleCount)
+            {
+                // Truncate to target sample count - copy the first N samples from raw audio
+                processedAudio = new float[targetSampleCount];
+                Array.Copy(raw, 0, processedAudio, 0, targetSampleCount);
+            }
+            else
+            {
+                if (_isPaddingSpeech)
+                {
+                    // Pad with zeros to reach target sample count: copy original audio to the start, remaining values default to 0.0f
+                    processedAudio = new float[targetSampleCount];
+                    Array.Copy(raw, 0, processedAudio, 0, raw.Length);
+                }
+                else
+                {
+                    // Do not pad, directly return the original shorter audio data
+                    processedAudio = raw;
+                }
+            }
+
+            return processedAudio;
+        }
+
+        public float[] LfrCmvn(float[] fbanks)
+        {
+            float[] features = fbanks;
+            if (_frontendConf != null)
+            {
+                if (_frontendConf.lfr_m != 1 || _frontendConf.lfr_n != 1)
+                {
+                    features = ApplyLfr(fbanks, _frontendConf.lfr_m, _frontendConf.lfr_n);
+                }
+            }
+            features = ApplyCmvn(features);
+            return features;
+        }
+
+        public float[] ApplyCmvn(float[] inputs)
+        {
+            if (_cmvnEntity != null)
+            {
+                var arr_neg_mean = _cmvnEntity.Means;
+                float[] neg_mean = arr_neg_mean.Select(x => (float)Convert.ToDouble(x)).ToArray();
+                var arr_inv_stddev = _cmvnEntity.Vars;
+                float[] inv_stddev = arr_inv_stddev.Select(x => (float)Convert.ToDouble(x)).ToArray();
+
+                int dim = neg_mean.Length;
+                int num_frames = inputs.Length / dim;
+
+                for (int i = 0; i < num_frames; i++)
+                {
+                    for (int k = 0; k != dim; ++k)
+                    {
+                        inputs[dim * i + k] = (inputs[dim * i + k] + neg_mean[k]) * inv_stddev[k];
+                    }
+                }
+            }
+            return inputs;
+        }
+
+        public float[] ApplyLfr(float[] inputs, int lfr_m, int lfr_n)
+        {
+            int t = inputs.Length / 80;
+            int t_lfr = (int)Math.Floor((double)(t / lfr_n));
+            float[] input_0 = new float[80];
+            Array.Copy(inputs, 0, input_0, 0, 80);
+            int tile_x = (lfr_m - 1) / 2;
+            t = t + tile_x;
+            float[] inputs_temp = new float[t * 80];
+            for (int i = 0; i < tile_x; i++)
+            {
+                Array.Copy(input_0, 0, inputs_temp, tile_x * 80, 80);
+            }
+            Array.Copy(inputs, 0, inputs_temp, tile_x * 80, inputs.Length);
+            inputs = inputs_temp;
+
+            float[] LFR_outputs = new float[t_lfr * lfr_m * 80];
+            for (int i = 0; i < t_lfr; i++)
+            {
+                if (lfr_m <= t - i * lfr_n)
+                {
+                    Array.Copy(inputs, i * lfr_n * 80, LFR_outputs, i * lfr_m * 80, lfr_m * 80);
+                }
+                else
+                {
+                    // process last LFR frame
+                    int num_padding = lfr_m - (t - i * lfr_n);
+                    float[] frame = new float[lfr_m * 80];
+                    Array.Copy(inputs, i * lfr_n * 80, frame, 0, (t - i * lfr_n) * 80);
+
+                    for (int j = 0; j < num_padding; j++)
+                    {
+                        Array.Copy(inputs, (t - 1) * 80, frame, (lfr_m - num_padding + j) * 80, 80);
+                    }
+                    Array.Copy(frame, 0, LFR_outputs, i * lfr_m * 80, frame.Length);
+                }
+            }
+            return LFR_outputs;
+        }
+
+        private CmvnEntity? LoadCmvn(string? mvnFilePath)
+        {
+            if (string.IsNullOrEmpty(mvnFilePath) || !File.Exists(mvnFilePath))
+            {
+                return null;
+            }
+            List<float> means_list = new List<float>();
+            List<float> vars_list = new List<float>();
+            StreamReader srtReader = new StreamReader(mvnFilePath);
+            int i = 0;
+            while (!srtReader.EndOfStream)
+            {
+                string? strLine = srtReader.ReadLine();
+                if (!string.IsNullOrEmpty(strLine))
+                {
+                    if (strLine.StartsWith("<AddShift>"))
+                    {
+                        i = 1;
+                        continue;
+                    }
+                    if (strLine.StartsWith("<Rescale>"))
+                    {
+                        i = 2;
+                        continue;
+                    }
+                    if (strLine.StartsWith("<LearnRateCoef>") && i == 1)
+                    {
+                        string[] add_shift_line = strLine.Substring(strLine.IndexOf("[") + 1, strLine.LastIndexOf("]") - strLine.IndexOf("[") - 1).Split(' ');
+                        means_list = add_shift_line.Where(x => !string.IsNullOrEmpty(x)).Select(x => float.Parse(x.Trim())).ToList();
+                        //i++;
+                        continue;
+                    }
+                    if (strLine.StartsWith("<LearnRateCoef>") && i == 2)
+                    {
+                        string[] rescale_line = strLine.Substring(strLine.IndexOf("[") + 1, strLine.LastIndexOf("]") - strLine.IndexOf("[") - 1).Split(' ');
+                        vars_list = rescale_line.Where(x => !string.IsNullOrEmpty(x)).Select(x => float.Parse(x.Trim())).ToList();
+                        //i++;
+                        continue;
+                    }
+                }
+            }
+            CmvnEntity cmvnEntity = new CmvnEntity();
+            cmvnEntity.Means = means_list;
+            cmvnEntity.Vars = vars_list;
+            return cmvnEntity;
+        }
+        public void InputFinished()
+        {
+            if (_onlineFbank != null)
+            {
+                _onlineFbank.InputFinished();
+            }
+        }
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                if (_onlineFbank != null)
+                {
+                    _onlineFbank.Dispose();
+                }
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(disposing: true);
+            GC.SuppressFinalize(this);
+        }
+    }
+}

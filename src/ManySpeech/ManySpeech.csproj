@@ -16,7 +16,7 @@
 				<AllowUnsafeBlocks>true</AllowUnsafeBlocks>  
 				<!-- info -->
 				<PackageId>ManySpeech</PackageId>
-				<Version>1.2.7</Version>
+				<Version>1.2.8</Version>
 				<Authors>manyeyes contributors</Authors>
 				<Company>manyeyes contributors</Company>
 				<Copyright>Copyright © manyeyes contributors</Copyright>
@@ -35,7 +35,7 @@
 				<!--<PackageOutputPath>$(ArtifactsPath)\package</PackageOutputPath>-->
 				<Readme>App_Readme/README.md</Readme>
 		</PropertyGroup>
-
+		
 		<ItemGroup>
 				<EmbeddedResource Include="AliParaformerAsr\data\embed.onnx" />
 		</ItemGroup>
